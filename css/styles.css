@@ -1015,6 +1015,11 @@ body {
     color: var(--text-secondary);
 }
 
+.no-favorites.hidden,
+.favorites-list.hidden {
+    display: none;
+}
+
 /* Detail Modal */
 .detail-image {
     width: 100%;
@@ -1987,6 +1992,14 @@ body {
     padding: 1rem;
     display: inline-block;
     border-radius: var(--radius-sm);
+    min-width: 220px;
+    min-height: 220px;
+}
+
+.qr-code-display img {
+    width: 200px;
+    height: 200px;
+    display: block;
 }
 
 .qr-hint {

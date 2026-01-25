@@ -640,19 +640,34 @@ class FunDaApp {
 
     showQRCode() {
         const code = this.familySync.getFamilyCode();
-        if (!code) return;
+        if (!code) {
+            this.showToast('Geen familie code gevonden');
+            return;
+        }
         
         const qrModal = document.getElementById('qrModal');
         const qrDisplay = document.getElementById('qrCodeDisplay');
         
-        // Generate QR code using a simple canvas-based approach
-        // Create QR code URL that will be parsed when scanned
+        // Show loading state
+        qrDisplay.innerHTML = '<p>QR code laden...</p>';
+        
+        // Open modal first
+        this.openModal(qrModal);
+        
+        // Generate QR code URL that will be parsed when scanned
         const qrData = `funda-family:${code}`;
         
-        // Use QR code API service for simplicity
-        qrDisplay.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR Code" style="width: 200px; height: 200px;">`;
-        
-        this.openModal(qrModal);
+        // Use QR code API service
+        const img = document.createElement('img');
+        img.alt = 'QR Code';
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
+        img.onload = () => {
+            qrDisplay.innerHTML = '';
+            qrDisplay.appendChild(img);
+        };
+        img.onerror = () => {
+            qrDisplay.innerHTML = `<p>QR code kon niet laden.<br><strong>${code}</strong></p>`;
+        };
     }
     
     async startQRScanner() {
