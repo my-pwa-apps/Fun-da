@@ -4,13 +4,12 @@
 class FundaScraper {
     constructor() {
         // CORS proxies om Funda te kunnen benaderen vanuit de browser
-        // We roteren tussen proxies om detectie te voorkomen
+        // We gebruiken proxies die geen preflight headers vereisen
         this.corsProxies = [
-            'https://api.allorigins.win/raw?url=',
-            'https://corsproxy.io/?',
-            'https://api.codetabs.com/v1/proxy?quest=',
-            'https://proxy.cors.sh/',
-            'https://thingproxy.freeboard.io/fetch/'
+            { url: 'https://api.allorigins.win/get?url=', jsonResponse: true, dataField: 'contents' },
+            { url: 'https://corsproxy.io/?url=', jsonResponse: false },
+            { url: 'https://cors-anywhere.herokuapp.com/', jsonResponse: false },
+            { url: 'https://crossorigin.me/', jsonResponse: false }
         ];
         this.currentProxyIndex = Math.floor(Math.random() * this.corsProxies.length);
         
@@ -133,8 +132,7 @@ class FundaScraper {
 
         // Probeer verschillende proxies als één niet werkt
         for (let i = 0; i < this.corsProxies.length; i++) {
-            const proxy = this.getNextProxy();
-            const userAgent = this.getRandomUserAgent();
+            const proxyConfig = this.getNextProxy();
             
             try {
                 console.log(`🔄 Probeer proxy ${i + 1}/${this.corsProxies.length}...`);
@@ -144,39 +142,26 @@ class FundaScraper {
                     await this.randomDelay(1500, 3000);
                 }
 
-                const response = await fetch(proxy + encodeURIComponent(url), {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                        'Accept-Language': 'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache',
-                        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                        'Sec-Ch-Ua-Mobile': '?0',
-                        'Sec-Ch-Ua-Platform': '"Windows"',
-                        'Sec-Fetch-Dest': 'document',
-                        'Sec-Fetch-Mode': 'navigate',
-                        'Sec-Fetch-Site': 'none',
-                        'Sec-Fetch-User': '?1',
-                        'Upgrade-Insecure-Requests': '1',
-                        'User-Agent': userAgent,
-                        // Custom headers die sommige proxies ondersteunen
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'omit',
-                    mode: 'cors',
-                    referrerPolicy: 'no-referrer'
-                });
+                // Simpele fetch zonder custom headers om CORS preflight te vermijden
+                const proxyUrl = proxyConfig.url + encodeURIComponent(url);
+                const response = await fetch(proxyUrl);
                 
                 if (response.ok) {
                     this.lastRequestTime = Date.now();
                     this.requestCount++;
                     
-                    const html = await response.text();
+                    let html;
+                    
+                    // Sommige proxies returnen JSON met de content in een veld
+                    if (proxyConfig.jsonResponse) {
+                        const json = await response.json();
+                        html = json[proxyConfig.dataField] || json.contents || json.data || '';
+                    } else {
+                        html = await response.text();
+                    }
                     
                     // Valideer dat we echte HTML hebben
-                    if (html.includes('<!DOCTYPE') || html.includes('<html') || html.includes('funda')) {
+                    if (html && (html.includes('<!DOCTYPE') || html.includes('<html') || html.includes('funda'))) {
                         // Cache het resultaat
                         this.setCache(url, html);
                         console.log(`✅ Succesvol opgehaald via proxy ${i + 1}`);

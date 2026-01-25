@@ -1,13 +1,14 @@
-const CACHE_NAME = 'fun-da-v1';
+const CACHE_NAME = 'fun-da-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
     '/css/styles.css',
     '/js/app.js',
     '/js/data.js',
+    '/js/scraper.js',
+    '/js/firebase-sync.js',
     '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png'
+    '/icons/icon-192.svg'
 ];
 
 // Install event - cache assets
@@ -54,20 +55,27 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
+    // Skip external requests (CORS proxies, Firebase, etc.)
+    const url = new URL(event.request.url);
+    if (url.origin !== location.origin) return;
+
     // Handle image requests with network-first strategy
     if (event.request.destination === 'image') {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
-                    // Clone the response and cache it
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
+                    if (response && response.ok) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
                     return response;
                 })
                 .catch(() => {
-                    return caches.match(event.request);
+                    return caches.match(event.request).then(cached => {
+                        return cached || new Response('', { status: 404, statusText: 'Not Found' });
+                    });
                 })
         );
         return;
@@ -94,13 +102,14 @@ self.addEventListener('fetch', (event) => {
                         });
 
                         return response;
+                    })
+                    .catch(() => {
+                        // Return a proper error response
+                        if (event.request.mode === 'navigate') {
+                            return caches.match('/index.html');
+                        }
+                        return new Response('', { status: 404, statusText: 'Not Found' });
                     });
-            })
-            .catch(() => {
-                // Return offline page for navigation requests
-                if (event.request.mode === 'navigate') {
-                    return caches.match('/index.html');
-                }
             })
     );
 });
