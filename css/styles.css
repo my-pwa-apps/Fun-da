@@ -1481,6 +1481,24 @@ body {
     font-weight: 600;
 }
 
+.funda-direct-link {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white !important;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.funda-direct-link:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
 .spinner {
     display: inline-block;
     width: 20px;

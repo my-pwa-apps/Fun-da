@@ -4,13 +4,14 @@
 class FundaScraper {
     constructor() {
         // CORS proxies om Funda te kunnen benaderen vanuit de browser
-        // We gebruiken proxies die geen preflight headers vereisen
-        // Geordend op betrouwbaarheid
+        // Eigen proxy eerst, daarna publieke fallbacks
         this.corsProxies = [
+            // Eigen Cloudflare Worker proxy (meest betrouwbaar)
+            { url: 'https://spring-night-8d4d.garfieldapp.workers.dev/?url=', jsonResponse: false },
+            // Publieke fallbacks
             { url: 'https://corsproxy.io/?', jsonResponse: false },
             { url: 'https://api.allorigins.win/raw?url=', jsonResponse: false },
             { url: 'https://api.allorigins.win/get?url=', jsonResponse: true, dataField: 'contents' },
-            { url: 'https://api.codetabs.com/v1/proxy?quest=', jsonResponse: false },
         ];
         this.currentProxyIndex = 0; // Start met meest betrouwbare
         
@@ -195,7 +196,7 @@ class FundaScraper {
             }
         }
         
-        throw new Error('Alle CORS proxies gefaald. Funda blokkeert mogelijk de requests. Probeer later opnieuw.');
+        throw new Error('Funda blokkeert automatische toegang. Open Funda handmatig en gebruik de link hieronder.');
     }
 
     async scrapeSearchResults(searchUrl) {

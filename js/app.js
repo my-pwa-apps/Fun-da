@@ -334,8 +334,12 @@ class FunDaApp {
             }
         } catch (error) {
             console.error('Import error:', error);
-            statusText.textContent = `❌ Fout: ${error.message}`;
-            this.showToast('❌ Import mislukt - probeer later opnieuw');
+            const fundaSearchUrl = this.scraper.generateFundaUrl(url);
+            statusText.innerHTML = `❌ ${error.message}<br><br>
+                <a href="${fundaSearchUrl}" target="_blank" rel="noopener" class="funda-direct-link">
+                    🔗 Open Funda.nl direct →
+                </a>`;
+            this.showToast('⚠️ Open Funda handmatig via de link');
         } finally {
             btnText.textContent = '🔍 Importeer woningen';
             spinner.classList.add('hidden');
