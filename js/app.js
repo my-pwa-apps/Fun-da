@@ -983,25 +983,25 @@ class FunDaApp {
         document.getElementById('detailContent').innerHTML = `
             <img class="detail-image" src="${house.image}" alt="${house.address}">
             
-            <div class="detail-section">
-                <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
-                ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${fact}</p>` : ''}
+            <div class="detail-section" style="margin-bottom: 0.75rem;">
+                <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
+                <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
+                ${fact ? `<p style="margin-top: 0.25rem; font-style: italic; color: var(--secondary); font-size: 0.8rem;">🏛️ ${fact}</p>` : ''}
             </div>
 
             <div class="detail-section">
                 <h3>Kenmerken</h3>
                 <div class="detail-grid">
                     <div class="detail-item">
-                        <div class="detail-item-label">Oppervlakte</div>
-                        <div class="detail-item-value">${house.size || '?'} m²</div>
+                        <div class="detail-item-label">m²</div>
+                        <div class="detail-item-value">${house.size || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Slaapkamers</div>
+                        <div class="detail-item-label">Slaapk.</div>
                         <div class="detail-item-value">${house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Badkamers</div>
+                        <div class="detail-item-label">Badk.</div>
                         <div class="detail-item-value">${house.bathrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
@@ -1009,41 +1009,26 @@ class FunDaApp {
                         <div class="detail-item-value">${house.yearBuilt || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Energielabel</div>
+                        <div class="detail-item-label">Energie</div>
                         <div class="detail-item-value">${house.energyLabel || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Dagen online</div>
+                        <div class="detail-item-label">Dagen</div>
                         <div class="detail-item-value">${house.daysOnMarket || '?'}</div>
                     </div>
                 </div>
             </div>
 
-            ${house.description ? `
-                <div class="detail-section">
-                    <h3>Beschrijving</h3>
-                    <p class="detail-description">${house.description}</p>
-                </div>
-            ` : ''}
-
-            ${house.features && house.features.length > 0 ? `
-                <div class="detail-section">
-                    <h3>Voorzieningen</h3>
-                    <div class="detail-tags">
-                        ${house.features.map(f => `<span class="detail-tag">${f}</span>`).join('')}
-                    </div>
-                </div>
-            ` : ''}
-
-            ${house.url && house.url !== '#' ? `
-                <a href="${house.url}" target="_blank" class="btn-secondary btn-full" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">
-                    🔗 Bekijk op Funda
-                </a>
-            ` : ''}
-
-            <button class="btn-primary btn-full" onclick="app.addToFavoritesAndClose('${String(house.id).replace(/'/g, "\\'")}')">
-                ❤️ Toevoegen aan favorieten
-            </button>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                ${house.url && house.url !== '#' ? `
+                    <a href="${house.url}" target="_blank" class="btn-secondary" style="flex: 1; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem;">
+                        🔗 Funda
+                    </a>
+                ` : ''}
+                <button class="btn-primary" style="flex: 1; padding: 0.75rem; font-size: 0.9rem;" onclick="app.addToFavoritesAndClose('${String(house.id).replace(/'/g, "\\'")}')">
+                    ❤️ Favoriet
+                </button>
+            </div>
         `;
 
         this.openModal(this.detailModal);

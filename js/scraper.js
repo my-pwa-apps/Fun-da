@@ -5,13 +5,14 @@ class FundaScraper {
     constructor() {
         // CORS proxies om Funda te kunnen benaderen vanuit de browser
         // We gebruiken proxies die geen preflight headers vereisen
+        // Geordend op betrouwbaarheid
         this.corsProxies = [
+            { url: 'https://corsproxy.io/?', jsonResponse: false },
+            { url: 'https://api.allorigins.win/raw?url=', jsonResponse: false },
             { url: 'https://api.allorigins.win/get?url=', jsonResponse: true, dataField: 'contents' },
-            { url: 'https://corsproxy.io/?url=', jsonResponse: false },
-            { url: 'https://cors-anywhere.herokuapp.com/', jsonResponse: false },
-            { url: 'https://crossorigin.me/', jsonResponse: false }
+            { url: 'https://api.codetabs.com/v1/proxy?quest=', jsonResponse: false },
         ];
-        this.currentProxyIndex = Math.floor(Math.random() * this.corsProxies.length);
+        this.currentProxyIndex = 0; // Start met meest betrouwbare
         
         // Realistische User-Agents (Desktop browsers)
         this.userAgents = [
@@ -165,8 +166,18 @@ class FundaScraper {
                         // Debug: log eerste 500 chars om te zien wat we krijgen
                         console.log('📄 Response preview:', html.substring(0, 500));
                         
-                        // Check of het een bot-detectie pagina is
-                        if (html.includes('captcha') || html.includes('challenge') || html.includes('blocked') || html.includes('Access Denied')) {
+                        // Check of het een bot-detectie pagina is (inclusief Nederlandse Funda captcha)
+                        const isBotPage = html.includes('captcha') || 
+                                         html.includes('challenge') || 
+                                         html.includes('blocked') || 
+                                         html.includes('Access Denied') ||
+                                         html.includes('Je bent bijna') ||
+                                         html.includes('robot') ||
+                                         html.includes('verify') ||
+                                         html.includes('Cloudflare') ||
+                                         (html.includes('funda') && !html.includes('searchResults') && !html.includes('koopprijs') && !html.includes('€') && html.length < 50000);
+                        
+                        if (isBotPage) {
                             console.warn('🤖 Bot detectie pagina ontvangen, probeer volgende proxy...');
                             continue;
                         }
@@ -184,7 +195,43 @@ class FundaScraper {
             }
         }
         
-        throw new Error('Alle CORS proxies gefaald. Probeer later opnieuw of gebruik een andere zoekopdracht.');
+        throw new Error('Alle CORS proxies gefaald. Funda blokkeert mogelijk de requests. Probeer later opnieuw.');
+    }
+
+    // Alternatieve methode: probeer Funda's interne API
+    async tryFundaApi(searchParams) {
+        console.log('🔄 Probeer Funda API...');
+        
+        // Funda's zoek-API endpoint
+        const apiUrl = `https://www.funda.nl/api/v2/search/koop?selected_area=["amsterdam"]&publication_date="1"`;
+        
+        for (const proxyConfig of this.corsProxies) {
+            try {
+                const proxyUrl = proxyConfig.url + encodeURIComponent(apiUrl);
+                const response = await fetch(proxyUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = proxyConfig.jsonResponse ? 
+                        (await response.json())[proxyConfig.dataField] : 
+                        await response.text();
+                    
+                    // Probeer JSON te parsen
+                    const jsonData = typeof data === 'string' ? JSON.parse(data) : data;
+                    
+                    if (jsonData && (jsonData.results || jsonData.objects || jsonData.listings)) {
+                        console.log('✅ Funda API response ontvangen');
+                        return jsonData;
+                    }
+                }
+            } catch (e) {
+                console.warn('API poging gefaald:', e.message);
+            }
+        }
+        return null;
     }
 
     async scrapeSearchResults(searchUrl) {
@@ -197,6 +244,17 @@ class FundaScraper {
             // Random initiële delay
             await this.randomDelay(500, 1500);
             
+            // Probeer eerst de API
+            const apiData = await this.tryFundaApi(searchUrl);
+            if (apiData) {
+                const items = apiData.results || apiData.objects || apiData.listings || [];
+                if (items.length > 0) {
+                    console.log(`📊 ${items.length} woningen gevonden via API`);
+                    return items.map((item, i) => this.normalizeHouseData(item, i));
+                }
+            }
+            
+            // Fallback naar HTML scraping
             const html = await this.fetchWithProxy(urlWithCacheBuster);
             const results = this.parseSearchResults(html, searchUrl);
             
@@ -744,20 +802,21 @@ class FundaScraper {
                     // Get multiple images for this house using the helper
                     const houseImages = getImagesForHouse(i, cardMatches.length);
                     const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
+                    const addr = addressMatch ? addressMatch[1] : `Woning ${i + 1}`;
                     
                     houses.push({
                         id: `funda-block-${i}-${Date.now()}`,
                         price: price,
-                        address: addressMatch ? addressMatch[1] : `Woning ${i + 1}`,
+                        address: addr,
                         postalCode: postcode,
                         city: 'Amsterdam',
-                        neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(addressMatch ? addressMatch[1] : ''),
+                        neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(addr),
                         bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
                         bathrooms: 1,
                         size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
                         image: houseImages[0] || (imageMatch ? imageMatch[0] : this.getPlaceholderImage()),
                         images: houseImages.length > 0 ? houseImages : [],
-                        url: '#',
+                        url: this.generateFundaUrl(addr, postcode),
                         description: '',
                         features: [],
                         isNew: block.toLowerCase().includes('nieuw'),
@@ -832,19 +891,20 @@ class FundaScraper {
                     imageIndex++;
                     
                     const cleanPostcode = postcode.replace(/\s+/g, ' ');
+                    const cleanAddress = address.trim();
                     
                     houses.push({
                         id: `funda-block-${i}-${Date.now()}`,
                         price: this.extractPrice(price),
-                        address: address.trim(),
+                        address: cleanAddress,
                         postalCode: cleanPostcode,
                         city: 'Amsterdam',
-                        neighborhood: this.getNeighborhoodFromPostcode(cleanPostcode) || this.extractNeighborhood(address),
+                        neighborhood: this.getNeighborhoodFromPostcode(cleanPostcode) || this.extractNeighborhood(cleanAddress),
                         bedrooms: parseInt(rooms) || 0,
                         bathrooms: 1,
                         size: parseInt(size) || 0,
                         image: image,
-                        url: '#',
+                        url: this.generateFundaUrl(cleanAddress, cleanPostcode),
                         description: '',
                         features: [],
                         isNew: false,
@@ -918,7 +978,7 @@ class FundaScraper {
                         energyLabel: energyLabel,
                         image: image,
                         images: houseImages.length > 0 ? houseImages : [],
-                        url: '#',
+                        url: this.generateFundaUrl(address, postalCode),
                         description: '',
                         features: [],
                         isNew: false,
@@ -999,7 +1059,7 @@ class FundaScraper {
                 energyLabel: energyLabel,
                 image: houseImages[0] || images[i] || this.getPlaceholderImage(),
                 images: houseImages.length > 0 ? houseImages : [],
-                url: '#',
+                url: this.generateFundaUrl(address, postcode),
                 description: '',
                 features: [],
                 isNew: false,
@@ -1209,6 +1269,19 @@ class FundaScraper {
         }
 
         return url;
+    }
+
+    // Genereer een Funda zoek-URL op basis van adres
+    generateFundaUrl(address, postalCode) {
+        // Clean het adres voor de URL
+        const cleanAddress = address
+            .replace(/[\-\/]/g, '-')
+            .replace(/\s+/g, '-')
+            .toLowerCase()
+            .replace(/[^a-z0-9\-]/g, '');
+        
+        // Funda URL format: /koop/amsterdam/straat-nummer/
+        return `https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&object_type=["apartment","house"]&search_query="${encodeURIComponent(address)}"`;
     }
 }
 

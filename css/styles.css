@@ -787,20 +787,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.5rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--gray-lighter);
     background: linear-gradient(180deg, var(--white) 0%, #FAFAFA 100%);
 }
 
 .modal-header h2 {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--dark);
 }
 
 .btn-close {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: none;
     background: var(--light);
     border-radius: var(--radius-sm);
@@ -819,7 +819,7 @@ body {
 }
 
 .modal-body {
-    padding: 1.5rem;
+    padding: 1rem 1.25rem;
     overflow-y: auto;
 }
 
@@ -997,20 +997,20 @@ body {
 /* Detail Modal */
 .detail-image {
     width: 100%;
-    height: 220px;
+    height: 160px;
     object-fit: cover;
     border-radius: var(--radius-md);
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .detail-section {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1rem;
 }
 
 .detail-section h3 {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: var(--gray);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
@@ -1018,19 +1018,20 @@ body {
 
 .detail-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
 }
 
 .detail-item {
     background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%);
-    padding: 1rem;
+    padding: 0.6rem 0.5rem;
     border-radius: var(--radius-sm);
     border: 1px solid var(--gray-lighter);
+    text-align: center;
 }
 
 .detail-item-label {
-    font-size: 0.75rem;
+    font-size: 0.6rem;
     color: var(--gray);
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -1039,8 +1040,8 @@ body {
 .detail-item-value {
     font-weight: 700;
     color: var(--dark);
-    font-size: 1.1rem;
-    margin-top: 0.25rem;
+    font-size: 0.95rem;
+    margin-top: 0.15rem;
 }
 
 .detail-description {
