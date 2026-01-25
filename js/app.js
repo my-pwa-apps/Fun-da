@@ -51,12 +51,12 @@ class FunDaApp {
     }
 
     async init() {
-        // Load saved houses or use mock data
+        // Load saved houses (no mock data anymore)
         this.loadFromStorage();
         
+        // App starts empty until user imports from Funda
         if (this.houses.length === 0) {
-            // Use mock data as starting point
-            this.houses = shuffleArray([...AMSTERDAM_HOUSES]);
+            console.log('🏠 Geen opgeslagen woningen - importeer van Funda!');
         }
 
         // Wait a bit for Firebase to initialize
@@ -174,6 +174,9 @@ class FunDaApp {
 
         // Funda import
         document.getElementById('importFundaBtn').addEventListener('click', () => this.importFromFunda());
+        
+        // Clear data button
+        document.getElementById('clearDataBtn').addEventListener('click', () => this.clearAllData());
         document.querySelectorAll('.quick-link').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.getElementById('fundaUrl').value = e.target.dataset.url;
@@ -205,6 +208,31 @@ class FunDaApp {
     // ==========================================
     // FUNDA IMPORT
     // ==========================================
+
+    clearAllData() {
+        if (confirm('Weet je zeker dat je alle data wilt wissen? Dit verwijdert alle opgeslagen huizen en favorieten.')) {
+            // Clear localStorage
+            localStorage.removeItem('funda-favorites');
+            localStorage.removeItem('funda-viewed');
+            localStorage.removeItem('funda-index');
+            localStorage.removeItem('funda-houses');
+            
+            // Reset app state
+            this.houses = [];
+            this.favorites = [];
+            this.currentIndex = 0;
+            this.viewed = 0;
+            
+            // Clear scraper cache
+            this.scraper.cache.clear();
+            
+            // Re-render
+            this.renderCards();
+            this.updateStats();
+            
+            this.showToast('🗑️ Alle data gewist! Importeer nieuwe woningen van Funda.');
+        }
+    }
 
     async importFromFunda() {
         const urlInput = document.getElementById('fundaUrl');
@@ -246,21 +274,20 @@ class FunDaApp {
                     h.importedAt = Date.now();
                 });
 
-                // Merge with existing houses (avoid duplicates)
-                const existingIds = new Set(this.houses.map(h => h.id));
-                const newHouses = houses.filter(h => !existingIds.has(h.id));
-                
-                this.houses = [...newHouses, ...this.houses];
+                // REPLACE all houses with imported ones (geen merge meer)
+                // Dit zorgt ervoor dat alleen echte Funda data getoond wordt
+                this.houses = houses;
                 this.currentIndex = 0;
+                this.viewed = 0;
                 
                 this.saveToStorage();
                 this.renderCards();
                 this.updateStats();
 
                 progressBar.style.width = '100%';
-                statusText.textContent = `✅ ${newHouses.length} nieuwe woningen geïmporteerd!`;
+                statusText.textContent = `✅ ${houses.length} woningen geïmporteerd!`;
                 
-                this.showToast(`🏠 ${newHouses.length} woningen van Funda geladen!`);
+                this.showToast(`🏠 ${houses.length} woningen van Funda geladen!`);
                 this.triggerConfetti();
 
                 setTimeout(() => {
@@ -396,8 +423,9 @@ class FunDaApp {
                 for (const [houseId, memberNames] of this.familyMatches) {
                     const house = this.findHouseById(houseId);
                     if (house) {
+                        const safeId = String(houseId).replace(/'/g, "\\'");
                         matchHtml.push(`
-                            <div class="match-item" onclick="app.showMatchDetail('${houseId}')">
+                            <div class="match-item" onclick="app.showMatchDetail('${safeId}')">
                                 <img class="match-image" src="${house.image}" alt="${house.address}">
                                 <div class="match-info">
                                     <div class="match-price">${formatPrice(house.price)}</div>
@@ -443,10 +471,7 @@ class FunDaApp {
 
         // Check in favorites
         house = this.favorites.find(h => h.id == houseId);
-        if (house) return house;
-
-        // Check in mock data
-        return AMSTERDAM_HOUSES.find(h => h.id == houseId);
+        return house;
     }
 
     celebrateFamilyMatch() {
@@ -771,7 +796,7 @@ class FunDaApp {
     }
 
     removeFromFavorites(houseId) {
-        this.favorites = this.favorites.filter(h => h.id !== houseId);
+        this.favorites = this.favorites.filter(h => String(h.id) !== String(houseId));
         this.updateStats();
         this.saveToStorage();
         
@@ -929,7 +954,7 @@ class FunDaApp {
                 </a>
             ` : ''}
 
-            <button class="btn-primary btn-full" onclick="app.addToFavoritesAndClose(${house.id})">
+            <button class="btn-primary btn-full" onclick="app.addToFavoritesAndClose('${String(house.id).replace(/'/g, "\\'")}')">
                 ❤️ Toevoegen aan favorieten
             </button>
         `;
@@ -938,7 +963,7 @@ class FunDaApp {
     }
 
     addToFavoritesAndClose(houseId) {
-        const house = this.houses.find(h => h.id === houseId) || AMSTERDAM_HOUSES.find(h => h.id === houseId);
+        const house = this.houses.find(h => String(h.id) === String(houseId)) || this.favorites.find(h => String(h.id) === String(houseId));
         if (house) {
             this.addToFavorites(house);
             this.updateStats();
@@ -958,26 +983,28 @@ class FunDaApp {
             list.classList.remove('hidden');
             noFavorites.classList.add('hidden');
 
-            list.innerHTML = this.favorites.map(house => `
-                <div class="favorite-item" onclick="app.showFavoriteDetail(${house.id})">
+            list.innerHTML = this.favorites.map(house => {
+                const safeId = String(house.id).replace(/'/g, "\\'");
+                return `
+                <div class="favorite-item" onclick="app.showFavoriteDetail('${safeId}')">
                     <img class="favorite-image" src="${house.image}" alt="${house.address}">
                     <div class="favorite-info">
                         <div class="favorite-price">${formatPrice(house.price)}</div>
                         <div class="favorite-address">${house.address}</div>
                         <div class="favorite-features">${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city}</div>
                     </div>
-                    <button class="favorite-remove" onclick="event.stopPropagation(); app.removeFromFavorites(${house.id})">
+                    <button class="favorite-remove" onclick="event.stopPropagation(); app.removeFromFavorites('${safeId}')">
                         ✕
                     </button>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         this.openModal(this.favoritesModal);
     }
 
     showFavoriteDetail(houseId) {
-        const house = this.favorites.find(h => h.id === houseId);
+        const house = this.favorites.find(h => String(h.id) === String(houseId));
         if (!house) return;
 
         this.closeModal(this.favoritesModal);
@@ -1021,7 +1048,7 @@ class FunDaApp {
                 </a>
             ` : ''}
 
-            <button class="btn-primary btn-full" style="background: var(--danger);" onclick="app.removeFromFavorites(${house.id}); app.closeModal(app.detailModal);">
+            <button class="btn-primary btn-full" style="background: var(--danger);" onclick="app.removeFromFavorites('${String(house.id).replace(/'/g, "\\'")}'); app.closeModal(app.detailModal);">
                 🗑️ Verwijderen uit favorieten
             </button>
         `;
