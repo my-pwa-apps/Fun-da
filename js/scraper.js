@@ -790,8 +790,8 @@ class FundaScraper {
         
         // Methode 2: Zoek naar listing blokken met alle data erin
         // Funda structureert data vaak als: [prijs] [m²] [kamers] [adres] [postcode]
-        const listingBlockRegex = /€\s*([\d.,]+)[^€]{0,800}?(\d+)\s*m²[^€]{0,200}?(\d+)\s*(?:kamers?|slaapkamers?)[^€]{0,200}?([A-Z][a-zA-Z\s\-]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt)\s*\d+[a-zA-Z]?)[^€]{0,100}?(\d{4}\s*[A-Z]{2})/gi;
-        const blockMatches = [...html.matchAll(listingBlockRegex)];
+        const completeListingRegex = /€\s*([\d.,]+)[^€]{0,800}?(\d+)\s*m²[^€]{0,200}?(\d+)\s*(?:kamers?|slaapkamers?)[^€]{0,200}?([A-Z][a-zA-Z\s\-]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt)\s*\d+[a-zA-Z]?)[^€]{0,100}?(\d{4}\s*[A-Z]{2})/gi;
+        const blockMatches = [...html.matchAll(completeListingRegex)];
         console.log(`📊 Block pattern found ${blockMatches.length} complete listings`);
         
         if (blockMatches.length > 0) {
