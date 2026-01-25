@@ -308,7 +308,7 @@ class FundaScraper {
                 seen.set(normalizedAddress, house);
             } else {
                 const existing = seen.get(normalizedAddress);
-                // Merge: prefer non-zero values
+                // Merge: prefer non-zero values and actual URLs over search URLs
                 const merged = {
                     ...existing,
                     price: house.price || existing.price,
@@ -317,6 +317,10 @@ class FundaScraper {
                     yearBuilt: house.yearBuilt || existing.yearBuilt,
                     energyLabel: house.energyLabel || existing.energyLabel,
                     postalCode: house.postalCode || existing.postalCode,
+                    // Prefer actual detail URLs (contain /detail/) over search URLs
+                    url: (house.url?.includes('/detail/') ? house.url : null) || 
+                         (existing.url?.includes('/detail/') ? existing.url : null) || 
+                         house.url || existing.url,
                     // Combine images
                     images: [...new Set([...(existing.images || []), ...(house.images || [])])].slice(0, 6),
                     // Keep track of sources
@@ -1694,15 +1698,17 @@ class FundaScraper {
 
     // Genereer een Funda zoek-URL op basis van adres
     generateFundaUrl(address, postalCode) {
-        // Clean het adres voor de URL
-        const cleanAddress = address
-            .replace(/[\-\/]/g, '-')
-            .replace(/\s+/g, '-')
-            .toLowerCase()
-            .replace(/[^a-z0-9\-]/g, '');
+        // Als we een postcode hebben, zoek op postcode + huisnummer (meer precies)
+        if (postalCode) {
+            // Extract huisnummer from address
+            const houseNumberMatch = address.match(/(\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)\s*$/);
+            const houseNumber = houseNumberMatch ? houseNumberMatch[1] : '';
+            const searchQuery = `${postalCode} ${houseNumber}`.trim();
+            return `https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&search_query=${encodeURIComponent(searchQuery)}`;
+        }
         
-        // Funda URL format: /koop/amsterdam/straat-nummer/
-        return `https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&object_type=["apartment","house"]&search_query="${encodeURIComponent(address)}"`;
+        // Anders zoek op adres
+        return `https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&search_query=${encodeURIComponent(address)}`;
     }
 }
 
