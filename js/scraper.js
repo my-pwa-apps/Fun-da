@@ -723,6 +723,83 @@ class FundaScraper {
             return houseImages;
         };
         
+        // NIEUWE METHODE: Zoek naar detail URLs om listings te vinden
+        // Format: /detail/koop/amsterdam/straatnaam-huisnummer/id/
+        const detailUrlRegex = /href="(\/detail\/koop\/[^"]+\/([a-z\-]+)-(\d+[a-z]?)(?:-([a-z0-9]+))?\/(\d+)\/)"/gi;
+        const detailMatches = [...html.matchAll(detailUrlRegex)];
+        console.log(`📊 Found ${detailMatches.length} detail URLs in HTML`);
+        
+        if (detailMatches.length > 0) {
+            const seenUrls = new Set();
+            
+            detailMatches.forEach((match, i) => {
+                const [, fullUrl, streetName, houseNumber, suffix, listingId] = match;
+                
+                if (seenUrls.has(fullUrl)) return;
+                seenUrls.add(fullUrl);
+                
+                // Reconstruct address from URL
+                // Convert "fluessenlaan" to "Fluessenlaan"
+                const streetCapitalized = streetName.split('-').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ');
+                const address = `${streetCapitalized} ${houseNumber}${suffix ? '-' + suffix : ''}`;
+                
+                // Find context around this URL for price and details (2000 chars to get more data)
+                const urlIndex = html.indexOf(fullUrl);
+                const contextStart = Math.max(0, urlIndex - 1500);
+                const contextEnd = Math.min(html.length, urlIndex + 1500);
+                const context = html.substring(contextStart, contextEnd);
+                
+                // Extract price
+                const priceMatch = context.match(/€\s*([\d.,]+)/);
+                const price = priceMatch ? this.extractPrice(priceMatch[0]) : 0;
+                
+                // Extract details from context
+                const sizeMatch = context.match(/(\d+)\s*m²/);
+                const roomMatch = context.match(/(\d+)\s*kamer/i);
+                const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
+                const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
+                const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
+                
+                // Debug first house
+                if (i === 0) {
+                    console.log('🏠 First house from URL:', { address, price: priceMatch?.[0], size: sizeMatch?.[1], rooms: roomMatch?.[1] });
+                }
+                
+                if (price > 50000) { // Filter out non-house prices
+                    const houseImages = getImagesForHouse(houses.length, detailMatches.length);
+                    const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
+                    
+                    houses.push({
+                        id: `funda-url-${listingId}-${Date.now()}`,
+                        price: price,
+                        address: address,
+                        postalCode: postcode,
+                        city: 'Amsterdam',
+                        neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(address),
+                        bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
+                        bathrooms: 1,
+                        size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
+                        yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
+                        energyLabel: energyMatch ? energyMatch[1].toUpperCase() : '',
+                        image: houseImages[0] || this.getPlaceholderImage(),
+                        images: houseImages,
+                        url: `https://www.funda.nl${fullUrl}`,
+                        description: '',
+                        features: [],
+                        isNew: context.toLowerCase().includes('nieuw'),
+                        daysOnMarket: 0
+                    });
+                }
+            });
+            
+            if (houses.length > 0) {
+                console.log(`✅ Extracted ${houses.length} houses from detail URLs`);
+                return houses;
+            }
+        }
+        
         console.log(`📊 Found ${cardMatches.length} listing blocks via data-test-id`);
         
         if (cardMatches.length > 0) {
