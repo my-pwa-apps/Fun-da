@@ -1,8 +1,13 @@
-// Fun-da App - Bring the fun back to huizenjacht!
-// Met echte Funda data en Familie Matches!
+// Fun-da App - De leukste manier om een huis te vinden!
+// Features: Funda scraping, Familie sync, Swipe interface
+
+// Utility functions
+const $ = (selector) => document.getElementById(selector.replace('#', ''));
+const $$ = (selector) => document.querySelectorAll(selector);
 
 class FunDaApp {
     constructor() {
+        // App state
         this.houses = [];
         this.currentIndex = 0;
         this.favorites = [];
@@ -14,38 +19,49 @@ class FunDaApp {
             neighborhood: null
         };
 
-        // Scraper en Family Sync
+        // Services
         this.scraper = new FundaScraper();
         this.familySync = new FamilySync();
 
-        // DOM Elements
-        this.splash = document.getElementById('splash');
-        this.app = document.getElementById('app');
-        this.cardStack = document.getElementById('cardStack');
-        this.emptyState = document.getElementById('emptyState');
+        // Cache DOM elements
+        this.elements = {
+            splash: $('splash'),
+            app: $('app'),
+            cardStack: $('cardStack'),
+            emptyState: $('emptyState'),
+            // Stats
+            housesViewed: $('housesViewed'),
+            matchScore: $('matchScore'),
+            housesLeft: $('housesLeft'),
+            favCount: $('favCount'),
+            familyMatchCount: $('familyMatchCount'),
+            // Modals
+            filterModal: $('filterModal'),
+            favoritesModal: $('favoritesModal'),
+            detailModal: $('detailModal'),
+            fundaModal: $('fundaModal'),
+            familyModal: $('familyModal')
+        };
 
-        // Stats
-        this.housesViewedEl = document.getElementById('housesViewed');
-        this.matchScoreEl = document.getElementById('matchScore');
-        this.housesLeftEl = document.getElementById('housesLeft');
-        this.favCountEl = document.getElementById('favCount');
-        this.familyMatchCountEl = document.getElementById('familyMatchCount');
-
-        // Modals
-        this.filterModal = document.getElementById('filterModal');
-        this.favoritesModal = document.getElementById('favoritesModal');
-        this.detailModal = document.getElementById('detailModal');
-        this.fundaModal = document.getElementById('fundaModal');
-        this.familyModal = document.getElementById('familyModal');
-
-        // Touch handling
-        this.startX = 0;
-        this.startY = 0;
-        this.currentX = 0;
-        this.isDragging = false;
+        // Touch handling state
+        this.touch = {
+            startX: 0,
+            startY: 0,
+            currentX: 0,
+            isDragging: false
+        };
 
         // Family matches
         this.familyMatches = new Map();
+        
+        // Backward compatibility getters
+        this.cardStack = this.elements.cardStack;
+        this.emptyState = this.elements.emptyState;
+        this.filterModal = this.elements.filterModal;
+        this.favoritesModal = this.elements.favoritesModal;
+        this.detailModal = this.elements.detailModal;
+        this.fundaModal = this.elements.fundaModal;
+        this.familyModal = this.elements.familyModal;
 
         this.init();
     }
@@ -85,8 +101,8 @@ class FunDaApp {
 
         // Hide splash after animation
         setTimeout(() => {
-            this.splash.classList.add('hidden');
-            this.app.classList.remove('hidden');
+            this.elements.splash.classList.add('hidden');
+            this.elements.app.classList.remove('hidden');
             
             // Always auto-load new listings to stay up-to-date
             this.autoLoadNewListings();
@@ -579,27 +595,30 @@ class FunDaApp {
 
     getFilteredHouses() {
         return this.houses.filter(house => {
-            if (this.filters.minPrice && house.price < this.filters.minPrice) return false;
-            if (this.filters.maxPrice && house.price > this.filters.maxPrice) return false;
-            if (this.filters.minBedrooms && house.bedrooms < this.filters.minBedrooms) return false;
-            if (this.filters.neighborhood && house.neighborhood !== this.filters.neighborhood) return false;
+            const { minPrice, maxPrice, minBedrooms, neighborhood } = this.filters;
+            if (minPrice && house.price < minPrice) return false;
+            if (maxPrice && house.price > maxPrice) return false;
+            if (minBedrooms && house.bedrooms < minBedrooms) return false;
+            if (neighborhood && house.neighborhood !== neighborhood) return false;
             return true;
         });
     }
 
     renderCards() {
-        this.cardStack.innerHTML = '';
+        const { cardStack, emptyState } = this.elements;
+        cardStack.innerHTML = '';
+        
         const houses = this.getFilteredHouses();
         const remaining = houses.slice(this.currentIndex);
 
         if (remaining.length === 0) {
-            this.emptyState.classList.remove('hidden');
+            emptyState.classList.remove('hidden');
             return;
         }
 
-        this.emptyState.classList.add('hidden');
+        emptyState.classList.add('hidden');
 
-        // Render top 3 cards (reversed for z-index)
+        // Render top 3 cards (reversed for z-index stacking)
         const cardsToShow = remaining.slice(0, 3).reverse();
         
         cardsToShow.forEach((house, index) => {
@@ -607,12 +626,11 @@ class FunDaApp {
             const card = this.createCard(house, isTop);
             
             // Scale and offset for stack effect
-            const offset = (cardsToShow.length - 1 - index) * 8;
-            const scale = 1 - (cardsToShow.length - 1 - index) * 0.05;
-            card.style.transform = `translateY(${offset}px) scale(${scale})`;
+            const depth = cardsToShow.length - 1 - index;
+            card.style.transform = `translateY(${depth * 8}px) scale(${1 - depth * 0.05})`;
             card.style.zIndex = index;
             
-            this.cardStack.appendChild(card);
+            cardStack.appendChild(card);
         });
     }
 
@@ -898,29 +916,24 @@ class FunDaApp {
     updateStats() {
         const houses = this.getFilteredHouses();
         const remaining = houses.length - this.currentIndex;
+        const { housesViewed, housesLeft, matchScore, favCount, familyMatchCount } = this.elements;
 
-        this.housesViewedEl.textContent = this.viewed;
-        this.housesLeftEl.textContent = Math.max(0, remaining);
+        housesViewed.textContent = this.viewed;
+        housesLeft.textContent = Math.max(0, remaining);
 
         // Calculate match score (percentage of likes)
-        const matchScore = this.viewed > 0 
+        const score = this.viewed > 0 
             ? Math.round((this.favorites.length / this.viewed) * 100) 
             : 0;
-        this.matchScoreEl.textContent = `${matchScore}%`;
+        matchScore.textContent = `${score}%`;
 
         // Update favorites badge
-        if (this.favorites.length > 0) {
-            this.favCountEl.textContent = this.favorites.length;
-            this.favCountEl.classList.add('show');
-        } else {
-            this.favCountEl.classList.remove('show');
-        }
+        favCount.textContent = this.favorites.length;
+        favCount.classList.toggle('show', this.favorites.length > 0);
 
         // Update family match count
-        if (this.familyMatches.size > 0) {
-            this.familyMatchCountEl.textContent = this.familyMatches.size;
-            this.familyMatchCountEl.classList.add('show');
-        }
+        familyMatchCount.textContent = this.familyMatches.size;
+        familyMatchCount.classList.toggle('show', this.familyMatches.size > 0);
     }
 
     handleKeydown(e) {

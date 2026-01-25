@@ -2,25 +2,27 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Fun-da - Bring the fun back to huizenjacht!">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Fun-da - De leukste manier om een huis te vinden in Amsterdam!">
     <meta name="theme-color" content="#FF6B35">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="icons/icon-192.svg">
     
-    <title>Fun-da 🏠 | Bring the fun back!</title>
+    <title>Fun-da 🏠</title>
     
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Preload critical resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- Splash Screen -->
@@ -153,8 +155,8 @@
                     </div>
                 </div>
                 <div class="filter-group">
-                    <label>Buurt</label>
-                    <select id="neighborhood">
+                    <label for="neighborhood">Buurt</label>
+                    <select id="neighborhood" title="Kies een buurt">
                         <option value="">Alle buurten</option>
                         <option value="Centrum">Centrum</option>
                         <option value="De Pijp">De Pijp</option>
@@ -242,11 +244,11 @@
                 </div>
 
                 <div class="import-note">
-                    <div style="margin-bottom: 1rem;">
-                        <button id="clearDataBtn" class="btn-secondary" style="width: 100%; background: #f0f0f0; color: #666;">🗑️ Wis alle data (start opnieuw)</button>
+                    <div class="clear-data-wrapper">
+                        <button id="clearDataBtn" class="btn-clear-data">🗑️ Wis alle data (start opnieuw)</button>
                     </div>
                     
-                    <p>💡 <strong>Tip:</strong> Ga naar <a href="https://www.funda.nl" target="_blank">funda.nl</a>, 
+                    <p>💡 <strong>Tip:</strong> Ga naar <a href="https://www.funda.nl" target="_blank" rel="noopener">funda.nl</a>, 
                     zoek naar woningen, en kopieer de URL uit je browser.</p>
                 </div>
             </div>
@@ -323,11 +325,14 @@
     </div>
 
     <!-- Confetti Container -->
-    <div id="confetti" class="confetti-container"></div>
+    <div id="confetti" class="confetti-container" aria-hidden="true"></div>
 
     <!-- Toast Container -->
-    <div id="toasts" class="toast-container"></div>
+    <div id="toasts" class="toast-container" role="status" aria-live="polite"></div>
 
+    <!-- Scripts - Firebase loaded first, then app code -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="js/data.js"></script>
     <script src="js/scraper.js"></script>
     <script src="js/firebase-sync.js"></script>
