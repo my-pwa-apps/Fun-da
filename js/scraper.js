@@ -710,6 +710,21 @@ class FundaScraper {
         const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
         console.log(`📷 Found ${allFundaImages.length} Funda images in HTML`);
         
+        // Helper function to get images for a house (cycles through available images)
+        const getImagesForHouse = (index, totalHouses) => {
+            if (allFundaImages.length === 0) return [];
+            // Calculate how many images per house we can afford
+            const imagesPerHouse = Math.max(1, Math.floor(allFundaImages.length / Math.max(1, totalHouses)));
+            const startIdx = (index * imagesPerHouse) % allFundaImages.length;
+            // Get up to 4 images, cycling through if needed
+            const houseImages = [];
+            for (let j = 0; j < Math.min(4, allFundaImages.length); j++) {
+                const imgIdx = (startIdx + j) % allFundaImages.length;
+                houseImages.push(allFundaImages[imgIdx]);
+            }
+            return houseImages;
+        };
+        
         console.log(`📊 Found ${cardMatches.length} listing blocks via data-test-id`);
         
         if (cardMatches.length > 0) {
@@ -721,9 +736,8 @@ class FundaScraper {
                 
                 if (priceMatch) {
                     const price = this.extractPrice(priceMatch[0]);
-                    // Get multiple images for this house
-                    const startIdx = i * 4;
-                    const houseImages = allFundaImages.slice(startIdx, startIdx + 4);
+                    // Get multiple images for this house using the helper
+                    const houseImages = getImagesForHouse(i, cardMatches.length);
                     
                     houses.push({
                         id: `funda-block-${i}-${Date.now()}`,
@@ -842,7 +856,7 @@ class FundaScraper {
         
         if (sectionMatches.length > 0) {
             const seenAddresses = new Set();
-            let imageIndex = 0;
+            let houseIndex = 0;
             sectionMatches.forEach((match, i) => {
                 const price = match[1] || match[4];
                 const address = match[2] || match[3];
@@ -850,11 +864,10 @@ class FundaScraper {
                 if (price && address && !seenAddresses.has(address)) {
                     seenAddresses.add(address);
                     
-                    // Get multiple images for this house (4 per house)
-                    const startIdx = imageIndex * 4;
-                    const houseImages = allFundaImages.slice(startIdx, startIdx + 4);
-                    const image = houseImages[0] || allFundaImages[imageIndex] || this.getPlaceholderImage();
-                    imageIndex++;
+                    // Get multiple images for this house using the helper
+                    const houseImages = getImagesForHouse(houseIndex, sectionMatches.length);
+                    const image = houseImages[0] || this.getPlaceholderImage();
+                    houseIndex++;
                     
                     // Zoek naar size, rooms en postcode in de context rond deze match (200 chars before/after)
                     const matchIndex = match.index || 0;
@@ -938,9 +951,8 @@ class FundaScraper {
             const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
             const price = priceMatch ? this.extractPrice(priceMatch[0]) : (prices[i] || null);
             
-            // Assign multiple images per house (4 images each)
-            const startIdx = i * 4;
-            const houseImages = allFundaImages.slice(startIdx, startIdx + 4);
+            // Get images using the helper function
+            const houseImages = getImagesForHouse(i, addresses.length);
             
             houses.push({
                 id: `funda-regex-${i}-${Date.now()}`,
@@ -952,7 +964,7 @@ class FundaScraper {
                 bedrooms: bedrooms,
                 bathrooms: 1,
                 size: size,
-                image: houseImages[0] || images[i] || allFundaImages[i] || this.getPlaceholderImage(),
+                image: houseImages[0] || images[i] || this.getPlaceholderImage(),
                 images: houseImages.length > 0 ? houseImages : [],
                 url: '#',
                 description: '',

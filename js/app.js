@@ -626,8 +626,18 @@ class FunDaApp {
         const matchMembers = this.familyMatches.get(house.id) || this.familyMatches.get(house.id?.toString());
 
         // Build image gallery HTML
-        const images = house.images && house.images.length > 0 ? house.images : [house.image];
+        // Ensure we always have at least 4 images by repeating if needed
+        let images = house.images && house.images.length > 0 ? [...house.images] : [];
         const mainImage = house.image || images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
+        
+        // If we have at least 1 image, duplicate to fill 4 slots
+        if (images.length > 0 && images.length < 4) {
+            while (images.length < 4) {
+                images.push(images[images.length % images.length] || mainImage);
+            }
+        } else if (images.length === 0 && mainImage) {
+            images = [mainImage, mainImage, mainImage, mainImage];
+        }
         
         let imageGalleryHtml;
         if (images.length >= 4) {
@@ -635,8 +645,7 @@ class FunDaApp {
             const img1 = images[0] || mainImage;
             const img2 = images[1] || mainImage;
             const img3 = images[2] || mainImage;
-            const img4 = images[3] || mainImage;
-            const moreCount = images.length - 4;
+            const moreCount = house.images ? Math.max(0, house.images.length - 3) : 0;
             
             imageGalleryHtml = `
                 <div class="card-image-gallery">
@@ -651,7 +660,7 @@ class FunDaApp {
                     ${moreCount > 0 ? `
                         <div class="gallery-more">
                             <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy">
-                            <span>+${moreCount + 1}</span>
+                            <span>+${moreCount}</span>
                         </div>
                     ` : `
                         <div>
