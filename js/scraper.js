@@ -793,14 +793,14 @@ class FundaScraper {
         
         // Verbeterde adres pattern die ook huisnummer toevoegingen vangt (bijv: 68-2, 10-H, 12-I, 15A-1)
         // Format: Straatnaam + huisnummer + optioneel: letter en/of -toevoeging
-        const addressPattern = '([A-Z][a-zA-Z\\s\\-\\']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg|burcht|haven|brug|sluis|ring)\\s*\\d+[a-zA-Z]?(?:[\\-\\/][a-zA-Z0-9]+)?)';
+        const addressPattern = "([A-Z][a-zA-Z\\s\\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg|burcht|haven|brug|sluis|ring)\\s*\\d+[a-zA-Z]?(?:[\\-\\/][a-zA-Z0-9]+)?)";
         
         // Methode 1: Zoek naar listing items met prijs en adres dicht bij elkaar
         const listingPatterns = [
             // Pattern 1: "€ 650.000 k.k." gevolgd door postcode en adres
-            new RegExp(`€\\s*([\\d.,]+)\\s*(?:k\\.k\\.|v\\.o\\.n\\.)?[^<]*?(\\d{4}\\s*[A-Z]{2})[^<]*?${addressPattern}`, 'gi'),
+            new RegExp("€\\s*([\\d.,]+)\\s*(?:k\\.k\\.|v\\.o\\.n\\.)?[^<]*?(\\d{4}\\s*[A-Z]{2})[^<]*?" + addressPattern, "gi"),
             // Pattern 2: Adres gevolgd door postcode en prijs
-            new RegExp(`${addressPattern}[^<]*?(\\d{4}\\s*[A-Z]{2})[^<]*?€\\s*([\\d.,]+)`, 'gi'),
+            new RegExp(addressPattern + "[^<]*?(\\d{4}\\s*[A-Z]{2})[^<]*?€\\s*([\\d.,]+)", "gi"),
         ];
         
         let foundListings = [];
@@ -815,7 +815,7 @@ class FundaScraper {
         
         // Methode 2: Zoek naar listing blokken met alle data erin
         // Funda structureert data vaak als: [prijs] [m²] [kamers] [adres] [postcode]
-        const completeListingRegex = new RegExp(`€\\s*([\\d.,]+)[^€]{0,800}?(\\d+)\\s*m²[^€]{0,200}?(\\d+)\\s*(?:kamers?|slaapkamers?)[^€]{0,200}?${addressPattern}[^€]{0,100}?(\\d{4}\\s*[A-Z]{2})`, 'gi');
+        const completeListingRegex = new RegExp("€\\s*([\\d.,]+)[^€]{0,800}?(\\d+)\\s*m²[^€]{0,200}?(\\d+)\\s*(?:kamers?|slaapkamers?)[^€]{0,200}?" + addressPattern + "[^€]{0,100}?(\\d{4}\\s*[A-Z]{2})", "gi");
         const blockMatches = [...html.matchAll(completeListingRegex)];
         console.log(`📊 Block pattern found ${blockMatches.length} complete listings`);
         
@@ -861,8 +861,8 @@ class FundaScraper {
         
         // Fallback: Door te zoeken naar secties die beide bevatten
         // Verbeterde adres pattern voor fallback met huisnummer toevoegingen
-        const fallbackAddressPattern = '[A-Z][a-zA-Z\\s\\-\\']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg)\\s*\\d+[a-zA-Z]?(?:[\\-\\/][a-zA-Z0-9]+)?';
-        const sectionRegex = new RegExp(`€\\s*([\\d.,]+)[^€]{0,500}?(${fallbackAddressPattern})|(${fallbackAddressPattern})[^€]{0,500}?€\\s*([\\d.,]+)`, 'gi');
+        const fallbackAddressPattern = "[A-Z][a-zA-Z\\s\\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg)\\s*\\d+[a-zA-Z]?(?:[\\-\\/][a-zA-Z0-9]+)?";
+        const sectionRegex = new RegExp("€\\s*([\\d.,]+)[^€]{0,500}?(" + fallbackAddressPattern + ")|(" + fallbackAddressPattern + ")[^€]{0,500}?€\\s*([\\d.,]+)", "gi");
         const sectionMatches = [...html.matchAll(sectionRegex)];
         
         console.log(`📊 Found ${sectionMatches.length} price+address pairs`);
