@@ -18,6 +18,9 @@ class FunDaApp {
             minBedrooms: null,
             neighborhood: null
         };
+        
+        // PWA install prompt
+        this.deferredInstallPrompt = null;
 
         // Services
         this.scraper = new FundaScraper();
@@ -89,8 +92,8 @@ class FunDaApp {
         // Setup event listeners
         this.setupEventListeners();
 
-        // Render initial cards
-        this.renderCards();
+        // Don't render old cards yet - wait for fresh data
+        // Only update stats and family UI
         this.updateStats();
         this.updateFamilyUI();
 
@@ -99,17 +102,43 @@ class FunDaApp {
             console.log('🔥 Firebase Realtime Database connected!');
         }
 
-        // Hide splash after animation
+        // Update splash status and start loading
+        this.updateSplashStatus('🏠 Woningen laden...', 5);
+        
+        // Start loading immediately, splash stays visible until done
         setTimeout(() => {
-            this.elements.splash.classList.add('hidden');
-            this.elements.app.classList.remove('hidden');
-            
-            // Always auto-load new listings to stay up-to-date
             this.autoLoadNewListings();
-        }, 2000);
+        }, 500);
 
         // Register service worker
         this.registerServiceWorker();
+    }
+    
+    updateSplashStatus(message, progress = null) {
+        const statusEl = document.getElementById('splashStatus');
+        const progressEl = document.getElementById('splashProgress');
+        
+        if (statusEl) {
+            statusEl.textContent = message;
+        }
+        
+        if (progressEl && progress !== null) {
+            progressEl.style.width = `${progress}%`;
+        }
+    }
+    
+    hideSplashScreen() {
+        // Set progress to 100% before hiding
+        const progressEl = document.getElementById('splashProgress');
+        if (progressEl) {
+            progressEl.style.width = '100%';
+        }
+        
+        // Small delay to show completed progress
+        setTimeout(() => {
+            this.elements.splash.classList.add('hidden');
+            this.elements.app.classList.remove('hidden');
+        }, 300);
     }
 
     async autoLoadNewListings() {
@@ -121,8 +150,57 @@ class FunDaApp {
             urlInput.value = this.defaultFundaUrl;
         }
         
-        // Trigger the import
-        await this.importFromFunda();
+        try {
+            this.updateSplashStatus('📡 Verbinden met Funda...', 15);
+            
+            // Use the scraper directly for splash screen updates
+            const houses = await this.scraper.scrapeAllSources({ 
+                area: 'amsterdam', 
+                days: '1',
+                onProgress: (message, progress) => this.updateSplashStatus(message, progress)
+            });
+            
+            if (houses.length > 0) {
+                this.updateSplashStatus('💾 Woningen opslaan...', 90);
+                
+                // Add import timestamp
+                houses.forEach(h => {
+                    h.importedAt = Date.now();
+                });
+                
+                // Replace all houses with fresh data
+                this.houses = houses;
+                this.currentIndex = 0;
+                this.viewed = 0;
+                
+                this.saveToStorage();
+                this.renderCards();
+                this.updateStats();
+                
+                this.updateSplashStatus(`✅ ${houses.length} woningen gevonden!`, 100);
+                
+                // Small delay to show success message
+                await new Promise(r => setTimeout(r, 800));
+            } else {
+                this.updateSplashStatus('⚠️ Geen woningen gevonden', 100);
+                // Fallback to cached data if available
+                if (this.houses.length > 0) {
+                    this.renderCards();
+                }
+                await new Promise(r => setTimeout(r, 1500));
+            }
+        } catch (error) {
+            console.error('Auto-load error:', error);
+            this.updateSplashStatus('⚠️ Laden mislukt, cache gebruiken...', 100);
+            // Fallback to cached data
+            if (this.houses.length > 0) {
+                this.renderCards();
+            }
+            await new Promise(r => setTimeout(r, 1500));
+        }
+        
+        // Hide splash screen now that we're done
+        this.hideSplashScreen();
     }
 
     registerServiceWorker() {
@@ -130,10 +208,113 @@ class FunDaApp {
             navigator.serviceWorker.register('./sw.js')
                 .then((registration) => {
                     console.log('🏠 Fun-da SW registered:', registration.scope);
+                    
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('🔄 New service worker installing...');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New version available
+                                console.log('🆕 New version available!');
+                                this.showUpdateBanner(registration);
+                            }
+                        });
+                    });
+                    
+                    // Also check if there's already a waiting worker
+                    if (registration.waiting) {
+                        this.showUpdateBanner(registration);
+                    }
                 })
                 .catch((error) => {
                     console.error('❌ Fun-da SW registration failed:', error);
                 });
+                
+            // Listen for controller change (new SW activated)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('🔄 New service worker activated, reloading...');
+                window.location.reload();
+            });
+        }
+        
+        // Setup PWA install prompt
+        this.setupInstallPrompt();
+    }
+    
+    showUpdateBanner(registration) {
+        const banner = document.getElementById('updateBanner');
+        const updateBtn = document.getElementById('updateBtn');
+        
+        if (banner) {
+            banner.classList.remove('hidden');
+            
+            updateBtn.addEventListener('click', () => {
+                if (registration.waiting) {
+                    // Tell the waiting SW to skip waiting
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                banner.classList.add('hidden');
+            });
+        }
+    }
+    
+    setupInstallPrompt() {
+        // Capture the install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferredInstallPrompt = e;
+            console.log('📲 PWA install prompt captured');
+            
+            // Check if user dismissed before
+            const dismissed = localStorage.getItem('pwa-install-dismissed');
+            if (!dismissed) {
+                this.showInstallBanner();
+            }
+        });
+        
+        // Track when app is installed
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA installed successfully!');
+            this.deferredInstallPrompt = null;
+            this.hideInstallBanner();
+            this.showToast('🎉 Fun-da is geïnstalleerd!');
+        });
+    }
+    
+    showInstallBanner() {
+        const banner = document.getElementById('installBanner');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('installDismiss');
+        
+        if (banner && this.deferredInstallPrompt) {
+            // Show banner after splash screen is hidden
+            setTimeout(() => {
+                banner.classList.remove('hidden');
+            }, 1000);
+            
+            installBtn.addEventListener('click', async () => {
+                if (this.deferredInstallPrompt) {
+                    this.deferredInstallPrompt.prompt();
+                    const { outcome } = await this.deferredInstallPrompt.userChoice;
+                    console.log('Install prompt outcome:', outcome);
+                    this.deferredInstallPrompt = null;
+                    this.hideInstallBanner();
+                }
+            });
+            
+            dismissBtn.addEventListener('click', () => {
+                localStorage.setItem('pwa-install-dismissed', 'true');
+                this.hideInstallBanner();
+            });
+        }
+    }
+    
+    hideInstallBanner() {
+        const banner = document.getElementById('installBanner');
+        if (banner) {
+            banner.classList.add('hidden');
         }
     }
 

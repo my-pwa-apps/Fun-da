@@ -30,8 +30,24 @@
         <div class="splash-content">
             <h1 class="splash-logo"><span class="logo-fun">Fun</span><span class="logo-da">da</span></h1>
             <p class="splash-tagline">🏠 Bring the fun back! 🎉</p>
-            <div class="splash-loader"></div>
+            <div class="splash-progress-container">
+                <div id="splashProgress" class="splash-progress"></div>
+            </div>
+            <p id="splashStatus" class="splash-status">Opstarten...</p>
         </div>
+    </div>
+
+    <!-- Update Available Banner -->
+    <div id="updateBanner" class="update-banner hidden">
+        <span>🆕 Nieuwe versie beschikbaar!</span>
+        <button id="updateBtn" class="update-btn">Updaten</button>
+    </div>
+
+    <!-- Install PWA Banner -->
+    <div id="installBanner" class="install-banner hidden">
+        <span>📲 Installeer Fun-da op je telefoon!</span>
+        <button id="installBtn" class="install-btn">Installeren</button>
+        <button id="installDismiss" class="install-dismiss">✕</button>
     </div>
 
     <!-- Main App -->

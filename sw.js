@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fun-da-v29';
+const CACHE_NAME = 'fun-da-v31';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -23,12 +23,20 @@ self.addEventListener('install', (event) => {
             })
             .then(() => {
                 console.log('🎉 Fun-da: Assets cached successfully!');
-                return self.skipWaiting();
+                // Don't skip waiting automatically - let user decide
             })
             .catch((error) => {
                 console.error('❌ Fun-da: Failed to cache assets:', error);
             })
     );
+});
+
+// Listen for skip waiting message from the app
+self.addEventListener('message', (event) => {
+    if (event.data?.type === 'SKIP_WAITING') {
+        console.log('🔄 Fun-da: Skip waiting requested, activating new version...');
+        self.skipWaiting();
+    }
 });
 
 // Activate event - clean old caches

@@ -132,14 +132,120 @@ body {
     letter-spacing: 0.5px;
 }
 
-.splash-loader {
-    width: 50px;
-    height: 50px;
-    margin: 2.5rem auto 0;
-    border: 3px solid rgba(255, 107, 53, 0.2);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+.splash-progress-container {
+    width: 200px;
+    height: 6px;
+    background: rgba(255, 107, 53, 0.2);
+    border-radius: 3px;
+    margin: 2rem auto 0;
+    overflow: hidden;
+}
+
+.splash-progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.splash-status {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Update Banner */
+.update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, var(--secondary), #1a9985);
+    color: white;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 10000;
+    font-size: 0.9rem;
+    font-weight: 500;
+    animation: slideDown 0.3s ease;
+}
+
+.update-btn {
+    background: white;
+    color: var(--secondary);
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.update-btn:hover {
+    background: #f0f0f0;
+}
+
+/* Install PWA Banner */
+.install-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, var(--primary), #e55a2b);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 10000;
+    font-size: 0.9rem;
+    font-weight: 500;
+    animation: slideUp 0.3s ease;
+}
+
+.install-btn {
+    background: white;
+    color: var(--primary);
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.install-btn:hover {
+    background: #f0f0f0;
+}
+
+.install-dismiss {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.8;
+}
+
+.install-dismiss:hover {
+    opacity: 1;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
 }
 
 @keyframes spin {

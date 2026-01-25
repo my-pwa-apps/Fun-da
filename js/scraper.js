@@ -243,12 +243,14 @@ class FundaScraper {
     async scrapeAllSources(searchParams = {}) {
         console.log('🚀 Starting scrape from available sources...');
         const startTime = Date.now();
+        const onProgress = searchParams.onProgress || (() => {});
         
         // Only scrape enabled sources
         const scrapePromises = [];
         const sourceNames = [];
         
         if (this.dataSources.funda.enabled) {
+            onProgress('📡 Verbinden met Funda...', 20);
             const fundaUrl = this.buildFundaUrl(searchParams);
             scrapePromises.push(this.scrapeFunda(fundaUrl));
             sourceNames.push('Funda');
@@ -271,6 +273,8 @@ class FundaScraper {
             scrapePromises.push(this.scrapeHuizenzoeker(huizenzoekerUrl));
             sourceNames.push('Huizenzoeker');
         }
+        
+        onProgress('🔍 Woningen zoeken...', 30);
         
         // Fetch from enabled sources in parallel
         const results = await Promise.allSettled(scrapePromises);
@@ -295,9 +299,11 @@ class FundaScraper {
         const uniqueHouses = this.deduplicateHouses(allHouses);
         console.log(`📊 ${uniqueHouses.length} unieke woningen na deduplicatie`);
         
-        // Enrich with government BAG data in parallel (batches of 5)
-        console.log('🏛️ Verrijken met overheidsdata (BAG)...');
-        const enrichedHouses = await this.enrichWithBagData(uniqueHouses);
+        onProgress(`🏠 ${uniqueHouses.length} woningen gevonden, details ophalen...`, 40);
+        
+        // Enrich with government BAG data AND Funda details
+        console.log('🏛️ Verrijken met overheidsdata (BAG) en Funda details...');
+        const enrichedHouses = await this.enrichWithBagData(uniqueHouses, onProgress);
         
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(`✅ Klaar in ${elapsed}s - ${enrichedHouses.length} woningen van ${Object.keys(sourceStats).filter(k => sourceStats[k] > 0).join(', ')}`);
@@ -367,7 +373,7 @@ class FundaScraper {
     // BAG API - GOVERNMENT BUILDING DATA
     // ==========================================
     
-    async enrichWithBagData(houses) {
+    async enrichWithBagData(houses, onProgress = () => {}) {
         // Process in batches to avoid rate limiting
         const batchSize = 3;
         const enriched = [];
@@ -377,16 +383,20 @@ class FundaScraper {
         for (let i = 0; i < houses.length; i += batchSize) {
             const batch = houses.slice(i, i + batchSize);
             
+            // Calculate progress (40% to 85% range for enrichment)
+            const progressPercent = 40 + Math.round((enriched.length / houses.length) * 45);
+            onProgress(`🏠 Details ophalen: ${enriched.length}/${houses.length}...`, progressPercent);
+            
             // Fetch BAG data AND Funda details for batch in parallel
             const enrichedBatch = await Promise.all(
                 batch.map(async house => {
                     // First get BAG data
-                    let enriched = await this.fetchBagDataForHouse(house);
+                    let enrichedHouse = await this.fetchBagDataForHouse(house);
                     // Then get Funda detail page data if we have a detail URL
-                    if (enriched.url?.includes('funda.nl') && enriched.url?.includes('/detail/')) {
-                        enriched = await this.fetchFundaDetails(enriched);
+                    if (enrichedHouse.url?.includes('funda.nl') && enrichedHouse.url?.includes('/detail/')) {
+                        enrichedHouse = await this.fetchFundaDetails(enrichedHouse);
                     }
-                    return enriched;
+                    return enrichedHouse;
                 })
             );
             
