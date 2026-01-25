@@ -1,9 +1,10 @@
-// Funda Scraper - Haalt echte woningen op van Funda.nl
-// Geoptimaliseerd om niet gedetecteerd te worden
+// Funda Scraper - Haalt woningen op van meerdere bronnen
+// Bronnen: Funda, Jaap.nl, BAG (overheid), en meer
+// Parallel fetching voor snelheid
 
 class FundaScraper {
     constructor() {
-        // CORS proxies om Funda te kunnen benaderen vanuit de browser
+        // CORS proxies om websites te kunnen benaderen vanuit de browser
         // Eigen proxy eerst, daarna publieke fallbacks
         this.corsProxies = [
             // Eigen Cloudflare Worker proxy (meest betrouwbaar)
@@ -13,7 +14,36 @@ class FundaScraper {
             { url: 'https://api.allorigins.win/raw?url=', jsonResponse: false },
             { url: 'https://api.allorigins.win/get?url=', jsonResponse: true, dataField: 'contents' },
         ];
-        this.currentProxyIndex = 0; // Start met meest betrouwbare
+        this.currentProxyIndex = 0;
+        
+        // Data bronnen configuratie
+        this.dataSources = {
+            funda: {
+                name: 'Funda',
+                baseUrl: 'https://www.funda.nl',
+                searchUrl: 'https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&publication_date="1"',
+                enabled: true
+            },
+            jaap: {
+                name: 'Jaap.nl',
+                baseUrl: 'https://www.jaap.nl',
+                searchUrl: 'https://www.jaap.nl/koophuizen/noord+holland/groot-amsterdam/amsterdam/-',
+                enabled: true
+            },
+            huizenzoeker: {
+                name: 'Huizenzoeker',
+                baseUrl: 'https://www.huizenzoeker.nl',
+                searchUrl: 'https://www.huizenzoeker.nl/koop/amsterdam/',
+                enabled: true
+            }
+        };
+        
+        // BAG API voor overheidsdata (bouwjaar, oppervlakte, woningtype)
+        // Dit is een gratis API van het Kadaster
+        this.bagApiUrl = 'https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2';
+        
+        // PDOK Locatieserver voor adres lookup
+        this.pdokUrl = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free';
         
         // Realistische User-Agents (Desktop browsers)
         this.userAgents = [
@@ -196,8 +226,349 @@ class FundaScraper {
             }
         }
         
-        throw new Error('Funda blokkeert automatische toegang. Open Funda handmatig en gebruik de link hieronder.');
+        throw new Error('Alle bronnen geblokkeerd. Open Funda handmatig via de link hieronder.');
     }
+
+    // ==========================================
+    // MULTI-SOURCE PARALLEL SCRAPING
+    // ==========================================
+    
+    async scrapeAllSources(searchParams = {}) {
+        console.log('🚀 Starting parallel scrape from all sources...');
+        const startTime = Date.now();
+        
+        // Prepare URLs for each source
+        const fundaUrl = this.buildFundaUrl(searchParams);
+        const jaapUrl = this.buildJaapUrl(searchParams);
+        const huizenzoekerUrl = this.buildHuizenzoekerUrl(searchParams);
+        
+        // Fetch from all sources in parallel
+        const results = await Promise.allSettled([
+            this.scrapeFunda(fundaUrl),
+            this.scrapeJaap(jaapUrl),
+            this.scrapeHuizenzoeker(huizenzoekerUrl)
+        ]);
+        
+        // Collect successful results
+        let allHouses = [];
+        const sourceStats = {};
+        
+        results.forEach((result, index) => {
+            const sourceName = ['Funda', 'Jaap.nl', 'Huizenzoeker'][index];
+            if (result.status === 'fulfilled' && result.value.length > 0) {
+                console.log(`✅ ${sourceName}: ${result.value.length} woningen`);
+                sourceStats[sourceName] = result.value.length;
+                allHouses.push(...result.value.map(h => ({ ...h, source: sourceName })));
+            } else {
+                console.warn(`❌ ${sourceName}: ${result.reason?.message || 'geen resultaten'}`);
+                sourceStats[sourceName] = 0;
+            }
+        });
+        
+        // Deduplicate by address
+        const uniqueHouses = this.deduplicateHouses(allHouses);
+        console.log(`📊 ${uniqueHouses.length} unieke woningen na deduplicatie`);
+        
+        // Enrich with government BAG data in parallel (batches of 5)
+        console.log('🏛️ Verrijken met overheidsdata (BAG)...');
+        const enrichedHouses = await this.enrichWithBagData(uniqueHouses);
+        
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`✅ Klaar in ${elapsed}s - ${enrichedHouses.length} woningen van ${Object.keys(sourceStats).filter(k => sourceStats[k] > 0).join(', ')}`);
+        
+        return enrichedHouses;
+    }
+    
+    buildFundaUrl(params = {}) {
+        const area = params.area || 'amsterdam';
+        const days = params.days || '1';
+        return `https://www.funda.nl/zoeken/koop?selected_area=["${area}"]&publication_date="${days}"`;
+    }
+    
+    buildJaapUrl(params = {}) {
+        return 'https://www.jaap.nl/koophuizen/noord+holland/groot-amsterdam/amsterdam/-';
+    }
+    
+    buildHuizenzoekerUrl(params = {}) {
+        return 'https://www.huizenzoeker.nl/koop/amsterdam/';
+    }
+    
+    deduplicateHouses(houses) {
+        const seen = new Map();
+        
+        houses.forEach(house => {
+            // Normalize address for comparison
+            const normalizedAddress = house.address.toLowerCase()
+                .replace(/\s+/g, ' ')
+                .replace(/[-–]/g, '-')
+                .trim();
+            
+            // If we haven't seen this address, or the new one has more data, keep it
+            if (!seen.has(normalizedAddress)) {
+                seen.set(normalizedAddress, house);
+            } else {
+                const existing = seen.get(normalizedAddress);
+                // Merge: prefer non-zero values
+                const merged = {
+                    ...existing,
+                    price: house.price || existing.price,
+                    size: house.size || existing.size,
+                    bedrooms: house.bedrooms || existing.bedrooms,
+                    yearBuilt: house.yearBuilt || existing.yearBuilt,
+                    energyLabel: house.energyLabel || existing.energyLabel,
+                    postalCode: house.postalCode || existing.postalCode,
+                    // Combine images
+                    images: [...new Set([...(existing.images || []), ...(house.images || [])])].slice(0, 6),
+                    // Keep track of sources
+                    sources: [...(existing.sources || [existing.source]), house.source]
+                };
+                seen.set(normalizedAddress, merged);
+            }
+        });
+        
+        return Array.from(seen.values());
+    }
+    
+    // ==========================================
+    // BAG API - GOVERNMENT BUILDING DATA
+    // ==========================================
+    
+    async enrichWithBagData(houses) {
+        // Process in batches to avoid rate limiting
+        const batchSize = 5;
+        const enriched = [];
+        
+        for (let i = 0; i < houses.length; i += batchSize) {
+            const batch = houses.slice(i, i + batchSize);
+            
+            // Fetch BAG data for batch in parallel
+            const enrichedBatch = await Promise.all(
+                batch.map(house => this.fetchBagDataForHouse(house))
+            );
+            
+            enriched.push(...enrichedBatch);
+            
+            // Small delay between batches to be nice to the API
+            if (i + batchSize < houses.length) {
+                await new Promise(r => setTimeout(r, 200));
+            }
+        }
+        
+        return enriched;
+    }
+    
+    async fetchBagDataForHouse(house) {
+        try {
+            // Use PDOK Locatieserver to find address and get BAG data
+            const searchQuery = `${house.address} ${house.postalCode || 'Amsterdam'}`;
+            const pdokUrl = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(searchQuery)}&rows=1&fq=type:adres`;
+            
+            const response = await fetch(pdokUrl);
+            if (!response.ok) return house;
+            
+            const data = await response.json();
+            
+            if (data.response?.docs?.length > 0) {
+                const doc = data.response.docs[0];
+                
+                // Extract BAG data
+                const bagData = {
+                    bagId: doc.identificatie,
+                    // Bouwjaar from BAG
+                    yearBuilt: house.yearBuilt || this.extractYear(doc.bouwjaar),
+                    // Postcode from BAG (more reliable)
+                    postalCode: house.postalCode || doc.postcode,
+                    // Woonplaats
+                    city: doc.woonplaatsnaam || house.city,
+                    // Straatnaam (verified)
+                    street: doc.straatnaam,
+                    // Huisnummer
+                    houseNumber: doc.huisnummer,
+                    // Toevoeging
+                    addition: doc.huisletter || doc.huisnummertoevoeging,
+                    // Coordinates for map
+                    coordinates: doc.centroide_ll ? this.parseCoordinates(doc.centroide_ll) : null,
+                    // Neighborhood from BAG
+                    neighborhood: house.neighborhood || doc.buurtnaam || doc.wijknaam,
+                    // Gebruiksdoel (woonfunctie, etc)
+                    usage: doc.gebruiksdoel,
+                    // Oppervlakte from BAG (if available and house doesn't have it)
+                    size: house.size || doc.oppervlakte
+                };
+                
+                return { ...house, ...bagData, enrichedFromBag: true };
+            }
+        } catch (error) {
+            // Silently fail - BAG enrichment is optional
+            console.debug(`BAG lookup failed for ${house.address}:`, error.message);
+        }
+        
+        return house;
+    }
+    
+    extractYear(yearValue) {
+        if (!yearValue) return null;
+        const year = parseInt(yearValue);
+        return (year > 1600 && year <= new Date().getFullYear()) ? year : null;
+    }
+    
+    parseCoordinates(pointString) {
+        // Parse "POINT(4.89 52.37)" format
+        const match = pointString?.match(/POINT\(([0-9.]+)\s+([0-9.]+)\)/);
+        if (match) {
+            return { lng: parseFloat(match[1]), lat: parseFloat(match[2]) };
+        }
+        return null;
+    }
+    
+    // ==========================================
+    // FUNDA SCRAPER
+    // ==========================================
+    
+    async scrapeFunda(searchUrl) {
+        console.log('🏠 Scraping Funda:', searchUrl);
+        
+        try {
+            await this.randomDelay(300, 800);
+            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
+            return this.parseSearchResults(html, searchUrl);
+        } catch (error) {
+            console.warn('Funda scraping failed:', error.message);
+            return [];
+        }
+    }
+    
+    // ==========================================
+    // JAAP.NL SCRAPER
+    // ==========================================
+    
+    async scrapeJaap(searchUrl) {
+        console.log('🏠 Scraping Jaap.nl:', searchUrl);
+        
+        try {
+            await this.randomDelay(300, 800);
+            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
+            return this.parseJaapResults(html);
+        } catch (error) {
+            console.warn('Jaap.nl scraping failed:', error.message);
+            return [];
+        }
+    }
+    
+    parseJaapResults(html) {
+        const houses = [];
+        
+        // Jaap.nl uses a different HTML structure
+        // Look for listing cards with price and address
+        
+        // Find all property links
+        const propertyRegex = /href="(https:\/\/www\.jaap\.nl\/te-koop\/[^"]+)"/gi;
+        const propertyMatches = [...html.matchAll(propertyRegex)];
+        
+        // Find prices
+        const priceRegex = /€\s*([\d.,]+)(?:\s*k\.k\.|\s*v\.o\.n\.)?/gi;
+        const prices = [...html.matchAll(priceRegex)].map(m => this.extractPrice(m[0])).filter(p => p > 100000);
+        
+        // Find addresses - Jaap uses different patterns
+        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
+        const addresses = [...new Set([...html.matchAll(addressRegex)].map(m => m[0]))];
+        
+        // Find images
+        const imageRegex = /https?:\/\/[^"'\s]+jaap[^"'\s]*\.(?:jpg|jpeg|png|webp)/gi;
+        const images = [...new Set([...html.matchAll(imageRegex)].map(m => m[0]))];
+        
+        // Find postcodes
+        const postcodeRegex = /\b(\d{4}\s*[A-Z]{2})\b/g;
+        const postcodes = [...html.matchAll(postcodeRegex)].map(m => m[1].replace(/\s+/g, ' '));
+        
+        // Find m² values
+        const sizeRegex = /(\d+)\s*m²/gi;
+        const sizes = [...html.matchAll(sizeRegex)].map(m => parseInt(m[1]));
+        
+        console.log(`📊 Jaap.nl raw: ${prices.length} prices, ${addresses.length} addresses, ${sizes.length} sizes`);
+        
+        // Match prices to addresses
+        const count = Math.min(prices.length, addresses.length, 20);
+        for (let i = 0; i < count; i++) {
+            houses.push({
+                id: `jaap-${i}-${Date.now()}`,
+                price: prices[i] || null,
+                address: addresses[i] || `Woning ${i + 1}`,
+                postalCode: postcodes[i] || '',
+                city: 'Amsterdam',
+                neighborhood: this.getNeighborhoodFromPostcode(postcodes[i] || ''),
+                bedrooms: 0,
+                bathrooms: 1,
+                size: sizes[i] || 0,
+                image: images[i] || this.getPlaceholderImage(),
+                images: images.slice(i * 2, i * 2 + 4),
+                url: propertyMatches[i]?.[1] || '#',
+                source: 'Jaap.nl'
+            });
+        }
+        
+        return houses;
+    }
+    
+    // ==========================================
+    // HUIZENZOEKER SCRAPER
+    // ==========================================
+    
+    async scrapeHuizenzoeker(searchUrl) {
+        console.log('🏠 Scraping Huizenzoeker:', searchUrl);
+        
+        try {
+            await this.randomDelay(300, 800);
+            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
+            return this.parseHuizenzoekerResults(html);
+        } catch (error) {
+            console.warn('Huizenzoeker scraping failed:', error.message);
+            return [];
+        }
+    }
+    
+    parseHuizenzoekerResults(html) {
+        const houses = [];
+        
+        // Similar parsing approach as Jaap.nl
+        const priceRegex = /€\s*([\d.,]+)/gi;
+        const prices = [...html.matchAll(priceRegex)].map(m => this.extractPrice(m[0])).filter(p => p > 100000);
+        
+        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
+        const addresses = [...new Set([...html.matchAll(addressRegex)].map(m => m[0]))];
+        
+        const sizeRegex = /(\d+)\s*m²/gi;
+        const sizes = [...html.matchAll(sizeRegex)].map(m => parseInt(m[1]));
+        
+        const postcodeRegex = /\b(\d{4}\s*[A-Z]{2})\b/g;
+        const postcodes = [...html.matchAll(postcodeRegex)].map(m => m[1]);
+        
+        console.log(`📊 Huizenzoeker raw: ${prices.length} prices, ${addresses.length} addresses`);
+        
+        const count = Math.min(prices.length, addresses.length, 20);
+        for (let i = 0; i < count; i++) {
+            houses.push({
+                id: `huizenzoeker-${i}-${Date.now()}`,
+                price: prices[i] || null,
+                address: addresses[i] || `Woning ${i + 1}`,
+                postalCode: postcodes[i] || '',
+                city: 'Amsterdam',
+                neighborhood: '',
+                bedrooms: 0,
+                size: sizes[i] || 0,
+                image: this.getPlaceholderImage(),
+                images: [],
+                url: '#',
+                source: 'Huizenzoeker'
+            });
+        }
+        
+        return houses;
+    }
+
+    // ==========================================
+    // LEGACY SINGLE-SOURCE METHOD (for backwards compatibility)
+    // ==========================================
 
     async scrapeSearchResults(searchUrl) {
         console.log('🏠 Scraping Funda:', searchUrl);
@@ -724,35 +1095,50 @@ class FundaScraper {
         };
         
         // NIEUWE METHODE: Zoek naar detail URLs om listings te vinden
-        // Format: /detail/koop/amsterdam/straatnaam-huisnummer/id/
-        const detailUrlRegex = /href="(\/detail\/koop\/[^"]+\/([a-z\-]+)-(\d+[a-z]?)(?:-([a-z0-9]+))?\/(\d+)\/)"/gi;
+        // Format: /detail/koop/amsterdam/[type-]straatnaam-huisnummer/id/
+        // Types: huis, appartement, penthouse, etc.
+        const detailUrlRegex = /href="(\/detail\/koop\/amsterdam\/([a-z\-]+?)-(\d+[a-z]?(?:-[a-z0-9]+)?)\/([\d]+)\/)"/gi;
         const detailMatches = [...html.matchAll(detailUrlRegex)];
         console.log(`📊 Found ${detailMatches.length} detail URLs in HTML`);
         
         if (detailMatches.length > 0) {
             const seenUrls = new Set();
+            // Property type prefixes to remove from street names
+            const typesPrefixes = ['huis', 'appartement', 'penthouse', 'studio', 'woning', 'bovenwoning', 'benedenwoning', 'grachtenpand', 'herenhuis', 'villa'];
             
             detailMatches.forEach((match, i) => {
-                const [, fullUrl, streetName, houseNumber, suffix, listingId] = match;
+                const [, fullUrl, streetPart, houseNumber, listingId] = match;
                 
                 if (seenUrls.has(fullUrl)) return;
                 seenUrls.add(fullUrl);
                 
-                // Reconstruct address from URL
-                // Convert "fluessenlaan" to "Fluessenlaan"
+                // Remove type prefix from street name if present
+                let streetName = streetPart;
+                for (const prefix of typesPrefixes) {
+                    if (streetName.startsWith(prefix + '-')) {
+                        streetName = streetName.substring(prefix.length + 1);
+                        break;
+                    }
+                }
+                
+                // Convert "jan-van-galenstraat" to "Jan Van Galenstraat"
                 const streetCapitalized = streetName.split('-').map(word => 
                     word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ');
-                const address = `${streetCapitalized} ${houseNumber}${suffix ? '-' + suffix : ''}`;
                 
-                // Find context around this URL for price and details (2000 chars to get more data)
+                // Handle house number with suffix like "36-h" or "10-2"
+                const houseNumberClean = houseNumber.replace(/-/g, '-');
+                const address = `${streetCapitalized} ${houseNumberClean}`;
+                
+                // Find the listing card context - search for a larger area around the URL
                 const urlIndex = html.indexOf(fullUrl);
-                const contextStart = Math.max(0, urlIndex - 1500);
-                const contextEnd = Math.min(html.length, urlIndex + 1500);
+                // Go back further to find the card start, and forward to find price/details
+                const contextStart = Math.max(0, urlIndex - 2000);
+                const contextEnd = Math.min(html.length, urlIndex + 2000);
                 const context = html.substring(contextStart, contextEnd);
                 
-                // Extract price
-                const priceMatch = context.match(/€\s*([\d.,]+)/);
+                // Extract price - look for €xxx.xxx pattern
+                const priceMatch = context.match(/€\s*([\d.,]+)(?:\s*k\.k\.|\s*v\.o\.n\.)?/);
                 const price = priceMatch ? this.extractPrice(priceMatch[0]) : 0;
                 
                 // Extract details from context
@@ -764,16 +1150,19 @@ class FundaScraper {
                 
                 // Debug first house
                 if (i === 0) {
-                    console.log('🏠 First house from URL:', { address, price: priceMatch?.[0], size: sizeMatch?.[1], rooms: roomMatch?.[1] });
+                    console.log('🏠 First house from URL:', { address, price: priceMatch?.[0], size: sizeMatch?.[1], rooms: roomMatch?.[1], url: fullUrl });
+                    console.log('🔍 Context sample:', context.substring(0, 500));
                 }
                 
-                if (price > 50000) { // Filter out non-house prices
+                // Add house even if price is 0 (show as "Prijs op aanvraag")
+                // Only skip if we have a nonsense low price like €50
+                if (price === 0 || price > 50000) {
                     const houseImages = getImagesForHouse(houses.length, detailMatches.length);
                     const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
                     
                     houses.push({
                         id: `funda-url-${listingId}-${Date.now()}`,
-                        price: price,
+                        price: price || null, // null for "Prijs op aanvraag"
                         address: address,
                         postalCode: postcode,
                         city: 'Amsterdam',

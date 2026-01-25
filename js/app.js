@@ -289,28 +289,30 @@ class FunDaApp {
         spinner.classList.remove('hidden');
         status.classList.remove('hidden');
         progressBar.style.width = '20%';
-        statusText.textContent = '🔍 Verbinden met Funda...';
+        statusText.textContent = '🔍 Verbinden met meerdere bronnen...';
 
         try {
-            progressBar.style.width = '40%';
-            statusText.textContent = '📡 Data ophalen...';
+            progressBar.style.width = '30%';
+            statusText.textContent = '📡 Data ophalen van Funda, Jaap.nl, overheid...';
 
-            const houses = await this.scraper.scrapeSearchResults(url);
+            // Use the new multi-source parallel scraper
+            const houses = await this.scraper.scrapeAllSources({ area: 'amsterdam', days: '1' });
 
             progressBar.style.width = '70%';
+            statusText.textContent = '🏛️ Verrijken met overheidsdata...';
+
+            await new Promise(r => setTimeout(r, 300));
+
+            progressBar.style.width = '85%';
             statusText.textContent = '🏠 Woningen verwerken...';
 
-            await new Promise(r => setTimeout(r, 500));
-
             if (houses.length > 0) {
-                // Add source info to houses
+                // Add import timestamp
                 houses.forEach(h => {
-                    h.source = 'funda';
                     h.importedAt = Date.now();
                 });
 
-                // REPLACE all houses with imported ones (geen merge meer)
-                // Dit zorgt ervoor dat alleen echte Funda data getoond wordt
+                // REPLACE all houses with imported ones
                 this.houses = houses;
                 this.currentIndex = 0;
                 this.viewed = 0;
@@ -320,17 +322,21 @@ class FunDaApp {
                 this.updateStats();
 
                 progressBar.style.width = '100%';
-                statusText.textContent = `✅ ${houses.length} woningen geïmporteerd!`;
                 
-                this.showToast(`🏠 ${houses.length} woningen van Funda geladen!`);
+                // Show which sources contributed
+                const sources = [...new Set(houses.map(h => h.source).filter(Boolean))];
+                const sourceText = sources.length > 0 ? ` (${sources.join(', ')})` : '';
+                statusText.textContent = `✅ ${houses.length} woningen geïmporteerd${sourceText}!`;
+                
+                this.showToast(`🏠 ${houses.length} woningen geladen!`);
                 this.triggerConfetti();
 
                 setTimeout(() => {
                     this.closeModal(this.fundaModal);
                 }, 1500);
             } else {
-                statusText.textContent = '⚠️ Geen woningen gevonden. Probeer een andere URL.';
-                this.showToast('⚠️ Geen woningen gevonden op deze pagina');
+                statusText.textContent = '⚠️ Geen woningen gevonden. Alle bronnen geblokkeerd.';
+                this.showToast('⚠️ Geen woningen gevonden');
             }
         } catch (error) {
             console.error('Import error:', error);
@@ -708,7 +714,8 @@ class FunDaApp {
                 ${house.isHot ? '<span class="card-badge hot">🔥 Hot</span>' : ''}
                 <span class="card-badge" style="background: ${priceLabel?.color || '#666'}; color: white;">${priceLabel?.label || ''}</span>
             </div>
-            ${house.source === 'funda' ? '<span class="source-badge funda">funda</span>' : ''}
+            ${house.source ? `<span class="source-badge ${house.source.toLowerCase().replace('.', '')}">${house.source}</span>` : ''}
+            ${house.enrichedFromBag ? '<span class="source-badge bag">🏛️ BAG</span>' : ''}
             ${isFamilyMatch ? `
                 <div class="card-family-match">
                     👨‍👩‍👧‍👦 ${matchMembers?.length || 0} matches
@@ -718,7 +725,7 @@ class FunDaApp {
             <div class="swipe-indicator nope">✕ Nee</div>
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
-                <div class="card-address">${house.address}${house.houseNumber ? ' ' + house.houseNumber : ''}</div>
+                <div class="card-address">${house.address}${house.addition ? ' ' + house.addition : ''}</div>
                 <div class="card-neighborhood">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
                 <div class="card-features">
                     <span class="feature">

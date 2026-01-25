@@ -1845,7 +1845,7 @@ body {
     opacity: 0.9;
 }
 
-/* Funda Source Badge */
+/* Source Badges - Data Sources */
 .source-badge {
     position: absolute;
     bottom: 0.5rem;
@@ -1860,6 +1860,22 @@ body {
 
 .source-badge.funda {
     background: #f7a100;
+}
+
+.source-badge.jaapnl {
+    background: #e74c3c;
+}
+
+.source-badge.huizenzoeker {
+    background: #3498db;
+}
+
+.source-badge.bag {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 3.5rem;
+    background: #27ae60;
+    font-size: 0.6rem;
 }
 
 /* Loading State for Cards */
