@@ -898,6 +898,19 @@ class FundaScraper {
                     const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                     const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i) || context.match(/\b([A-G]\+{0,4})\s*(?:label|energielabel)/i);
                     
+                    // Debug: log first house context to see what we're working with
+                    if (i === 0) {
+                        console.log('🔍 First house context sample:', context.substring(0, 300));
+                        console.log('🔍 Details found:', { 
+                            size: sizeMatch?.[1], 
+                            rooms: roomMatch?.[1], 
+                            bedrooms: bedroomMatch?.[1],
+                            postcode: postcodeMatch?.[1],
+                            year: yearMatch?.[1],
+                            energy: energyMatch?.[1]
+                        });
+                    }
+                    
                     const size = sizeMatch ? parseInt(sizeMatch[1]) : 0;
                     const bedrooms = bedroomMatch ? parseInt(bedroomMatch[1]) : (roomMatch ? parseInt(roomMatch[1]) : 0);
                     const bathrooms = bathroomMatch ? parseInt(bathroomMatch[1]) : 1;
