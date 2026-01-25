@@ -657,6 +657,12 @@ body {
     background: var(--white);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-md);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 85%;
+    max-width: 320px;
 }
 
 .empty-state.hidden {
@@ -890,15 +896,16 @@ body {
 .modal-content {
     background: var(--white);
     border-radius: var(--radius-xl);
-    width: 100%;
+    width: 92%;
     max-width: 420px;
-    max-height: 85vh;
+    max-height: 80vh;
     overflow: hidden;
     transform: translateY(0) scale(1);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-xl);
+    margin: 1rem;
 }
 
 .modal.hidden .modal-content {
@@ -951,32 +958,33 @@ body {
 
 /* Filter Modal */
 .filter-group {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.25rem;
 }
 
 .filter-group label {
     display: block;
     font-weight: 600;
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.5rem;
     color: var(--dark);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .range-inputs {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .range-inputs input {
     flex: 1;
-    padding: 0.875rem 1rem;
+    padding: 0.65rem 0.75rem;
     border: 2px solid var(--gray-lighter);
     border-radius: var(--radius-sm);
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.9rem;
     transition: var(--transition);
     background: var(--light);
+    min-width: 0;
 }
 
 .range-inputs input:focus {
@@ -988,11 +996,11 @@ body {
 
 .filter-group select {
     width: 100%;
-    padding: 0.875rem 1rem;
+    padding: 0.65rem 0.75rem;
     border: 2px solid var(--gray-lighter);
     border-radius: var(--radius-sm);
     font-family: inherit;
-    font-size: 1rem;
+    font-size: 0.9rem;
     background: var(--light);
     cursor: pointer;
     transition: var(--transition);
@@ -1006,17 +1014,19 @@ body {
 
 .btn-group {
     display: flex;
-    gap: 0.625rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .btn-option {
     flex: 1;
-    padding: 0.875rem;
+    min-width: 60px;
+    padding: 0.65rem 0.5rem;
     border: 2px solid var(--gray-lighter);
     background: var(--light);
     border-radius: var(--radius-sm);
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);

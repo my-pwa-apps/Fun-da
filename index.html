@@ -119,13 +119,6 @@
                 </svg>
             </button>
         </div>
-
-        <!-- Keyboard Hints -->
-        <div class="keyboard-hints">
-            <span>← Nee</span>
-            <span>↑ Info</span>
-            <span>→ Ja!</span>
-        </div>
     </div>
 
     <!-- Filter Modal -->
@@ -261,14 +254,14 @@
     <div id="familyModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>👨‍👩‍👧‍👦 Familie Modus</h2>
+                <h2>Familie Modus</h2>
                 <button class="btn-close" id="closeFamilyModal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Not in family -->
                 <div id="familySetup" class="family-section">
                     <p class="modal-description">Zoek samen met je gezin naar jullie droomhuis! 
-                    Als meerdere familieleden hetzelfde huis liken, wordt het een <strong>Familie Match</strong>! 🎉</p>
+                    Als meerdere familieleden hetzelfde huis liken, wordt het een <strong>Familie Match</strong>!</p>
                     
                     <div class="filter-group">
                         <label>Jouw naam</label>
@@ -277,7 +270,7 @@
 
                     <div class="family-options">
                         <div class="family-option">
-                            <h3>🆕 Nieuwe familie starten</h3>
+                            <h3>Nieuwe familie starten</h3>
                             <p>Maak een nieuwe familie aan en deel de code met je gezinsleden.</p>
                             <button class="btn-primary" id="createFamilyBtn">Familie aanmaken</button>
                         </div>
@@ -285,11 +278,12 @@
                         <div class="family-divider">of</div>
                         
                         <div class="family-option">
-                            <h3>🔗 Bestaande familie joinen</h3>
+                            <h3>Bestaande familie joinen</h3>
                             <div class="filter-group">
                                 <input type="text" id="joinFamilyCode" placeholder="bijv. huis-boot-42" class="input-full">
                             </div>
                             <button class="btn-secondary" id="joinFamilyBtn">Familie joinen</button>
+                            <button class="btn-secondary" id="scanQRBtn" style="margin-top: 0.5rem;">QR Code scannen</button>
                         </div>
                     </div>
                 </div>
@@ -299,29 +293,60 @@
                     <div class="family-code-display">
                         <p>Jullie familie code:</p>
                         <div class="family-code" id="displayFamilyCode">---</div>
-                        <button class="btn-small" id="copyFamilyCode">📋 Kopieer</button>
+                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;">
+                            <button class="btn-small" id="copyFamilyCode">Kopieer</button>
+                            <button class="btn-small" id="showQRCode">QR Code</button>
+                        </div>
                     </div>
 
                     <div class="family-members">
-                        <h3>👥 Gezinsleden</h3>
+                        <h3>Gezinsleden</h3>
                         <div id="familyMembersList" class="members-list">
                             <!-- Members will be inserted here -->
                         </div>
                     </div>
 
                     <div class="family-matches-section">
-                        <h3>🎉 Familie Matches</h3>
+                        <h3>Familie Matches</h3>
                         <p class="matches-description">Woningen die door meerdere gezinsleden zijn geliked:</p>
                         <div id="familyMatchesList" class="matches-list">
                             <!-- Matches will be inserted here -->
                         </div>
                         <div id="noFamilyMatches" class="no-matches">
-                            <p>Nog geen matches! Blijf swipen en kijk of jullie dezelfde smaak hebben. 😊</p>
+                            <p>Nog geen matches! Blijf swipen en kijk of jullie dezelfde smaak hebben.</p>
                         </div>
                     </div>
 
                     <button class="btn-danger btn-full" id="leaveFamilyBtn">Familie verlaten</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 320px;">
+            <div class="modal-header">
+                <h2>QR Code</h2>
+                <button class="btn-close" id="closeQRModal">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center; padding: 1.5rem;">
+                <div id="qrCodeDisplay" style="background: white; padding: 1rem; display: inline-block; border-radius: 8px;"></div>
+                <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Laat anderen deze QR code scannen om de familie te joinen</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div id="qrScannerModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-header">
+                <h2>QR Code Scannen</h2>
+                <button class="btn-close" id="closeQRScannerModal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <video id="qrVideo" style="width: 100%; display: block;"></video>
+                <p id="qrScanStatus" style="text-align: center; padding: 1rem; color: var(--text-secondary);">Camera starten...</p>
             </div>
         </div>
     </div>

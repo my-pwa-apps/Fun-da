@@ -12,7 +12,7 @@ const NEIGHBORHOOD_FACTS = {
     "Zuid": "🏆 Chic en verfijnd - hier wonen de echte Amsterdammers!",
     "Oud-West": "🍔 Foodhallen, boutiques en de gezelligste pleintjes!",
     "IJburg": "🏖️ Strand in de stad - moderne architectuur op het water!",
-    "Amsterdam": "🚲 De mooiste stad van Nederland!"
+    "Amsterdam": ""
 };
 
 // Price range labels for fun

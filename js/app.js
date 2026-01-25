@@ -441,6 +441,10 @@ class FunDaApp {
         document.getElementById('joinFamilyBtn').addEventListener('click', () => this.joinFamily());
         document.getElementById('leaveFamilyBtn').addEventListener('click', () => this.leaveFamily());
         document.getElementById('copyFamilyCode').addEventListener('click', () => this.copyFamilyCode());
+        document.getElementById('showQRCode').addEventListener('click', () => this.showQRCode());
+        document.getElementById('scanQRBtn').addEventListener('click', () => this.startQRScanner());
+        document.getElementById('closeQRModal').addEventListener('click', () => this.closeModal(document.getElementById('qrModal')));
+        document.getElementById('closeQRScannerModal').addEventListener('click', () => this.stopQRScanner());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
@@ -627,11 +631,108 @@ class FunDaApp {
         const code = this.familySync.getFamilyCode();
         if (code) {
             navigator.clipboard.writeText(code).then(() => {
-                this.showToast('📋 Code gekopieerd!');
+                this.showToast('Code gekopieerd!');
             }).catch(() => {
                 this.showToast(`Code: ${code}`);
             });
         }
+    }
+
+    showQRCode() {
+        const code = this.familySync.getFamilyCode();
+        if (!code) return;
+        
+        const qrModal = document.getElementById('qrModal');
+        const qrDisplay = document.getElementById('qrCodeDisplay');
+        
+        // Generate QR code using a simple canvas-based approach
+        // Create QR code URL that will be parsed when scanned
+        const qrData = `funda-family:${code}`;
+        
+        // Use QR code API service for simplicity
+        qrDisplay.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}" alt="QR Code" style="width: 200px; height: 200px;">`;
+        
+        this.openModal(qrModal);
+    }
+    
+    async startQRScanner() {
+        const scannerModal = document.getElementById('qrScannerModal');
+        const video = document.getElementById('qrVideo');
+        const status = document.getElementById('qrScanStatus');
+        
+        this.openModal(scannerModal);
+        status.textContent = 'Camera starten...';
+        
+        try {
+            // Request camera access
+            this.qrStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' } 
+            });
+            
+            video.srcObject = this.qrStream;
+            await video.play();
+            
+            status.textContent = 'Richt de camera op de QR code...';
+            
+            // Start scanning
+            this.scanQRCode(video, status);
+        } catch (error) {
+            console.error('Camera error:', error);
+            status.textContent = 'Camera niet beschikbaar. Voer de code handmatig in.';
+        }
+    }
+    
+    scanQRCode(video, status) {
+        // Create canvas for frame capture
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const scan = () => {
+            if (!this.qrStream) return;
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            // Get image data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Simple QR detection - look for the family code pattern in URL bar
+            // For a full solution, you'd use a library like jsQR
+            // For now, we'll use a simpler approach with BarcodeDetector if available
+            if ('BarcodeDetector' in window) {
+                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+                detector.detect(video).then(barcodes => {
+                    if (barcodes.length > 0) {
+                        const data = barcodes[0].rawValue;
+                        if (data.startsWith('funda-family:')) {
+                            const code = data.replace('funda-family:', '');
+                            this.stopQRScanner();
+                            document.getElementById('joinFamilyCode').value = code;
+                            this.showToast('QR code herkend!');
+                            // Auto-join
+                            this.joinFamily();
+                        }
+                    }
+                }).catch(() => {});
+            }
+            
+            // Continue scanning
+            if (this.qrStream) {
+                requestAnimationFrame(scan);
+            }
+        };
+        
+        scan();
+    }
+    
+    stopQRScanner() {
+        if (this.qrStream) {
+            this.qrStream.getTracks().forEach(track => track.stop());
+            this.qrStream = null;
+        }
+        const scannerModal = document.getElementById('qrScannerModal');
+        this.closeModal(scannerModal);
     }
 
     onFamilyUpdate(matches, members) {
@@ -872,18 +973,19 @@ class FunDaApp {
         const matchMembers = this.familyMatches.get(house.id) || this.familyMatches.get(house.id?.toString());
 
         // Build image gallery HTML
-        // Ensure we always have at least 4 images by repeating if needed
+        // Ensure we have unique images for the gallery
         let images = house.images && house.images.length > 0 ? [...house.images] : [];
         const mainImage = house.image || images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
         
-        // If we have at least 1 image, duplicate to fill 4 slots
-        if (images.length > 0 && images.length < 4) {
-            while (images.length < 4) {
-                images.push(images[images.length % images.length] || mainImage);
-            }
-        } else if (images.length === 0 && mainImage) {
-            images = [mainImage, mainImage, mainImage, mainImage];
+        // Remove duplicates and ensure mainImage is first
+        if (mainImage && !images.includes(mainImage)) {
+            images.unshift(mainImage);
         }
+        // Remove any duplicates
+        images = [...new Set(images)];
+        
+        // If we don't have enough unique images, just show what we have
+        // Don't duplicate images to fill slots
         
         let imageGalleryHtml;
         if (images.length >= 4) {
@@ -924,10 +1026,6 @@ class FunDaApp {
         card.innerHTML = `
             ${imageGalleryHtml}
             <div class="card-overlay"></div>
-            <div class="card-badges">
-                ${house.isNew ? '<span class="card-badge new">Nieuw!</span>' : ''}
-                ${house.isHot ? '<span class="card-badge hot">🔥 Hot</span>' : ''}
-            </div>
             ${isFamilyMatch ? `
                 <div class="card-family-match">
                     👨‍👩‍👧‍👦 ${matchMembers?.length || 0} matches
@@ -940,30 +1038,9 @@ class FunDaApp {
                 <div class="card-address">${house.address}${house.addition ? ' ' + house.addition : ''}</div>
                 <div class="card-neighborhood">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
                 <div class="card-features">
-                    <span class="feature">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                        </svg>
-                        ${house.size || '?'}m²
-                    </span>
-                    <span class="feature">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                        </svg>
-                        ${house.bedrooms || '?'} slpk
-                    </span>
-                    ${house.yearBuilt ? `
-                        <span class="feature">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            ${house.yearBuilt}
-                        </span>
-                    ` : ''}
+                    <span class="feature">${house.size || '?'}m²</span>
+                    <span class="feature">${house.bedrooms || '?'} slpk</span>
+                    ${house.yearBuilt ? `<span class="feature">${house.yearBuilt}</span>` : ''}
                 </div>
             </div>
         `;
@@ -1130,7 +1207,6 @@ class FunDaApp {
             list.classList.add('hidden');
             list.innerHTML = '';
             noFavorites.classList.remove('hidden');
-            this.showToast('💔 Laatste favoriet verwijderd');
         } else {
             this.openFavorites(); // Refresh the list
         }
@@ -1237,8 +1313,6 @@ class FunDaApp {
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
                 <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
-                ${fact ? `<p style="margin-top: 0.25rem; font-style: italic; color: var(--secondary); font-size: 0.8rem;">🏛️ ${fact}</p>` : ''}
-                ${sourceBadges.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">${sourceBadges.join('')}</div>` : ''}
             </div>
 
             <div class="detail-section">
@@ -1414,8 +1488,7 @@ class FunDaApp {
         this.renderCards();
         this.updateStats();
         this.saveToStorage();
-
-        this.showToast('🔄 Opnieuw beginnen - veel succes!');
+    }
     }
 
     showToast(message) {
