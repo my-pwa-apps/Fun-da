@@ -665,23 +665,8 @@ class FundaScraper {
         }
         
         // Als __NEXT_DATA__ niet werkt, zoek naar inline JSON data
-        // Funda 2024+ heeft vaak window.__NUXT__ of andere data formaten
-        const nuxtMatch = html.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
-        if (nuxtMatch) {
-            try {
-                const nuxtData = JSON.parse(nuxtMatch[1]);
-                console.log('📦 Found __NUXT__ data');
-                // Try to find listings in NUXT data
-                if (nuxtData.data) {
-                    const listings = this.findListingsInObject(nuxtData.data);
-                    if (listings.length > 0) {
-                        return listings.map((item, i) => this.normalizeHouseData(item, i));
-                    }
-                }
-            } catch (e) {
-                console.warn('Failed to parse __NUXT__:', e.message);
-            }
-        }
+        // Funda 2024+ heeft vaak window.__NUXT__ maar dit is JS, niet JSON
+        // We skippen __NUXT__ parsing omdat het geen valide JSON is
         
         // Probeer JSON data te vinden in de HTML
         // Funda stopt vaak data in script tags of data attributes
