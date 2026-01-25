@@ -199,20 +199,21 @@ class FundaScraper {
                     }
                     
                     // Valideer dat we echte HTML hebben
-                    if (html && (html.includes('<!DOCTYPE') || html.includes('<html') || html.includes('funda'))) {
+                    if (html && (html.includes('<!DOCTYPE') || html.includes('<html') || html.includes('funda') || html.includes('pararius'))) {
                         // Debug: log eerste 500 chars om te zien wat we krijgen
                         console.log('📄 Response preview:', html.substring(0, 500));
                         
-                        // Check of het een bot-detectie pagina is (inclusief Nederlandse Funda captcha)
-                        const isBotPage = html.includes('captcha') || 
-                                         html.includes('challenge') || 
-                                         html.includes('blocked') || 
-                                         html.includes('Access Denied') ||
-                                         html.includes('Je bent bijna') ||
-                                         html.includes('robot') ||
-                                         html.includes('verify') ||
-                                         html.includes('Cloudflare') ||
-                                         (html.includes('funda') && !html.includes('searchResults') && !html.includes('koopprijs') && !html.includes('€') && html.length < 50000);
+                        // Check of het een bot-detectie pagina is
+                        // Alleen flaggen als het ECHT een captcha/block pagina is
+                        const hasPrices = html.includes('€') || html.includes('EUR');
+                        const hasListings = html.includes('koopprijs') || html.includes('koopwoningen') || html.includes('te-koop') || html.includes('searchResults');
+                        
+                        const isBotPage = !hasPrices && !hasListings && (
+                            html.includes('captcha') || 
+                            html.includes('Je bent bijna op de pagina') ||
+                            html.includes('Access Denied') ||
+                            (html.includes('Cloudflare') && html.includes('challenge'))
+                        );
                         
                         if (isBotPage) {
                             console.warn('🤖 Bot detectie pagina ontvangen, probeer volgende proxy...');
@@ -501,53 +502,97 @@ class FundaScraper {
         
         console.log(`📊 Pararius: Found ${propertyUrls.length} property URLs`);
         
-        // Parse each listing block - Pararius shows address + postcode + price + details on each card
-        // Pattern: Address, postcode (neighborhood), € price, m², kamers, year
-        const listingRegex = /##\s*\[([^\]]+)\][^\n]*\n[^€]*?(\d{4}\s*[A-Z]{2})[^€]*?\([^)]+\)[^€]*?€\s*([\d.,]+)\s*(?:k\.k\.|v\.o\.n\.)?[^]*?(\d+)\s*m²[^]*?(\d+)\s*kamers?[^]*?(\d{4})?/gi;
+        // IMPROVED: Build a map of all prices and their positions
+        const priceMap = new Map();
+        const allPrices = [...html.matchAll(/€\s*([\d]{3}(?:[.,]\d{3})*(?:[.,]\d+)?)/gi)];
+        for (const match of allPrices) {
+            const priceStr = match[1].replace(/\./g, '').replace(',', '.');
+            const price = parseInt(priceStr);
+            if (price >= 100000 && price <= 20000000) {
+                priceMap.set(match.index, price);
+            }
+        }
+        console.log(`💰 Pararius: Found ${priceMap.size} valid prices`);
         
-        let match;
+        // Helper to find nearest price to a position
+        const findNearestPrice = (position, maxDistance = 2000) => {
+            let nearestPrice = 0;
+            let nearestDistance = Infinity;
+            for (const [pricePos, price] of priceMap) {
+                const distance = Math.abs(pricePos - position);
+                if (distance < nearestDistance && distance < maxDistance) {
+                    nearestDistance = distance;
+                    nearestPrice = price;
+                }
+            }
+            return nearestPrice;
+        };
+        
+        // Find all addresses in the HTML - Pararius often has addresses like "Straatnaam 123"
+        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|baan|park|plantsoen|lei|dreef|oord|plaats|hof|steeg|sloot|vaart|markt|dam|haven|eiland|buurt|poort)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
+        const addressMatches = [...html.matchAll(addressRegex)];
+        
+        console.log(`📫 Pararius: Found ${addressMatches.length} address patterns`);
+        
+        // Find postcodes
+        const postcodeRegex = /\b(\d{4}\s*[A-Z]{2})\b/g;
+        const postcodeMatches = [...html.matchAll(postcodeRegex)];
+        
+        // For each property URL, extract information
         let i = 0;
+        const seenAddresses = new Set();
         
-        // Simpler approach: find price+address pairs
-        // Pararius format: "## [Address](url)" followed by "postcode (neighborhood) € price m² kamers year"
-        const blockRegex = /\[([A-Za-z][^\]]+\d+[^\]]*)\]\([^)]+\)[^€]{0,200}(\d{4}\s*[A-Z]{2})[^€]{0,100}€\s*([\d.,]+)/gi;
-        const blocks = [...html.matchAll(blockRegex)];
-        
-        console.log(`📊 Pararius blocks: ${blocks.length}`);
-        
-        for (const block of blocks) {
-            const [, address, postcode, priceStr] = block;
-            const price = this.extractPrice(`€ ${priceStr}`);
+        for (const url of propertyUrls.slice(0, 30)) {
+            // Extract address from URL: /appartement-te-koop/amsterdam/ID/street-name-123
+            const urlParts = url.split('/');
+            const urlAddress = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2] || '';
             
-            if (price > 100000 && address) {
-                // Find details near this match
-                const matchIndex = block.index || 0;
-                const contextEnd = Math.min(html.length, matchIndex + 500);
-                const context = html.substring(matchIndex, contextEnd);
-                
-                // Extract details
-                const sizeMatch = context.match(/(\d+)\s*m²/);
-                const roomMatch = context.match(/(\d+)\s*kamers?/);
-                const yearMatch = context.match(/\b(1[789]\d{2}|20[0-2]\d)\b/);
-                
-                // Find the property URL for this address
-                const addressLower = address.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                const matchingUrl = propertyUrls.find(u => u.toLowerCase().includes(addressLower.substring(0, 15))) || '';
-                
+            // Convert URL-style address back to readable format
+            let address = urlAddress
+                .replace(/-/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase())
+                .trim();
+            
+            // Skip if not a valid address pattern
+            if (!address || address.length < 5 || seenAddresses.has(address.toLowerCase())) continue;
+            seenAddresses.add(address.toLowerCase());
+            
+            // Find the URL position in HTML and search for price nearby
+            const urlIndex = html.indexOf(url);
+            const price = findNearestPrice(urlIndex, 2000);
+            
+            // Extract context around URL for other details
+            const contextStart = Math.max(0, urlIndex - 1000);
+            const contextEnd = Math.min(html.length, urlIndex + 1000);
+            const context = html.substring(contextStart, contextEnd);
+            
+            // Extract details from context
+            const sizeMatch = context.match(/(\d+)\s*m²/);
+            const roomMatch = context.match(/(\d+)\s*kamers?/i);
+            const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
+            const yearMatch = context.match(/(?:bouwjaar|gebouwd)[:\s]*(\d{4})/i);
+            
+            // Debug first listing
+            if (i === 0) {
+                console.log('🏠 Pararius first house:', { address, price, urlIndex, postcode: postcodeMatch?.[1] });
+            }
+            
+            // Only add if we have a valid price
+            if (price > 100000) {
                 houses.push({
                     id: `pararius-${i}-${Date.now()}`,
                     price: price,
-                    address: address.trim(),
-                    postalCode: postcode.replace(/\s+/g, ' '),
+                    address: address,
+                    postalCode: postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '',
                     city: 'Amsterdam',
-                    neighborhood: this.getNeighborhoodFromPostcode(postcode) || '',
+                    neighborhood: postcodeMatch ? this.getNeighborhoodFromPostcode(postcodeMatch[1]) : '',
                     bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
                     bathrooms: 1,
                     size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
                     yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
                     image: this.getPlaceholderImage(),
                     images: [],
-                    url: matchingUrl ? `https://www.pararius.nl${matchingUrl}` : '#',
+                    url: `https://www.pararius.nl${url}`,
                     source: 'Pararius'
                 });
                 i++;
@@ -1190,10 +1235,37 @@ class FundaScraper {
             }
         }
 
-        // Zoek naar complete listing blokken in de HTML
-        // Funda kaarten hebben meestal een prijs en adres dicht bij elkaar
-        const listingBlockRegex = /<[^>]+data-test-id="search-result-item"[^>]*>[\s\S]*?<\/[^>]+>/gi;
-        const cardMatches = html.match(listingBlockRegex) || [];
+        // NIEUWE STRATEGIE: Verzamel eerst ALLE prijzen en hun posities in de HTML
+        // Dan matchen we later prijzen aan adressen op basis van nabijheid
+        const priceMap = new Map(); // position -> price
+        const allPrices = [...html.matchAll(/€\s*([\d]{3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s*(?:k\.k\.|v\.o\.n\.)?/gi)];
+        for (const match of allPrices) {
+            const priceStr = match[1].replace(/\./g, '').replace(',', '.');
+            const price = parseInt(priceStr);
+            // Filter out CSS values and unrealistic prices
+            if (price >= 50000 && price <= 50000000) {
+                priceMap.set(match.index, price);
+            }
+        }
+        console.log(`💰 Found ${priceMap.size} valid prices in HTML`);
+        
+        // Log first few prices for debugging
+        const firstPrices = [...priceMap.entries()].slice(0, 5);
+        console.log('💰 First 5 prices:', firstPrices.map(([pos, price]) => `pos ${pos}: €${price.toLocaleString()}`));
+        
+        // Helper function to find nearest price to a position
+        const findNearestPrice = (position, maxDistance = 3000) => {
+            let nearestPrice = 0;
+            let nearestDistance = Infinity;
+            for (const [pricePos, price] of priceMap) {
+                const distance = Math.abs(pricePos - position);
+                if (distance < nearestDistance && distance < maxDistance) {
+                    nearestDistance = distance;
+                    nearestPrice = price;
+                }
+            }
+            return nearestPrice;
+        };
         
         // Verzamel ook alle Funda afbeelding URLs
         const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
@@ -1250,29 +1322,26 @@ class FundaScraper {
                 const houseNumberClean = houseNumber.replace(/-/g, '-');
                 const address = `${streetCapitalized} ${houseNumberClean}`;
                 
-                // Find the listing card context - search for a larger area around the URL
+                // Find price using position-based matching
                 const urlIndex = html.indexOf(fullUrl);
-                // Go back further to find the card start, and forward to find price/details
+                let price = findNearestPrice(urlIndex, 3000);
+                
+                // Debug first house
+                if (i === 0) {
+                    console.log('🏠 First house:', { address, price, urlIndex, url: fullUrl });
+                }
+                
+                // Find the listing card context for other details
                 const contextStart = Math.max(0, urlIndex - 2000);
                 const contextEnd = Math.min(html.length, urlIndex + 2000);
                 const context = html.substring(contextStart, contextEnd);
                 
-                // Extract price - look for €xxx.xxx pattern
-                const priceMatch = context.match(/€\s*([\d.,]+)(?:\s*k\.k\.|\s*v\.o\.n\.)?/);
-                const price = priceMatch ? this.extractPrice(priceMatch[0]) : 0;
-                
-                // Extract details from context
+                // Extract other details from context
                 const sizeMatch = context.match(/(\d+)\s*m²/);
                 const roomMatch = context.match(/(\d+)\s*kamer/i);
                 const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
                 const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                 const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
-                
-                // Debug first house
-                if (i === 0) {
-                    console.log('🏠 First house from URL:', { address, price: priceMatch?.[0], size: sizeMatch?.[1], rooms: roomMatch?.[1], url: fullUrl });
-                    console.log('🔍 Context sample:', context.substring(0, 500));
-                }
                 
                 // Add house even if price is 0 (show as "Prijs op aanvraag")
                 // Only skip if we have a nonsense low price like €50
