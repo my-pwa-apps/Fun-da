@@ -815,7 +815,12 @@ class FunDaApp {
     }
 
     removeFromFavorites(houseId) {
+        console.log('🗑️ Removing favorite:', houseId);
+        const beforeCount = this.favorites.length;
         this.favorites = this.favorites.filter(h => String(h.id) !== String(houseId));
+        const afterCount = this.favorites.length;
+        console.log(`📊 Favorites: ${beforeCount} -> ${afterCount}`);
+        
         this.updateStats();
         this.saveToStorage();
         
@@ -824,7 +829,18 @@ class FunDaApp {
             this.familySync.removeFavorite(houseId);
         }
         
-        this.openFavorites(); // Refresh the list
+        // Refresh the favorites list UI
+        const list = document.getElementById('favoritesList');
+        const noFavorites = document.getElementById('noFavorites');
+        
+        if (this.favorites.length === 0) {
+            list.classList.add('hidden');
+            list.innerHTML = '';
+            noFavorites.classList.remove('hidden');
+            this.showToast('💔 Laatste favoriet verwijderd');
+        } else {
+            this.openFavorites(); // Refresh the list
+        }
     }
 
     updateStats() {
