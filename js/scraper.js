@@ -28,13 +28,13 @@ class FundaScraper {
                 name: 'Jaap.nl',
                 baseUrl: 'https://www.jaap.nl',
                 searchUrl: 'https://www.jaap.nl/koophuizen/noord+holland/groot-amsterdam/amsterdam/-',
-                enabled: true
+                enabled: false  // Geblokkeerd door anti-bot
             },
             huizenzoeker: {
                 name: 'Huizenzoeker',
                 baseUrl: 'https://www.huizenzoeker.nl',
                 searchUrl: 'https://www.huizenzoeker.nl/koop/amsterdam/',
-                enabled: true
+                enabled: false  // Geblokkeerd door anti-bot
             }
         };
         
@@ -57,15 +57,15 @@ class FundaScraper {
         
         // Cache voor recent opgehaalde data
         this.cache = new Map();
-        this.cacheExpiry = 1 * 60 * 1000; // 1 minuut (voor debugging, later terug naar 5)
+        this.cacheExpiry = 5 * 60 * 1000; // 5 minuten cache
         
-        // Rate limiting
+        // Rate limiting (verlaagd voor snelheid)
         this.lastRequestTime = 0;
-        this.minRequestInterval = 2000; // Minimaal 2 seconden tussen requests
+        this.minRequestInterval = 500; // 0.5 seconde tussen requests
         
         // Request counter voor deze sessie
         this.requestCount = 0;
-        this.maxRequestsPerSession = 10;
+        this.maxRequestsPerSession = 20;
         
         // Fingerprint randomization
         this.sessionId = this.generateSessionId();
@@ -96,10 +96,10 @@ class FundaScraper {
     }
 
     getNextProxy() {
-        // Roteer naar volgende proxy met wat randomness
-        const step = Math.random() > 0.5 ? 1 : 2;
-        this.currentProxyIndex = (this.currentProxyIndex + step) % this.corsProxies.length;
-        return this.corsProxies[this.currentProxyIndex];
+        // Gebruik sequentiële volgorde (eigen proxy eerst)
+        const proxy = this.corsProxies[this.currentProxyIndex];
+        this.currentProxyIndex = (this.currentProxyIndex + 1) % this.corsProxies.length;
+        return proxy;
     }
 
     async randomDelay(min = 1000, max = 3000) {
@@ -169,9 +169,9 @@ class FundaScraper {
             try {
                 console.log(`🔄 Probeer proxy ${i + 1}/${this.corsProxies.length}...`);
                 
-                // Random delay voor natuurlijk gedrag
+                // Korte delay tussen proxy retries
                 if (i > 0) {
-                    await this.randomDelay(1500, 3000);
+                    await this.randomDelay(500, 1000);
                 }
 
                 // Simpele fetch zonder custom headers om CORS preflight te vermijden
@@ -234,27 +234,40 @@ class FundaScraper {
     // ==========================================
     
     async scrapeAllSources(searchParams = {}) {
-        console.log('🚀 Starting parallel scrape from all sources...');
+        console.log('🚀 Starting scrape from available sources...');
         const startTime = Date.now();
         
-        // Prepare URLs for each source
-        const fundaUrl = this.buildFundaUrl(searchParams);
-        const jaapUrl = this.buildJaapUrl(searchParams);
-        const huizenzoekerUrl = this.buildHuizenzoekerUrl(searchParams);
+        // Only scrape enabled sources
+        const scrapePromises = [];
+        const sourceNames = [];
         
-        // Fetch from all sources in parallel
-        const results = await Promise.allSettled([
-            this.scrapeFunda(fundaUrl),
-            this.scrapeJaap(jaapUrl),
-            this.scrapeHuizenzoeker(huizenzoekerUrl)
-        ]);
+        if (this.dataSources.funda.enabled) {
+            const fundaUrl = this.buildFundaUrl(searchParams);
+            scrapePromises.push(this.scrapeFunda(fundaUrl));
+            sourceNames.push('Funda');
+        }
+        
+        if (this.dataSources.jaap.enabled) {
+            const jaapUrl = this.buildJaapUrl(searchParams);
+            scrapePromises.push(this.scrapeJaap(jaapUrl));
+            sourceNames.push('Jaap.nl');
+        }
+        
+        if (this.dataSources.huizenzoeker.enabled) {
+            const huizenzoekerUrl = this.buildHuizenzoekerUrl(searchParams);
+            scrapePromises.push(this.scrapeHuizenzoeker(huizenzoekerUrl));
+            sourceNames.push('Huizenzoeker');
+        }
+        
+        // Fetch from enabled sources in parallel
+        const results = await Promise.allSettled(scrapePromises);
         
         // Collect successful results
         let allHouses = [];
         const sourceStats = {};
         
         results.forEach((result, index) => {
-            const sourceName = ['Funda', 'Jaap.nl', 'Huizenzoeker'][index];
+            const sourceName = sourceNames[index];
             if (result.status === 'fulfilled' && result.value.length > 0) {
                 console.log(`✅ ${sourceName}: ${result.value.length} woningen`);
                 sourceStats[sourceName] = result.value.length;
