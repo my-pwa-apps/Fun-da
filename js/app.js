@@ -625,9 +625,52 @@ class FunDaApp {
         const isFamilyMatch = this.familyMatches.has(house.id) || this.familyMatches.has(house.id?.toString());
         const matchMembers = this.familyMatches.get(house.id) || this.familyMatches.get(house.id?.toString());
 
+        // Build image gallery HTML
+        const images = house.images && house.images.length > 0 ? house.images : [house.image];
+        const mainImage = house.image || images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
+        
+        let imageGalleryHtml;
+        if (images.length >= 4) {
+            // Show 4 images in a grid
+            const img1 = images[0] || mainImage;
+            const img2 = images[1] || mainImage;
+            const img3 = images[2] || mainImage;
+            const img4 = images[3] || mainImage;
+            const moreCount = images.length - 4;
+            
+            imageGalleryHtml = `
+                <div class="card-image-gallery">
+                    <div class="gallery-main">
+                        <img class="gallery-thumb" src="${img1}" alt="${house.address}" loading="lazy" 
+                             onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'">
+                    </div>
+                    <div>
+                        <img class="gallery-thumb" src="${img2}" alt="${house.address}" loading="lazy"
+                             onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80'">
+                    </div>
+                    ${moreCount > 0 ? `
+                        <div class="gallery-more">
+                            <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy">
+                            <span>+${moreCount + 1}</span>
+                        </div>
+                    ` : `
+                        <div>
+                            <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
+                                 onerror="this.src='https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'">
+                        </div>
+                    `}
+                </div>
+            `;
+        } else {
+            // Fallback to single image
+            imageGalleryHtml = `
+                <img class="card-image" src="${mainImage}" alt="${house.address}" loading="lazy" 
+                     onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'">
+            `;
+        }
+
         card.innerHTML = `
-            <img class="card-image" src="${house.image}" alt="${house.address}" loading="lazy" 
-                 onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'">
+            ${imageGalleryHtml}
             <div class="card-overlay"></div>
             <div class="card-badges">
                 ${house.isNew ? '<span class="card-badge new">Nieuw!</span>' : ''}
