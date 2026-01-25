@@ -481,15 +481,15 @@ class FunDaApp {
 
             // Update badge
             if (this.familyMatches.size > 0) {
-                this.familyMatchCountEl.textContent = this.familyMatches.size;
-                this.familyMatchCountEl.classList.add('show');
+                this.elements.familyMatchCount.textContent = this.familyMatches.size;
+                this.elements.familyMatchCount.classList.add('show');
             } else {
-                this.familyMatchCountEl.classList.remove('show');
+                this.elements.familyMatchCount.classList.remove('show');
             }
         } else {
             setup.classList.remove('hidden');
             dashboard.classList.add('hidden');
-            this.familyMatchCountEl.classList.remove('show');
+            this.elements.familyMatchCount.classList.remove('show');
         }
     }
 
