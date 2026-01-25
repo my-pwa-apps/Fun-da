@@ -1866,6 +1866,10 @@ body {
     background: #e74c3c;
 }
 
+.source-badge.pararius {
+    background: #8e44ad;
+}
+
 .source-badge.huizenzoeker {
     background: #3498db;
 }

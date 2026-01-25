@@ -24,10 +24,16 @@ class FundaScraper {
                 searchUrl: 'https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&publication_date="1"',
                 enabled: true
             },
+            pararius: {
+                name: 'Pararius',
+                baseUrl: 'https://www.pararius.nl',
+                searchUrl: 'https://www.pararius.nl/koopwoningen/amsterdam',
+                enabled: true  // Pararius werkt goed!
+            },
             jaap: {
                 name: 'Jaap.nl',
                 baseUrl: 'https://www.jaap.nl',
-                searchUrl: 'https://www.jaap.nl/koophuizen/noord+holland/groot-amsterdam/amsterdam/-',
+                searchUrl: 'https://www.jaap.nl/koophuizen/amsterdam',
                 enabled: false  // Geblokkeerd door anti-bot
             },
             huizenzoeker: {
@@ -253,6 +259,12 @@ class FundaScraper {
             sourceNames.push('Jaap.nl');
         }
         
+        if (this.dataSources.pararius.enabled) {
+            const parariusUrl = this.buildParariusUrl(searchParams);
+            scrapePromises.push(this.scrapePararius(parariusUrl));
+            sourceNames.push('Pararius');
+        }
+        
         if (this.dataSources.huizenzoeker.enabled) {
             const huizenzoekerUrl = this.buildHuizenzoekerUrl(searchParams);
             scrapePromises.push(this.scrapeHuizenzoeker(huizenzoekerUrl));
@@ -298,8 +310,12 @@ class FundaScraper {
         return `https://www.funda.nl/zoeken/koop?selected_area=["${area}"]&publication_date="${days}"`;
     }
     
+    buildParariusUrl(params = {}) {
+        return 'https://www.pararius.nl/koopwoningen/amsterdam';
+    }
+    
     buildJaapUrl(params = {}) {
-        return 'https://www.jaap.nl/koophuizen/noord+holland/groot-amsterdam/amsterdam/-';
+        return 'https://www.jaap.nl/koophuizen/amsterdam';
     }
     
     buildHuizenzoekerUrl(params = {}) {
@@ -453,6 +469,93 @@ class FundaScraper {
             console.warn('Funda scraping failed:', error.message);
             return [];
         }
+    }
+    
+    // ==========================================
+    // PARARIUS SCRAPER
+    // ==========================================
+    
+    async scrapePararius(searchUrl) {
+        console.log('🏠 Scraping Pararius:', searchUrl);
+        
+        try {
+            await this.randomDelay(300, 800);
+            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
+            return this.parseParariusResults(html);
+        } catch (error) {
+            console.warn('Pararius scraping failed:', error.message);
+            return [];
+        }
+    }
+    
+    parseParariusResults(html) {
+        const houses = [];
+        
+        // Pararius has a clean HTML structure with listing cards
+        // Format: address, postcode (neighborhood), price, m², kamers, bouwjaar
+        
+        // Find property URLs - format: /appartement-te-koop/amsterdam/ID/straat
+        const propertyRegex = /href="(\/(?:appartement|huis)-te-koop\/amsterdam\/[^"]+)"/gi;
+        const propertyMatches = [...html.matchAll(propertyRegex)];
+        const propertyUrls = [...new Set(propertyMatches.map(m => m[1]))];
+        
+        console.log(`📊 Pararius: Found ${propertyUrls.length} property URLs`);
+        
+        // Parse each listing block - Pararius shows address + postcode + price + details on each card
+        // Pattern: Address, postcode (neighborhood), € price, m², kamers, year
+        const listingRegex = /##\s*\[([^\]]+)\][^\n]*\n[^€]*?(\d{4}\s*[A-Z]{2})[^€]*?\([^)]+\)[^€]*?€\s*([\d.,]+)\s*(?:k\.k\.|v\.o\.n\.)?[^]*?(\d+)\s*m²[^]*?(\d+)\s*kamers?[^]*?(\d{4})?/gi;
+        
+        let match;
+        let i = 0;
+        
+        // Simpler approach: find price+address pairs
+        // Pararius format: "## [Address](url)" followed by "postcode (neighborhood) € price m² kamers year"
+        const blockRegex = /\[([A-Za-z][^\]]+\d+[^\]]*)\]\([^)]+\)[^€]{0,200}(\d{4}\s*[A-Z]{2})[^€]{0,100}€\s*([\d.,]+)/gi;
+        const blocks = [...html.matchAll(blockRegex)];
+        
+        console.log(`📊 Pararius blocks: ${blocks.length}`);
+        
+        for (const block of blocks) {
+            const [, address, postcode, priceStr] = block;
+            const price = this.extractPrice(`€ ${priceStr}`);
+            
+            if (price > 100000 && address) {
+                // Find details near this match
+                const matchIndex = block.index || 0;
+                const contextEnd = Math.min(html.length, matchIndex + 500);
+                const context = html.substring(matchIndex, contextEnd);
+                
+                // Extract details
+                const sizeMatch = context.match(/(\d+)\s*m²/);
+                const roomMatch = context.match(/(\d+)\s*kamers?/);
+                const yearMatch = context.match(/\b(1[789]\d{2}|20[0-2]\d)\b/);
+                
+                // Find the property URL for this address
+                const addressLower = address.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                const matchingUrl = propertyUrls.find(u => u.toLowerCase().includes(addressLower.substring(0, 15))) || '';
+                
+                houses.push({
+                    id: `pararius-${i}-${Date.now()}`,
+                    price: price,
+                    address: address.trim(),
+                    postalCode: postcode.replace(/\s+/g, ' '),
+                    city: 'Amsterdam',
+                    neighborhood: this.getNeighborhoodFromPostcode(postcode) || '',
+                    bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
+                    bathrooms: 1,
+                    size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
+                    yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
+                    image: this.getPlaceholderImage(),
+                    images: [],
+                    url: matchingUrl ? `https://www.pararius.nl${matchingUrl}` : '#',
+                    source: 'Pararius'
+                });
+                i++;
+            }
+        }
+        
+        console.log(`📊 Pararius extracted: ${houses.length} houses`);
+        return houses;
     }
     
     // ==========================================
