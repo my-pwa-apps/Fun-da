@@ -385,7 +385,7 @@ class FundaScraper {
             
             // Calculate progress (45% to 85% range for enrichment)
             const progressPercent = 45 + Math.round((enriched.length / houses.length) * 40);
-            onProgress(`Details: ${enriched.length}/${houses.length}`, progressPercent);
+            onProgress(`Details ophalen...`, progressPercent);
             
             // Fetch BAG data AND Funda details for batch in parallel
             const enrichedBatch = await Promise.all(

@@ -891,7 +891,7 @@ class FunDaApp {
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
             </div>
 
             <div class="detail-section">
@@ -1036,7 +1036,7 @@ class FunDaApp {
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
                 <div class="card-address">${house.address}${house.addition ? ' ' + house.addition : ''}</div>
-                <div class="card-neighborhood">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
+                <div class="card-neighborhood">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
                 <div class="card-features">
                     <span class="feature">${house.size || '?'}m²</span>
                     <span class="feature">${house.bedrooms || '?'} slpk</span>
@@ -1312,7 +1312,7 @@ class FunDaApp {
             
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
             </div>
 
             <div class="detail-section">
@@ -1337,10 +1337,6 @@ class FunDaApp {
                     <div class="detail-item">
                         <div class="detail-item-label">Energie</div>
                         <div class="detail-item-value">${house.energyLabel || '?'}</div>
-                    </div>
-                    <div class="detail-item">
-                        <div class="detail-item-label">Dagen</div>
-                        <div class="detail-item-value">${house.daysOnMarket || '?'}</div>
                     </div>
                 </div>
                 ${extraDetails.length > 0 ? `<div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">${extraDetails.join('')}</div>` : ''}
@@ -1416,7 +1412,7 @@ class FunDaApp {
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
                 ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${fact}</p>` : ''}
             </div>
 
