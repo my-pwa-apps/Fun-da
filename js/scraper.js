@@ -464,16 +464,62 @@ class FundaScraper {
                     }
                 }
 
-                // Image handling
-                let image = this.getPlaceholderImage();
-                if (item.mainPhoto) {
-                    image = typeof item.mainPhoto === 'string' ? item.mainPhoto : item.mainPhoto.url || item.mainPhoto.src;
-                } else if (item.coverPhoto) {
-                    image = typeof item.coverPhoto === 'string' ? item.coverPhoto : item.coverPhoto.url || item.coverPhoto.src;
-                } else if (item.photo) {
-                    image = typeof item.photo === 'string' ? item.photo : item.photo.url || item.photo.src;
-                } else if (item.images && item.images.length > 0) {
-                    image = typeof item.images[0] === 'string' ? item.images[0] : item.images[0].url || item.images[0].src;
+                // Image handling - try all possible image fields
+                let image = null;
+                
+                // Debug: log alle mogelijke image velden voor eerste item
+                if (index === 0) {
+                    console.log('📷 Image fields:', {
+                        mainPhoto: item.mainPhoto,
+                        coverPhoto: item.coverPhoto,
+                        photo: item.photo,
+                        photos: item.photos,
+                        images: item.images,
+                        image: item.image,
+                        media: item.media,
+                        thumbnail: item.thumbnail,
+                        primaryPhoto: item.primaryPhoto,
+                        fotoPrimair: item.fotoPrimair,
+                        foto: item.foto
+                    });
+                }
+                
+                // Try all possible image field locations
+                const imageFields = [
+                    item.mainPhoto?.url,
+                    item.mainPhoto?.src,
+                    item.mainPhoto,
+                    item.coverPhoto?.url,
+                    item.coverPhoto?.src,
+                    item.coverPhoto,
+                    item.primaryPhoto?.url,
+                    item.primaryPhoto,
+                    item.photo?.url,
+                    item.photo,
+                    item.thumbnail?.url,
+                    item.thumbnail,
+                    item.image?.url,
+                    item.image,
+                    item.media?.[0]?.url,
+                    item.media?.[0],
+                    item.photos?.[0]?.url,
+                    item.photos?.[0],
+                    item.images?.[0]?.url,
+                    item.images?.[0],
+                    item.fotoPrimair,
+                    item.foto
+                ];
+                
+                for (const field of imageFields) {
+                    if (field && typeof field === 'string' && field.startsWith('http')) {
+                        image = field;
+                        break;
+                    }
+                }
+                
+                // Fallback to placeholder if no image found
+                if (!image) {
+                    image = this.getPlaceholderImage();
                 }
 
                 // URL handling
@@ -660,13 +706,18 @@ class FundaScraper {
         const listingBlockRegex = /<[^>]+data-test-id="search-result-item"[^>]*>[\s\S]*?<\/[^>]+>/gi;
         const cardMatches = html.match(listingBlockRegex) || [];
         
+        // Verzamel ook alle Funda afbeelding URLs
+        const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
+        console.log(`📷 Found ${allFundaImages.length} Funda images in HTML`);
+        
         console.log(`📊 Found ${cardMatches.length} listing blocks via data-test-id`);
         
         if (cardMatches.length > 0) {
             cardMatches.forEach((block, i) => {
                 const priceMatch = block.match(/€\s*([\d.,]+)/);
                 const addressMatch = block.match(/([A-Za-z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|steeg|markt)\s*\d+[a-z]?)/i);
-                const imageMatch = block.match(/https?:\/\/[^"'\s]+(?:funda|cloud\.funda)[^"'\s]*\.(?:jpg|jpeg|png|webp)/i);
+                // Verbeterde image regex voor Funda
+                const imageMatch = block.match(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/i);
                 
                 if (priceMatch) {
                     const price = this.extractPrice(priceMatch[0]);
@@ -696,6 +747,15 @@ class FundaScraper {
         }
         
         // Probeer een meer geavanceerde aanpak: zoek price+address paren
+        // Zoek eerst alle kenmerken (m², kamers, postcodes) uit de HTML
+        // Funda toont dit vaak als "85 m²" of "3 kamers"
+        const allSizes = [...html.matchAll(/(\d+)\s*m²/gi)].map(m => parseInt(m[1]));
+        const allRooms = [...html.matchAll(/(\d+)\s*(?:kamers?|slaapkamers?|kamer)/gi)].map(m => parseInt(m[1]));
+        // Nederlandse postcodes: 1234 AB formaat
+        const allPostcodes = [...html.matchAll(/\b(\d{4}\s*[A-Z]{2})\b/g)].map(m => m[1].replace(/\s+/g, ' '));
+        
+        console.log(`📊 Found ${allSizes.length} sizes, ${allRooms.length} room counts, ${allPostcodes.length} postcodes in HTML`);
+        
         // Door te zoeken naar secties die beide bevatten
         const sectionRegex = /€\s*([\d.,]+)[^€]{0,500}?([A-Z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof)\s*\d+[a-z]?)|([A-Z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof)\s*\d+[a-z]?)[^€]{0,500}?€\s*([\d.,]+)/gi;
         const sectionMatches = [...html.matchAll(sectionRegex)];
@@ -704,22 +764,35 @@ class FundaScraper {
         
         if (sectionMatches.length > 0) {
             const seenAddresses = new Set();
+            let imageIndex = 0;
+            let dataIndex = 0;
             sectionMatches.forEach((match, i) => {
                 const price = match[1] || match[4];
                 const address = match[2] || match[3];
                 
                 if (price && address && !seenAddresses.has(address)) {
                     seenAddresses.add(address);
+                    // Gebruik de gevonden Funda images
+                    const image = allFundaImages[imageIndex] || this.getPlaceholderImage();
+                    imageIndex++;
+                    
+                    // Probeer bijpassende size, rooms en postcode te vinden
+                    const size = allSizes[dataIndex] || 0;
+                    const bedrooms = allRooms[dataIndex] || 0;
+                    const postalCode = allPostcodes[dataIndex] || '';
+                    dataIndex++;
+                    
                     houses.push({
                         id: `funda-pair-${i}-${Date.now()}`,
                         price: this.extractPrice(price),
                         address: address,
+                        postalCode: postalCode,
                         city: 'Amsterdam',
-                        neighborhood: this.extractNeighborhood(address),
-                        bedrooms: 0,
+                        neighborhood: this.getNeighborhoodFromPostcode(postalCode) || this.extractNeighborhood(address),
+                        bedrooms: bedrooms,
                         bathrooms: 1,
-                        size: 0,
-                        image: this.getPlaceholderImage(),
+                        size: size,
+                        image: image,
                         url: '#',
                         description: '',
                         features: [],
@@ -735,31 +808,39 @@ class FundaScraper {
             }
         }
 
-        // Fallback: oude methode
+        // Fallback: oude methode met verbeterde image matching
         const priceRegex = /€\s*([\d.,]+)\s*(k\.k\.|v\.o\.n\.|p\/mnd)?/gi;
         const addressRegex = /([A-Z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof)\s*\d+[a-z]?(?:\s*[-–]\s*\d+)?)/gi;
-        const imageRegex = /https?:\/\/[^"'\s]+(?:funda|cloud\.funda|fundacdn)[^"'\s]*\.(?:jpg|jpeg|png|webp)/gi;
+        // Verbeterde image regex specifiek voor Funda CDN
+        const imageRegex = /https?:\/\/cloud\.funda\.nl\/valentina_media\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi;
 
         // Extract data
         const prices = [...html.matchAll(priceRegex)].map(m => this.extractPrice(m[0])).filter(p => p > 100000);
         const addresses = [...new Set([...html.matchAll(addressRegex)].map(m => m[0]))];
-        const images = [...new Set([...html.matchAll(imageRegex)].map(m => m[0]))];
+        let images = [...new Set([...html.matchAll(imageRegex)].map(m => m[0]))];
+        
+        // Als geen specifieke images gevonden, gebruik alle eerder gevonden Funda images
+        if (images.length === 0 && allFundaImages.length > 0) {
+            images = allFundaImages;
+        }
 
         console.log(`📊 Regex fallback found: ${prices.length} prices, ${addresses.length} addresses, ${images.length} images`);
 
         // Gebruik ALLEEN de adressen als basis (niet de prijzen)
         // Want prijzen zijn vaak herhaald in de UI
         for (let i = 0; i < addresses.length; i++) {
+            const postcode = allPostcodes[i] || '';
             houses.push({
                 id: `funda-regex-${i}-${Date.now()}`,
                 price: prices[i] || null,
                 address: addresses[i],
+                postalCode: postcode,
                 city: 'Amsterdam',
-                neighborhood: this.extractNeighborhood(addresses[i]),
-                bedrooms: 0,
+                neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(addresses[i]),
+                bedrooms: allRooms[i] || 0,
                 bathrooms: 1,
-                size: 0,
-                image: images[i] || this.getPlaceholderImage(),
+                size: allSizes[i] || 0,
+                image: images[i] || allFundaImages[i] || this.getPlaceholderImage(),
                 url: '#',
                 description: '',
                 features: [],
@@ -879,6 +960,29 @@ class FundaScraper {
         }
         
         return 'Amsterdam';
+    }
+
+    getNeighborhoodFromPostcode(postcode) {
+        if (!postcode) return null;
+        
+        // Amsterdam postcode ranges mapped to neighborhoods
+        const postcodeMap = {
+            '1011': 'Centrum', '1012': 'Centrum', '1013': 'Centrum', '1014': 'Centrum', '1015': 'Centrum', '1016': 'Centrum', '1017': 'Centrum', '1018': 'Centrum', '1019': 'Centrum',
+            '1051': 'Bos en Lommer', '1052': 'Bos en Lommer', '1053': 'Bos en Lommer', '1054': 'Oud-West', '1055': 'Bos en Lommer',
+            '1056': 'Nieuw-West', '1057': 'Nieuw-West', '1058': 'Nieuw-West', '1059': 'Nieuw-West',
+            '1060': 'Nieuw-West', '1061': 'Nieuw-West', '1062': 'Nieuw-West', '1063': 'Nieuw-West', '1064': 'Nieuw-West', '1065': 'Nieuw-West', '1066': 'Nieuw-West', '1067': 'Nieuw-West', '1068': 'Nieuw-West', '1069': 'Nieuw-West',
+            '1071': 'Oud-Zuid', '1072': 'Oud-Zuid', '1073': 'De Pijp', '1074': 'De Pijp', '1075': 'Oud-Zuid', '1076': 'Oud-Zuid', '1077': 'Oud-Zuid', '1078': 'Oud-Zuid', '1079': 'Zuid',
+            '1081': 'Zuid', '1082': 'Zuid', '1083': 'Zuid', '1086': 'Zuid', '1087': 'Zuid', '1091': 'Oost', '1092': 'Oost', '1093': 'Oost', '1094': 'Oost', '1095': 'Oost', '1096': 'Oost', '1097': 'Oost', '1098': 'Oost',
+            '1021': 'Noord', '1022': 'Noord', '1023': 'Noord', '1024': 'Noord', '1025': 'Noord', '1026': 'Noord', '1027': 'Noord', '1028': 'Noord', '1029': 'Noord', '1030': 'Noord', '1031': 'Noord', '1032': 'Noord', '1033': 'Noord', '1034': 'Noord', '1035': 'Noord', '1036': 'Noord', '1037': 'Noord', '1038': 'Noord', '1039': 'Noord',
+            '1101': 'Zuidoost', '1102': 'Zuidoost', '1103': 'Zuidoost', '1104': 'Zuidoost', '1105': 'Zuidoost', '1106': 'Zuidoost', '1107': 'Zuidoost', '1108': 'Zuidoost', '1109': 'Zuidoost',
+            '1086': 'IJburg', '1087': 'IJburg',
+            '1181': 'Amstelveen', '1182': 'Amstelveen', '1183': 'Amstelveen', '1184': 'Amstelveen', '1185': 'Amstelveen', '1186': 'Amstelveen',
+            '1111': 'Diemen', '1112': 'Diemen'
+        };
+        
+        // Extract just the 4-digit part
+        const digits = postcode.replace(/\s+/g, '').substring(0, 4);
+        return postcodeMap[digits] || null;
     }
 
     getPlaceholderImage() {

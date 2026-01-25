@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fun-da-v2';
+const CACHE_NAME = 'fun-da-v3';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -8,11 +8,13 @@ const ASSETS_TO_CACHE = [
     '/js/scraper.js',
     '/js/firebase-sync.js',
     '/manifest.json',
-    '/icons/icon-192.svg'
+    '/icons/icon-192.svg',
+    '/favicon.svg'
 ];
 
 // Install event - cache assets
 self.addEventListener('install', (event) => {
+    console.log('🏠 Fun-da: Installing service worker...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -50,7 +52,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
@@ -59,90 +61,32 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (url.origin !== location.origin) return;
 
-    // Handle image requests with network-first strategy
-    if (event.request.destination === 'image') {
-        event.respondWith(
-            fetch(event.request)
-                .then((response) => {
-                    if (response && response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    return caches.match(event.request).then(cached => {
-                        return cached || new Response('', { status: 404, statusText: 'Not Found' });
-                    });
-                })
-        );
-        return;
-    }
-
-    // Cache-first strategy for other requests
+    // Network first strategy for all requests
     event.respondWith(
-        caches.match(event.request)
-            .then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-
-                return fetch(event.request)
-                    .then((response) => {
-                        // Don't cache non-successful responses
-                        if (!response || response.status !== 200 || response.type !== 'basic') {
-                            return response;
-                        }
-
-                        const responseClone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, responseClone);
-                        });
-
-                        return response;
-                    })
-                    .catch(() => {
-                        // Return a proper error response
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('/index.html');
-                        }
-                        return new Response('', { status: 404, statusText: 'Not Found' });
+        fetch(event.request)
+            .then((response) => {
+                // Cache successful responses
+                if (response && response.ok) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
                     });
+                }
+                return response;
+            })
+            .catch(() => {
+                // Fallback to cache
+                return caches.match(event.request).then(cached => {
+                    if (cached) {
+                        return cached;
+                    }
+                    // Return proper 404 for missing resources
+                    return new Response('Not found', { 
+                        status: 404, 
+                        statusText: 'Not Found',
+                        headers: { 'Content-Type': 'text/plain' }
+                    });
+                });
             })
     );
-});
-
-// Handle push notifications (for future use)
-self.addEventListener('push', (event) => {
-    const options = {
-        body: event.data?.text() || 'Nieuw huis beschikbaar in Amsterdam!',
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-72.png',
-        vibrate: [100, 50, 100],
-        data: {
-            dateOfArrival: Date.now(),
-            primaryKey: 1
-        },
-        actions: [
-            { action: 'explore', title: 'Bekijken' },
-            { action: 'close', title: 'Sluiten' }
-        ]
-    };
-
-    event.waitUntil(
-        self.registration.showNotification('Fun-da 🏠', options)
-    );
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-
-    if (event.action === 'explore') {
-        event.waitUntil(
-            clients.openWindow('/')
-        );
-    }
 });

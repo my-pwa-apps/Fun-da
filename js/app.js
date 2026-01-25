@@ -51,12 +51,15 @@ class FunDaApp {
     }
 
     async init() {
+        // Default Funda URL - Nieuw vandaag Amsterdam
+        this.defaultFundaUrl = 'https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22';
+        
         // Load saved houses (no mock data anymore)
         this.loadFromStorage();
         
         // App starts empty until user imports from Funda
         if (this.houses.length === 0) {
-            console.log('🏠 Geen opgeslagen woningen - importeer van Funda!');
+            console.log('🏠 Geen opgeslagen woningen - automatisch laden van Funda Nieuw Vandaag...');
         }
 
         // Wait a bit for Firebase to initialize
@@ -84,10 +87,26 @@ class FunDaApp {
         setTimeout(() => {
             this.splash.classList.add('hidden');
             this.app.classList.remove('hidden');
+            
+            // Always auto-load new listings to stay up-to-date
+            this.autoLoadNewListings();
         }, 2000);
 
         // Register service worker
         this.registerServiceWorker();
+    }
+
+    async autoLoadNewListings() {
+        console.log('🚀 Auto-loading nieuwe woningen van vandaag...');
+        
+        // Set the URL in the input field
+        const urlInput = document.getElementById('fundaUrl');
+        if (urlInput) {
+            urlInput.value = this.defaultFundaUrl;
+        }
+        
+        // Trigger the import
+        await this.importFromFunda();
     }
 
     registerServiceWorker() {
@@ -527,7 +546,7 @@ class FunDaApp {
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
             </div>
 
             <div class="detail-section">
@@ -626,7 +645,7 @@ class FunDaApp {
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
                 <div class="card-address">${house.address}${house.houseNumber ? ' ' + house.houseNumber : ''}</div>
-                <div class="card-neighborhood">📍 ${house.neighborhood || house.city || 'Amsterdam'}</div>
+                <div class="card-neighborhood">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
                 <div class="card-features">
                     <span class="feature">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -898,7 +917,7 @@ class FunDaApp {
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
                 ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${fact}</p>` : ''}
             </div>
 
@@ -1017,7 +1036,7 @@ class FunDaApp {
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
                 ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${fact}</p>` : ''}
             </div>
 
