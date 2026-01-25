@@ -127,7 +127,7 @@ class FunDaApp {
 
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
+            navigator.serviceWorker.register('./sw.js')
                 .then((registration) => {
                     console.log('🏠 Fun-da SW registered:', registration.scope);
                 })

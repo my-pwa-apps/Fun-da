@@ -1,15 +1,15 @@
-const CACHE_NAME = 'fun-da-v12';
+const CACHE_NAME = 'fun-da-v13';
 const ASSETS_TO_CACHE = [
-    '/',
-    '/index.html',
-    '/css/styles.css',
-    '/js/app.js',
-    '/js/data.js',
-    '/js/scraper.js',
-    '/js/firebase-sync.js',
-    '/manifest.json',
-    '/icons/icon-192.svg',
-    '/favicon.svg'
+    './',
+    './index.html',
+    './css/styles.css',
+    './js/app.js',
+    './js/data.js',
+    './js/scraper.js',
+    './js/firebase-sync.js',
+    './manifest.json',
+    './icons/icon-192.svg',
+    './favicon.svg'
 ];
 
 // Install event - cache assets

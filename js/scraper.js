@@ -198,42 +198,6 @@ class FundaScraper {
         throw new Error('Alle CORS proxies gefaald. Funda blokkeert mogelijk de requests. Probeer later opnieuw.');
     }
 
-    // Alternatieve methode: probeer Funda's interne API
-    async tryFundaApi(searchParams) {
-        console.log('🔄 Probeer Funda API...');
-        
-        // Funda's zoek-API endpoint
-        const apiUrl = `https://www.funda.nl/api/v2/search/koop?selected_area=["amsterdam"]&publication_date="1"`;
-        
-        for (const proxyConfig of this.corsProxies) {
-            try {
-                const proxyUrl = proxyConfig.url + encodeURIComponent(apiUrl);
-                const response = await fetch(proxyUrl, {
-                    headers: {
-                        'Accept': 'application/json',
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = proxyConfig.jsonResponse ? 
-                        (await response.json())[proxyConfig.dataField] : 
-                        await response.text();
-                    
-                    // Probeer JSON te parsen
-                    const jsonData = typeof data === 'string' ? JSON.parse(data) : data;
-                    
-                    if (jsonData && (jsonData.results || jsonData.objects || jsonData.listings)) {
-                        console.log('✅ Funda API response ontvangen');
-                        return jsonData;
-                    }
-                }
-            } catch (e) {
-                console.warn('API poging gefaald:', e.message);
-            }
-        }
-        return null;
-    }
-
     async scrapeSearchResults(searchUrl) {
         console.log('🏠 Scraping Funda:', searchUrl);
         
@@ -241,20 +205,10 @@ class FundaScraper {
         const urlWithCacheBuster = this.addCacheBuster(searchUrl);
         
         try {
-            // Random initiële delay
+            // Random initiële delay om menselijk gedrag te simuleren
             await this.randomDelay(500, 1500);
             
-            // Probeer eerst de API
-            const apiData = await this.tryFundaApi(searchUrl);
-            if (apiData) {
-                const items = apiData.results || apiData.objects || apiData.listings || [];
-                if (items.length > 0) {
-                    console.log(`📊 ${items.length} woningen gevonden via API`);
-                    return items.map((item, i) => this.normalizeHouseData(item, i));
-                }
-            }
-            
-            // Fallback naar HTML scraping
+            // Scrape HTML pagina via CORS proxy
             const html = await this.fetchWithProxy(urlWithCacheBuster);
             const results = this.parseSearchResults(html, searchUrl);
             
