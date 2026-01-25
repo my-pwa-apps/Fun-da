@@ -894,7 +894,8 @@ class FundaScraper {
                     const bedroomMatch = context.match(/(\d+)\s*slaapkamer/i);
                     const bathroomMatch = context.match(/(\d+)\s*(?:badkamers?|badkamer)/i);
                     const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
-                    const yearMatch = context.match(/(?:bouwjaar|gebouwd)[:\s]*(\d{4})/i) || context.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+                    // Only match explicit "bouwjaar" or "gebouwd in" patterns, not random years
+                    const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                     const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i) || context.match(/\b([A-G]\+{0,4})\s*(?:label|energielabel)/i);
                     
                     const size = sizeMatch ? parseInt(sizeMatch[1]) : 0;
@@ -971,7 +972,8 @@ class FundaScraper {
             const bathroomMatch = context.match(/(\d+)\s*(?:badkamers?|badkamer)/i);
             const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
             const priceMatch = context.match(/€\s*([\d.,]+)/);
-            const yearMatch = context.match(/(?:bouwjaar|gebouwd)[:\s]*(\d{4})/i) || context.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+            // Only match explicit "bouwjaar" or "gebouwd in" patterns, not random years
+            const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
             const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
             
             const size = sizeMatch ? parseInt(sizeMatch[1]) : 0;
