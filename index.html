@@ -111,7 +111,7 @@
                 </svg>
             </button>
             <button class="action-btn action-info" id="infoBtn" aria-label="Meer info">
-                <span style="font-size: 1.5rem; font-weight: bold; font-family: Georgia, serif; color: var(--secondary);">i</span>
+                <span class="action-info-icon">i</span>
             </button>
             <button class="action-btn action-like" id="likeBtn" aria-label="Ja!">
                 <svg viewBox="0 0 24 24" fill="currentColor">
@@ -283,7 +283,7 @@
                                 <input type="text" id="joinFamilyCode" placeholder="bijv. huis-boot-42" class="input-full">
                             </div>
                             <button class="btn-secondary" id="joinFamilyBtn">Familie joinen</button>
-                            <button class="btn-secondary" id="scanQRBtn" style="margin-top: 0.5rem;">QR Code scannen</button>
+                            <button class="btn-secondary btn-secondary-mt" id="scanQRBtn">QR Code scannen</button>
                         </div>
                     </div>
                 </div>
@@ -293,7 +293,7 @@
                     <div class="family-code-display">
                         <p>Jullie familie code:</p>
                         <div class="family-code" id="displayFamilyCode">---</div>
-                        <div style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;">
+                        <div class="family-btn-group">
                             <button class="btn-small" id="copyFamilyCode">Kopieer</button>
                             <button class="btn-small" id="showQRCode">QR Code</button>
                         </div>
@@ -325,28 +325,28 @@
 
     <!-- QR Code Modal -->
     <div id="qrModal" class="modal hidden">
-        <div class="modal-content" style="max-width: 320px;">
+        <div class="modal-content modal-qr">
             <div class="modal-header">
                 <h2>QR Code</h2>
                 <button class="btn-close" id="closeQRModal">&times;</button>
             </div>
-            <div class="modal-body" style="text-align: center; padding: 1.5rem;">
-                <div id="qrCodeDisplay" style="background: white; padding: 1rem; display: inline-block; border-radius: 8px;"></div>
-                <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">Laat anderen deze QR code scannen om de familie te joinen</p>
+            <div class="modal-body qr-modal-body">
+                <div id="qrCodeDisplay" class="qr-code-display"></div>
+                <p class="qr-hint">Laat anderen deze QR code scannen om de familie te joinen</p>
             </div>
         </div>
     </div>
 
     <!-- QR Scanner Modal -->
     <div id="qrScannerModal" class="modal hidden">
-        <div class="modal-content" style="max-width: 350px;">
+        <div class="modal-content modal-qr-scanner">
             <div class="modal-header">
                 <h2>QR Code Scannen</h2>
                 <button class="btn-close" id="closeQRScannerModal">&times;</button>
             </div>
-            <div class="modal-body" style="padding: 0;">
-                <video id="qrVideo" style="width: 100%; display: block;"></video>
-                <p id="qrScanStatus" style="text-align: center; padding: 1rem; color: var(--text-secondary);">Camera starten...</p>
+            <div class="modal-body qr-scanner-body">
+                <video id="qrVideo" class="qr-video"></video>
+                <p id="qrScanStatus" class="qr-scan-status">Camera starten...</p>
             </div>
         </div>
     </div>

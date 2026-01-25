@@ -1,9 +1,8 @@
 // Fun-da App - De leukste manier om een huis te vinden!
 // Features: Funda scraping, Familie sync, Swipe interface
 
-// Utility functions
-const $ = (selector) => document.getElementById(selector.replace('#', ''));
-const $$ = (selector) => document.querySelectorAll(selector);
+// Utility function
+const $ = (id) => document.getElementById(id);
 
 class FunDaApp {
     constructor() {
@@ -18,9 +17,6 @@ class FunDaApp {
             minBedrooms: null,
             neighborhood: null
         };
-        
-        // PWA install prompt
-        this.deferredInstallPrompt = null;
 
         // Services
         this.scraper = new FundaScraper();
@@ -264,94 +260,6 @@ class FunDaApp {
                 console.log('🔄 New service worker activated, reloading...');
                 window.location.reload();
             });
-        }
-        
-        // Setup PWA install prompt
-        this.setupInstallPrompt();
-    }
-    
-    showUpdateBanner(registration) {
-        const banner = document.getElementById('updateBanner');
-        const updateBtn = document.getElementById('updateBtn');
-        
-        if (banner) {
-            banner.classList.remove('hidden');
-            
-            updateBtn.addEventListener('click', () => {
-                if (registration.waiting) {
-                    // Tell the waiting SW to skip waiting
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-                banner.classList.add('hidden');
-            });
-        }
-    }
-    
-    setupInstallPrompt() {
-        // Check if already running as installed PWA
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                            window.navigator.standalone === true;
-        
-        if (isStandalone) {
-            console.log('📱 Already running as installed PWA');
-            return; // Don't show install prompt if already installed
-        }
-        
-        // Capture the install prompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            this.deferredInstallPrompt = e;
-            console.log('📲 PWA install prompt captured');
-            
-            // Check if user dismissed before
-            const dismissed = localStorage.getItem('pwa-install-dismissed');
-            if (!dismissed) {
-                this.showInstallBanner();
-            }
-        });
-        
-        // Track when app is installed
-        window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA installed successfully!');
-            this.deferredInstallPrompt = null;
-            this.hideInstallBanner();
-            this.showToast('🎉 Fun-da is geïnstalleerd!');
-        });
-    }
-    
-    showInstallBanner() {
-        const banner = document.getElementById('installBanner');
-        const installBtn = document.getElementById('installBtn');
-        const dismissBtn = document.getElementById('installDismiss');
-        
-        if (banner && this.deferredInstallPrompt) {
-            // Show banner after splash screen is hidden
-            setTimeout(() => {
-                banner.classList.remove('hidden');
-            }, 1500);
-            
-            // Use onclick to avoid duplicate event listeners
-            installBtn.onclick = async () => {
-                if (this.deferredInstallPrompt) {
-                    this.deferredInstallPrompt.prompt();
-                    const { outcome } = await this.deferredInstallPrompt.userChoice;
-                    console.log('Install prompt outcome:', outcome);
-                    this.deferredInstallPrompt = null;
-                    this.hideInstallBanner();
-                }
-            };
-            
-            dismissBtn.onclick = () => {
-                localStorage.setItem('pwa-install-dismissed', 'true');
-                this.hideInstallBanner();
-            };
-        }
-    }
-    
-    hideInstallBanner() {
-        const banner = document.getElementById('installBanner');
-        if (banner) {
-            banner.classList.add('hidden');
         }
     }
 
@@ -973,16 +881,34 @@ class FunDaApp {
         const matchMembers = this.familyMatches.get(house.id) || this.familyMatches.get(house.id?.toString());
 
         // Build image gallery HTML
-        // Ensure we have unique images for the gallery
+        // Helper to normalize Funda image URLs (remove size params to compare)
+        const normalizeImageUrl = (url) => {
+            if (!url) return '';
+            // Extract the unique image ID from Funda URLs
+            // e.g., "https://cloud.funda.nl/valentina_media/178/869/520_groot.jpg" -> "178/869/520"
+            const fundaMatch = url.match(/valentina_media\/(\d+\/\d+\/\d+)/);
+            if (fundaMatch) return fundaMatch[1];
+            // For other URLs, remove query params and size suffixes
+            return url.replace(/[?#].*$/, '').replace(/_(?:klein|middel|groot|xlarge|\d+x\d+)\./i, '.');
+        };
+        
+        // Collect and deduplicate images
         let images = house.images && house.images.length > 0 ? [...house.images] : [];
         const mainImage = house.image || images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
         
-        // Remove duplicates and ensure mainImage is first
+        // Add main image if not already present
         if (mainImage && !images.includes(mainImage)) {
             images.unshift(mainImage);
         }
-        // Remove any duplicates
-        images = [...new Set(images)];
+        
+        // Deduplicate by normalized URL
+        const seenNormalized = new Set();
+        images = images.filter(img => {
+            const normalized = normalizeImageUrl(img);
+            if (seenNormalized.has(normalized)) return false;
+            seenNormalized.add(normalized);
+            return true;
+        });
         
         // If we don't have enough unique images, just show what we have
         // Don't duplicate images to fill slots

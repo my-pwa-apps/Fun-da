@@ -493,7 +493,19 @@ class FundaScraper {
             // Get all images from detail page
             const imageMatches = [...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)];
             if (imageMatches.length > 0) {
-                const uniqueImages = [...new Set(imageMatches.map(m => m[0]))];
+                // Deduplicate by base image ID (ignoring size suffixes)
+                const seenBaseIds = new Set();
+                const uniqueImages = [];
+                for (const match of imageMatches) {
+                    const url = match[0];
+                    // Extract base image ID: "valentina_media/178/869/520_groot.jpg" -> "178/869/520"
+                    const baseMatch = url.match(/valentina_media\/(\d+\/\d+\/\d+)/);
+                    const baseId = baseMatch ? baseMatch[1] : url.replace(/_(?:klein|middel|groot|xlarge)\./, '.');
+                    if (!seenBaseIds.has(baseId)) {
+                        seenBaseIds.add(baseId);
+                        uniqueImages.push(url);
+                    }
+                }
                 details.images = uniqueImages.slice(0, 10);
                 details.image = uniqueImages[0];
             }

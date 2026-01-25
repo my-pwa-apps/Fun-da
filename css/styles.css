@@ -123,14 +123,6 @@ body {
     color: var(--secondary);
 }
 
-.splash-tagline {
-    font-size: 1.1rem;
-    margin-top: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-
 .splash-progress-container {
     width: 200px;
     height: 6px;
@@ -155,98 +147,7 @@ body {
     font-weight: 500;
 }
 
-/* Update Banner */
-.update-banner {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, var(--secondary), #1a9985);
-    color: white;
-    padding: 0.75rem 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    z-index: 10000;
-    font-size: 0.9rem;
-    font-weight: 500;
-    animation: slideDown 0.3s ease;
-}
-
-.update-btn {
-    background: white;
-    color: var(--secondary);
-    border: none;
-    padding: 0.4rem 1rem;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.update-btn:hover {
-    background: #f0f0f0;
-}
-
-/* Install PWA Banner */
-.install-banner {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, var(--primary), #e55a2b);
-    color: white;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    z-index: 10000;
-    font-size: 0.9rem;
-    font-weight: 500;
-    animation: slideUp 0.3s ease;
-}
-
-.install-btn {
-    background: white;
-    color: var(--primary);
-    border: none;
-    padding: 0.5rem 1.25rem;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-.install-btn:hover {
-    background: #f0f0f0;
-}
-
-.install-dismiss {
-    background: transparent;
-    border: none;
-    color: white;
-    font-size: 1.25rem;
-    cursor: pointer;
-    padding: 0.25rem;
-    opacity: 0.8;
-}
-
-.install-dismiss:hover {
-    opacity: 1;
-}
-
-@keyframes slideDown {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-}
-
+/* Keyframe Animations */
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
@@ -787,22 +688,6 @@ body {
 
 .action-like svg {
     color: var(--white);
-}
-
-/* Keyboard Hints */
-.keyboard-hints {
-    display: none;
-    justify-content: center;
-    gap: 2rem;
-    padding-bottom: 1rem;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-@media (min-width: 768px) {
-    .keyboard-hints {
-        display: flex;
-    }
 }
 
 /* Buttons */
@@ -1440,7 +1325,6 @@ body {
 @media print {
     .splash,
     .actions,
-    .keyboard-hints,
     .header-actions,
     .modal {
         display: none !important;
@@ -1560,7 +1444,6 @@ body {
     padding: 1.25rem;
     background: linear-gradient(135deg, rgba(78, 205, 196, 0.1) 0%, rgba(78, 205, 196, 0.05) 100%);
     border: 1px solid rgba(78, 205, 196, 0.3);
-    border-radius: var(--radius-md);
     border-radius: var(--radius-md);
     font-size: 0.85rem;
 }
@@ -2040,3 +1923,64 @@ body {
 ::selection {
     background: var(--primary-light);
     color: var(--white);
+}
+
+/* QR Code Modals */
+.modal-qr {
+    max-width: 320px;
+}
+
+.modal-qr-scanner {
+    max-width: 350px;
+}
+
+.qr-modal-body {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.qr-code-display {
+    background: var(--white);
+    padding: 1rem;
+    display: inline-block;
+    border-radius: var(--radius-sm);
+}
+
+.qr-hint {
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.qr-scanner-body {
+    padding: 0;
+}
+
+.qr-video {
+    width: 100%;
+    display: block;
+}
+
+.qr-scan-status {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+}
+
+.action-info-icon {
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: Georgia, serif;
+    color: var(--secondary);
+}
+
+.family-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.btn-secondary-mt {
+    margin-top: 0.5rem;
+}
