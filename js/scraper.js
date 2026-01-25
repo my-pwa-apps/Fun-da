@@ -250,7 +250,7 @@ class FundaScraper {
         const sourceNames = [];
         
         if (this.dataSources.funda.enabled) {
-            onProgress('📡 Verbinden met Funda...', 20);
+            onProgress('Verbinden met Funda...', 20);
             const fundaUrl = this.buildFundaUrl(searchParams);
             scrapePromises.push(this.scrapeFunda(fundaUrl));
             sourceNames.push('Funda');
@@ -274,7 +274,7 @@ class FundaScraper {
             sourceNames.push('Huizenzoeker');
         }
         
-        onProgress('🔍 Woningen zoeken...', 30);
+        onProgress('Woningen zoeken...', 35);
         
         // Fetch from enabled sources in parallel
         const results = await Promise.allSettled(scrapePromises);
@@ -299,7 +299,7 @@ class FundaScraper {
         const uniqueHouses = this.deduplicateHouses(allHouses);
         console.log(`📊 ${uniqueHouses.length} unieke woningen na deduplicatie`);
         
-        onProgress(`🏠 ${uniqueHouses.length} woningen gevonden, details ophalen...`, 40);
+        onProgress(`${uniqueHouses.length} woningen, details ophalen...`, 45);
         
         // Enrich with government BAG data AND Funda details
         console.log('🏛️ Verrijken met overheidsdata (BAG) en Funda details...');
@@ -383,9 +383,9 @@ class FundaScraper {
         for (let i = 0; i < houses.length; i += batchSize) {
             const batch = houses.slice(i, i + batchSize);
             
-            // Calculate progress (40% to 85% range for enrichment)
-            const progressPercent = 40 + Math.round((enriched.length / houses.length) * 45);
-            onProgress(`🏠 Details ophalen: ${enriched.length}/${houses.length}...`, progressPercent);
+            // Calculate progress (45% to 85% range for enrichment)
+            const progressPercent = 45 + Math.round((enriched.length / houses.length) * 40);
+            onProgress(`Details: ${enriched.length}/${houses.length}`, progressPercent);
             
             // Fetch BAG data AND Funda details for batch in parallel
             const enrichedBatch = await Promise.all(
@@ -507,9 +507,24 @@ class FundaScraper {
             }
             
             // VvE bijdrage (for apartments)
-            const vveMatch = html.match(/(?:VvE|servicekosten|bijdrage)[^€]{0,20}€\s*([\d.,]+)(?:\s*per\s*maand)?/i);
-            if (vveMatch) {
-                details.vveCosts = this.extractPrice(vveMatch[0]);
+            // Funda often shows: "Servicekosten € 150 per maand" or "VvE bijdrage € 200"
+            const vvePatterns = [
+                /(?:servicekosten|service\s*kosten)[^€\d]{0,30}€\s*([\d.,]+)/i,
+                /(?:VvE[\s-]*bijdrage|VvE[\s-]*kosten)[^€\d]{0,30}€\s*([\d.,]+)/i,
+                /€\s*([\d.,]+)[^\d]{0,20}(?:per\s*maand|p\/m|pm)[^\d]{0,20}(?:VvE|servicekosten)/i,
+                /(?:maandelijkse\s*)?(?:VvE|bijdrage)[^€\d]{0,20}€\s*([\d.,]+)/i
+            ];
+            
+            for (const pattern of vvePatterns) {
+                const vveMatch = html.match(pattern);
+                if (vveMatch) {
+                    const vveCost = parseInt(vveMatch[1].replace(/\./g, '').replace(',', '.'));
+                    // VvE is typically between €50 and €1000 per month
+                    if (vveCost >= 30 && vveCost <= 1500) {
+                        details.vveCosts = vveCost;
+                        break;
+                    }
+                }
             }
             
             console.log(`✅ Funda details voor ${house.address}:`, Object.keys(details).length, 'extra velden');

@@ -102,43 +102,61 @@ class FunDaApp {
             console.log('🔥 Firebase Realtime Database connected!');
         }
 
-        // Update splash status and start loading
-        this.updateSplashStatus('🏠 Woningen laden...', 5);
+        // Start progress animation immediately
+        this.startProgressAnimation();
         
         // Start loading immediately, splash stays visible until done
         setTimeout(() => {
             this.autoLoadNewListings();
-        }, 500);
+        }, 300);
 
         // Register service worker
         this.registerServiceWorker();
     }
     
-    updateSplashStatus(message, progress = null) {
+    startProgressAnimation() {
+        // Animate progress bar smoothly from 0 to ~30% over first few seconds
+        // This gives visual feedback even when waiting for network
+        let progress = 0;
+        this.progressInterval = setInterval(() => {
+            if (progress < 30) {
+                progress += 1;
+                this.updateSplashProgress(progress);
+            }
+        }, 100);
+    }
+    
+    stopProgressAnimation() {
+        if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+            this.progressInterval = null;
+        }
+    }
+    
+    updateSplashStatus(message) {
         const statusEl = document.getElementById('splashStatus');
-        const progressEl = document.getElementById('splashProgress');
-        
         if (statusEl) {
             statusEl.textContent = message;
         }
-        
-        if (progressEl && progress !== null) {
+    }
+    
+    updateSplashProgress(progress) {
+        const progressEl = document.getElementById('splashProgress');
+        if (progressEl) {
             progressEl.style.width = `${progress}%`;
         }
     }
     
     hideSplashScreen() {
-        // Set progress to 100% before hiding
-        const progressEl = document.getElementById('splashProgress');
-        if (progressEl) {
-            progressEl.style.width = '100%';
-        }
+        // Stop progress animation and set to 100%
+        this.stopProgressAnimation();
+        this.updateSplashProgress(100);
         
         // Small delay to show completed progress
         setTimeout(() => {
             this.elements.splash.classList.add('hidden');
             this.elements.app.classList.remove('hidden');
-        }, 300);
+        }, 200);
     }
 
     async autoLoadNewListings() {
@@ -151,17 +169,22 @@ class FunDaApp {
         }
         
         try {
-            this.updateSplashStatus('📡 Verbinden met Funda...', 15);
+            this.updateSplashStatus('Verbinden met Funda...');
             
             // Use the scraper directly for splash screen updates
             const houses = await this.scraper.scrapeAllSources({ 
                 area: 'amsterdam', 
                 days: '1',
-                onProgress: (message, progress) => this.updateSplashStatus(message, progress)
+                onProgress: (message, progress) => {
+                    this.stopProgressAnimation(); // Stop auto-animation once we have real progress
+                    this.updateSplashStatus(message);
+                    if (progress) this.updateSplashProgress(progress);
+                }
             });
             
             if (houses.length > 0) {
-                this.updateSplashStatus('💾 Woningen opslaan...', 90);
+                this.updateSplashStatus('Woningen opslaan...');
+                this.updateSplashProgress(90);
                 
                 // Add import timestamp
                 houses.forEach(h => {
@@ -177,26 +200,29 @@ class FunDaApp {
                 this.renderCards();
                 this.updateStats();
                 
-                this.updateSplashStatus(`✅ ${houses.length} woningen gevonden!`, 100);
+                this.updateSplashStatus(`${houses.length} woningen geladen`);
+                this.updateSplashProgress(100);
                 
                 // Small delay to show success message
-                await new Promise(r => setTimeout(r, 800));
+                await new Promise(r => setTimeout(r, 500));
             } else {
-                this.updateSplashStatus('⚠️ Geen woningen gevonden', 100);
+                this.updateSplashStatus('Geen woningen gevonden');
+                this.updateSplashProgress(100);
                 // Fallback to cached data if available
                 if (this.houses.length > 0) {
                     this.renderCards();
                 }
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 1000));
             }
         } catch (error) {
             console.error('Auto-load error:', error);
-            this.updateSplashStatus('⚠️ Laden mislukt, cache gebruiken...', 100);
+            this.updateSplashStatus('Cache laden...');
+            this.updateSplashProgress(100);
             // Fallback to cached data
             if (this.houses.length > 0) {
                 this.renderCards();
             }
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 800));
         }
         
         // Hide splash screen now that we're done
@@ -262,6 +288,15 @@ class FunDaApp {
     }
     
     setupInstallPrompt() {
+        // Check if already running as installed PWA
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+        
+        if (isStandalone) {
+            console.log('📱 Already running as installed PWA');
+            return; // Don't show install prompt if already installed
+        }
+        
         // Capture the install prompt
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -293,9 +328,10 @@ class FunDaApp {
             // Show banner after splash screen is hidden
             setTimeout(() => {
                 banner.classList.remove('hidden');
-            }, 1000);
+            }, 1500);
             
-            installBtn.addEventListener('click', async () => {
+            // Use onclick to avoid duplicate event listeners
+            installBtn.onclick = async () => {
                 if (this.deferredInstallPrompt) {
                     this.deferredInstallPrompt.prompt();
                     const { outcome } = await this.deferredInstallPrompt.userChoice;
@@ -303,12 +339,12 @@ class FunDaApp {
                     this.deferredInstallPrompt = null;
                     this.hideInstallBanner();
                 }
-            });
+            };
             
-            dismissBtn.addEventListener('click', () => {
+            dismissBtn.onclick = () => {
                 localStorage.setItem('pwa-install-dismissed', 'true');
                 this.hideInstallBanner();
-            });
+            };
         }
     }
     
@@ -851,15 +887,15 @@ class FunDaApp {
         
         let imageGalleryHtml;
         if (images.length >= 4) {
-            // Show 4 images in a grid
+            // Show 4 images in a 2x2 grid
             const img1 = images[0] || mainImage;
             const img2 = images[1] || mainImage;
             const img3 = images[2] || mainImage;
-            const moreCount = house.images ? Math.max(0, house.images.length - 3) : 0;
+            const img4 = images[3] || mainImage;
             
             imageGalleryHtml = `
                 <div class="card-image-gallery">
-                    <div class="gallery-main">
+                    <div>
                         <img class="gallery-thumb" src="${img1}" alt="${house.address}" loading="lazy" 
                              onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'">
                     </div>
@@ -867,17 +903,14 @@ class FunDaApp {
                         <img class="gallery-thumb" src="${img2}" alt="${house.address}" loading="lazy"
                              onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80'">
                     </div>
-                    ${moreCount > 0 ? `
-                        <div class="gallery-more">
-                            <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy">
-                            <span>+${moreCount}</span>
-                        </div>
-                    ` : `
-                        <div>
-                            <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
-                                 onerror="this.src='https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'">
-                        </div>
-                    `}
+                    <div>
+                        <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
+                             onerror="this.src='https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'">
+                    </div>
+                    <div>
+                        <img class="gallery-thumb" src="${img4}" alt="${house.address}" loading="lazy"
+                             onerror="this.src='https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'">
+                    </div>
                 </div>
             `;
         } else {
@@ -894,10 +927,7 @@ class FunDaApp {
             <div class="card-badges">
                 ${house.isNew ? '<span class="card-badge new">Nieuw!</span>' : ''}
                 ${house.isHot ? '<span class="card-badge hot">🔥 Hot</span>' : ''}
-                <span class="card-badge" style="background: ${priceLabel?.color || '#666'}; color: white;">${priceLabel?.label || ''}</span>
             </div>
-            ${house.source ? `<span class="source-badge ${house.source.toLowerCase().replace('.', '')}">${house.source}</span>` : ''}
-            ${house.enrichedFromBag ? '<span class="source-badge bag">🏛️ BAG</span>' : ''}
             ${isFamilyMatch ? `
                 <div class="card-family-match">
                     👨‍👩‍👧‍👦 ${matchMembers?.length || 0} matches
