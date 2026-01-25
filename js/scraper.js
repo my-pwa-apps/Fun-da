@@ -28,7 +28,7 @@ class FundaScraper {
                 name: 'Pararius',
                 baseUrl: 'https://www.pararius.nl',
                 searchUrl: 'https://www.pararius.nl/koopwoningen/amsterdam',
-                enabled: true  // Pararius werkt goed!
+                enabled: false  // Uitgeschakeld - focus op Funda
             },
             jaap: {
                 name: 'Jaap.nl',
@@ -369,26 +369,146 @@ class FundaScraper {
     
     async enrichWithBagData(houses) {
         // Process in batches to avoid rate limiting
-        const batchSize = 5;
+        const batchSize = 3;
         const enriched = [];
+        
+        console.log(`🔍 Verrijken van ${houses.length} woningen met BAG data en Funda details...`);
         
         for (let i = 0; i < houses.length; i += batchSize) {
             const batch = houses.slice(i, i + batchSize);
             
-            // Fetch BAG data for batch in parallel
+            // Fetch BAG data AND Funda details for batch in parallel
             const enrichedBatch = await Promise.all(
-                batch.map(house => this.fetchBagDataForHouse(house))
+                batch.map(async house => {
+                    // First get BAG data
+                    let enriched = await this.fetchBagDataForHouse(house);
+                    // Then get Funda detail page data if we have a detail URL
+                    if (enriched.url?.includes('funda.nl') && enriched.url?.includes('/detail/')) {
+                        enriched = await this.fetchFundaDetails(enriched);
+                    }
+                    return enriched;
+                })
             );
             
             enriched.push(...enrichedBatch);
             
-            // Small delay between batches to be nice to the API
+            // Progress indicator
+            console.log(`📊 Verrijkt: ${enriched.length}/${houses.length} woningen`);
+            
+            // Small delay between batches to be nice to the APIs
             if (i + batchSize < houses.length) {
-                await new Promise(r => setTimeout(r, 200));
+                await new Promise(r => setTimeout(r, 300));
             }
         }
         
         return enriched;
+    }
+    
+    async fetchFundaDetails(house) {
+        try {
+            console.log(`📄 Ophalen Funda details: ${house.address}`);
+            const html = await this.fetchWithProxy(house.url);
+            
+            if (!html || html.length < 1000) return house;
+            
+            // Extract more details from Funda detail page
+            const details = {};
+            
+            // Price - often more prominent on detail page
+            const priceMatch = html.match(/€\s*([\d.,]+)(?:\s*(?:k\.k\.|v\.o\.n\.))?/i);
+            if (priceMatch && !house.price) {
+                details.price = this.extractPrice(priceMatch[0]);
+            }
+            
+            // Woonoppervlakte (living space)
+            const sizeMatch = html.match(/(?:woon(?:oppervlakte)?|gebruiksoppervlakte)[^\d]{0,30}(\d+)\s*m²/i);
+            if (sizeMatch) {
+                details.size = parseInt(sizeMatch[1]);
+            }
+            
+            // Perceeloppervlakte (plot size)
+            const plotMatch = html.match(/(?:perceel(?:oppervlakte)?)[^\d]{0,30}(\d+)\s*m²/i);
+            if (plotMatch) {
+                details.plotSize = parseInt(plotMatch[1]);
+            }
+            
+            // Aantal kamers
+            const roomMatch = html.match(/(?:aantal\s*(?:slaap)?kamers?|kamers?)[^\d]{0,20}(\d+)/i);
+            if (roomMatch) {
+                details.bedrooms = parseInt(roomMatch[1]);
+            }
+            
+            // Bouwjaar
+            const yearMatch = html.match(/(?:bouwjaar|gebouwd)[^\d]{0,20}(1[89]\d{2}|20[0-2]\d)/i);
+            if (yearMatch && !house.yearBuilt) {
+                details.yearBuilt = parseInt(yearMatch[1]);
+            }
+            
+            // Energielabel
+            const energyMatch = html.match(/(?:energielabel|energie(?:klasse)?)[^A-G]{0,20}([A-G]\+{0,4})/i);
+            if (energyMatch) {
+                details.energyLabel = energyMatch[1].toUpperCase();
+            }
+            
+            // Status (beschikbaar, verkocht, etc)
+            const statusMatch = html.match(/(?:status|beschikbaarheid)[^\w]{0,20}(beschikbaar|in\s*verkoop|verkocht|verhuurd|onder\s*bod)/i);
+            if (statusMatch) {
+                details.status = statusMatch[1];
+            }
+            
+            // Type woning
+            const typeMatch = html.match(/(?:soort\s*(?:woning|object)|type)[^\w]{0,20}(appartement|eengezinswoning|hoekwoning|tussenwoning|vrijstaand|twee-onder-een-kap|bovenwoning|benedenwoning|penthouse|maisonnette|grachtenpand)/i);
+            if (typeMatch) {
+                details.propertyType = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase();
+            }
+            
+            // Tuin
+            const gardenMatch = html.match(/(?:tuin(?:type)?)[^\w]{0,20}(achtertuin|voortuin|zijtuin|daktuin|patio|ja|aanwezig)/i);
+            if (gardenMatch) {
+                details.hasGarden = true;
+                details.gardenType = gardenMatch[1];
+            }
+            
+            // Balkon
+            if (/balkon/i.test(html)) {
+                details.hasBalcony = true;
+            }
+            
+            // Parkeren
+            const parkingMatch = html.match(/(?:parkeren|garage)[^\w]{0,30}(eigen\s*parkeer|garage|parkeerplaats|parkeerkelder|geen)/i);
+            if (parkingMatch) {
+                details.parking = parkingMatch[1];
+            }
+            
+            // Get all images from detail page
+            const imageMatches = [...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)];
+            if (imageMatches.length > 0) {
+                const uniqueImages = [...new Set(imageMatches.map(m => m[0]))];
+                details.images = uniqueImages.slice(0, 10);
+                details.image = uniqueImages[0];
+            }
+            
+            // Postcode if not found earlier
+            if (!house.postalCode) {
+                const postcodeMatch = html.match(/(\d{4})\s*([A-Z]{2})/i);
+                if (postcodeMatch) {
+                    details.postalCode = `${postcodeMatch[1]} ${postcodeMatch[2].toUpperCase()}`;
+                }
+            }
+            
+            // VvE bijdrage (for apartments)
+            const vveMatch = html.match(/(?:VvE|servicekosten|bijdrage)[^€]{0,20}€\s*([\d.,]+)(?:\s*per\s*maand)?/i);
+            if (vveMatch) {
+                details.vveCosts = this.extractPrice(vveMatch[0]);
+            }
+            
+            console.log(`✅ Funda details voor ${house.address}:`, Object.keys(details).length, 'extra velden');
+            
+            return { ...house, ...details, enrichedFromFunda: true };
+        } catch (error) {
+            console.debug(`Funda detail fetch failed for ${house.address}:`, error.message);
+            return house;
+        }
     }
     
     async fetchBagDataForHouse(house) {

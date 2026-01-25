@@ -1002,6 +1002,21 @@ class FunDaApp {
         if (!house) return;
 
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
+        
+        // Build extra details section
+        const extraDetails = [];
+        if (house.propertyType) extraDetails.push(`<span>🏠 ${house.propertyType}</span>`);
+        if (house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotSize}m²</span>`);
+        if (house.hasGarden) extraDetails.push(`<span>🌿 ${house.gardenType || 'Tuin'}</span>`);
+        if (house.hasBalcony) extraDetails.push(`<span>🌅 Balkon</span>`);
+        if (house.parking) extraDetails.push(`<span>🚗 ${house.parking}</span>`);
+        if (house.vveCosts) extraDetails.push(`<span>🏢 VvE: €${house.vveCosts}/mnd</span>`);
+        if (house.status) extraDetails.push(`<span>📋 ${house.status}</span>`);
+        
+        // Build data source badge
+        const sourceBadges = [];
+        if (house.enrichedFromBag) sourceBadges.push('<span class="source-badge source-bag">BAG ✓</span>');
+        if (house.enrichedFromFunda) sourceBadges.push('<span class="source-badge source-funda">Details ✓</span>');
 
         document.getElementById('detailTitle').textContent = house.address;
         document.getElementById('detailContent').innerHTML = `
@@ -1011,6 +1026,7 @@ class FunDaApp {
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
                 <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">📍 ${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
                 ${fact ? `<p style="margin-top: 0.25rem; font-style: italic; color: var(--secondary); font-size: 0.8rem;">🏛️ ${fact}</p>` : ''}
+                ${sourceBadges.length > 0 ? `<div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">${sourceBadges.join('')}</div>` : ''}
             </div>
 
             <div class="detail-section">
@@ -1041,6 +1057,7 @@ class FunDaApp {
                         <div class="detail-item-value">${house.daysOnMarket || '?'}</div>
                     </div>
                 </div>
+                ${extraDetails.length > 0 ? `<div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">${extraDetails.join('')}</div>` : ''}
             </div>
 
             <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
