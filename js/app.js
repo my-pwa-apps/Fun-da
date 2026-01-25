@@ -17,6 +17,9 @@ class FunDaApp {
             minBedrooms: null,
             neighborhood: null
         };
+        
+        // PWA install prompt
+        this.deferredInstallPrompt = null;
 
         // Services
         this.scraper = new FundaScraper();
@@ -237,18 +240,18 @@ class FunDaApp {
                         console.log('🔄 New service worker installing...');
                         
                         newWorker.addEventListener('statechange', () => {
-                            // Only show update banner if there's an existing controller
+                            // Only show update toast if there's an existing controller
                             // This means it's an update, not a first install
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 console.log('🆕 New version available!');
-                                this.showUpdateBanner(registration);
+                                this.showUpdateToast(registration);
                             }
                         });
                     });
                     
                     // Check if there's already a waiting worker (page was refreshed while update pending)
                     if (registration.waiting && navigator.serviceWorker.controller) {
-                        this.showUpdateBanner(registration);
+                        this.showUpdateToast(registration);
                     }
                 })
                 .catch((error) => {
@@ -261,6 +264,95 @@ class FunDaApp {
                 window.location.reload();
             });
         }
+        
+        // Setup PWA install prompt
+        this.setupInstallPrompt();
+    }
+    
+    showUpdateToast(registration) {
+        const container = document.getElementById('toasts');
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-action';
+        toast.innerHTML = `
+            <span>🆕 Nieuwe versie beschikbaar!</span>
+            <button class="toast-btn" id="updateNowBtn">Updaten</button>
+        `;
+        container.appendChild(toast);
+        
+        toast.querySelector('#updateNowBtn').addEventListener('click', () => {
+            if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+            toast.remove();
+        });
+        
+        // Don't auto-remove update toast - user must interact
+    }
+    
+    setupInstallPrompt() {
+        // Check if already running as installed PWA
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+        
+        if (isStandalone) {
+            console.log('📱 Already running as installed PWA');
+            return;
+        }
+        
+        // Check if user dismissed before
+        const dismissed = localStorage.getItem('pwa-install-dismissed');
+        if (dismissed) {
+            console.log('📱 Install prompt previously dismissed');
+            return;
+        }
+        
+        // Capture the install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferredInstallPrompt = e;
+            console.log('📲 PWA install prompt captured');
+            
+            // Show install toast after splash screen
+            setTimeout(() => this.showInstallToast(), 2000);
+        });
+        
+        // Track when app is installed
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA installed successfully!');
+            this.deferredInstallPrompt = null;
+            this.showToast('🎉 Fun-da is geïnstalleerd!');
+        });
+    }
+    
+    showInstallToast() {
+        if (!this.deferredInstallPrompt) return;
+        
+        const container = document.getElementById('toasts');
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-action';
+        toast.innerHTML = `
+            <span>📲 Installeer Fun-da</span>
+            <button class="toast-btn" id="installBtn">Installeer</button>
+            <button class="toast-dismiss" id="installDismiss">✕</button>
+        `;
+        container.appendChild(toast);
+        
+        toast.querySelector('#installBtn').addEventListener('click', async () => {
+            if (this.deferredInstallPrompt) {
+                this.deferredInstallPrompt.prompt();
+                const { outcome } = await this.deferredInstallPrompt.userChoice;
+                console.log('Install prompt outcome:', outcome);
+                this.deferredInstallPrompt = null;
+            }
+            toast.remove();
+        });
+        
+        toast.querySelector('#installDismiss').addEventListener('click', () => {
+            localStorage.setItem('pwa-install-dismissed', 'true');
+            toast.remove();
+        });
+        
+        // Don't auto-remove install toast - user must interact
     }
 
     loadFromStorage() {
@@ -1083,7 +1175,6 @@ class FunDaApp {
         if (direction === 'right') {
             card.style.transform = 'translateX(150%) rotate(30deg)';
             this.addToFavorites(house);
-            this.triggerConfetti();
         } else {
             card.style.transform = 'translateX(-150%) rotate(-30deg)';
         }
@@ -1101,7 +1192,6 @@ class FunDaApp {
     addToFavorites(house) {
         if (!this.favorites.find(h => h.id === house.id)) {
             this.favorites.push(house);
-            this.showToast(`❤️ ${house.address} toegevoegd aan favorieten!`);
             
             // Sync to family
             if (this.familySync.isInFamily()) {
@@ -1268,16 +1358,11 @@ class FunDaApp {
                 ${extraDetails.length > 0 ? `<div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">${extraDetails.join('')}</div>` : ''}
             </div>
 
-            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-                ${house.url && house.url !== '#' ? `
-                    <a href="${house.url}" target="_blank" class="btn-secondary" style="flex: 1; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem;">
-                        🔗 Funda
-                    </a>
-                ` : ''}
-                <button class="btn-primary" style="flex: 1; padding: 0.75rem; font-size: 0.9rem;" onclick="app.addToFavoritesAndClose('${String(house.id).replace(/'/g, "\\'")}')">
-                    ❤️ Favoriet
-                </button>
-            </div>
+            ${house.url && house.url !== '#' ? `
+                <a href="${house.url}" target="_blank" class="btn-secondary" style="display: block; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; margin-top: 0.75rem;">
+                    🔗 Bekijk op Funda
+                </a>
+            ` : ''}
         `;
 
         this.openModal(this.detailModal);
