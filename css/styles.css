@@ -109,7 +109,6 @@ body {
     font-size: 4.5rem;
     font-weight: 800;
     text-shadow: 0 4px 30px rgba(255, 107, 53, 0.2);
-    animation: float 2s ease-in-out infinite;
     letter-spacing: -2px;
 }
 

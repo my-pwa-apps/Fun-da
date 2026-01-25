@@ -215,16 +215,17 @@ class FunDaApp {
                         console.log('🔄 New service worker installing...');
                         
                         newWorker.addEventListener('statechange', () => {
+                            // Only show update banner if there's an existing controller
+                            // This means it's an update, not a first install
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New version available
                                 console.log('🆕 New version available!');
                                 this.showUpdateBanner(registration);
                             }
                         });
                     });
                     
-                    // Also check if there's already a waiting worker
-                    if (registration.waiting) {
+                    // Check if there's already a waiting worker (page was refreshed while update pending)
+                    if (registration.waiting && navigator.serviceWorker.controller) {
                         this.showUpdateBanner(registration);
                     }
                 })
