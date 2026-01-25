@@ -1489,7 +1489,6 @@ class FunDaApp {
         this.updateStats();
         this.saveToStorage();
     }
-    }
 
     showToast(message) {
         const container = document.getElementById('toasts');
