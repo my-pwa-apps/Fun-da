@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Fun-da - Bring the fun back to huizenjacht!">
+    <meta name="theme-color" content="#FF6B35">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <title>Fun-da 🏠 | Bring the fun back!</title>
+    
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash" class="splash">
+        <div class="splash-content">
+            <h1 class="splash-logo">Fun-da</h1>
+            <p class="splash-tagline">🏠 Bring the fun back! 🎉</p>
+            <div class="splash-loader"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="logo">Fun-da</h1>
+            <div class="header-actions">
+                <button class="btn-icon" id="fundaImportBtn" aria-label="Funda Import" title="Importeer van Funda">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </button>
+                <button class="btn-icon" id="familyBtn" aria-label="Familie" title="Familie Matches">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span class="badge family-badge" id="familyMatchCount">0</span>
+                </button>
+                <button class="btn-icon" id="filterBtn" aria-label="Filters">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+                    </svg>
+                </button>
+                <button class="btn-icon" id="favoritesBtn" aria-label="Favorieten">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    <span class="badge" id="favCount">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <span class="stat-value" id="housesViewed">0</span>
+                <span class="stat-label">Bekeken</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="matchScore">0%</span>
+                <span class="stat-label">Match Score</span>
+            </div>
+            <div class="stat">
+                <span class="stat-value" id="housesLeft">0</span>
+                <span class="stat-label">Te gaan</span>
+            </div>
+        </div>
+
+        <!-- Card Stack -->
+        <main class="card-container">
+            <div id="cardStack" class="card-stack">
+                <!-- Cards will be dynamically inserted here -->
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state hidden">
+                <div class="empty-emoji">🏠</div>
+                <h2>Alle huizen bekeken!</h2>
+                <p>Je hebt alle beschikbare woningen gezien.</p>
+                <button class="btn-primary" id="resetBtn">Opnieuw beginnen</button>
+            </div>
+        </main>
+
+        <!-- Action Buttons -->
+        <div class="actions">
+            <button class="action-btn action-nope" id="nopeBtn" aria-label="Nee">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            <button class="action-btn action-info" id="infoBtn" aria-label="Meer info">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4M12 8h.01"/>
+                </svg>
+            </button>
+            <button class="action-btn action-like" id="likeBtn" aria-label="Ja!">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Keyboard Hints -->
+        <div class="keyboard-hints">
+            <span>← Nee</span>
+            <span>↑ Info</span>
+            <span>→ Ja!</span>
+        </div>
+    </div>
+
+    <!-- Filter Modal -->
+    <div id="filterModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Filters</h2>
+                <button class="btn-close" id="closeFilterModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="filter-group">
+                    <label>Prijsrange</label>
+                    <div class="range-inputs">
+                        <input type="number" id="minPrice" placeholder="Min €" step="50000">
+                        <span>-</span>
+                        <input type="number" id="maxPrice" placeholder="Max €" step="50000">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Minimum slaapkamers</label>
+                    <div class="btn-group">
+                        <button class="btn-option" data-value="1">1+</button>
+                        <button class="btn-option" data-value="2">2+</button>
+                        <button class="btn-option" data-value="3">3+</button>
+                        <button class="btn-option" data-value="4">4+</button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Buurt</label>
+                    <select id="neighborhood">
+                        <option value="">Alle buurten</option>
+                        <option value="Centrum">Centrum</option>
+                        <option value="De Pijp">De Pijp</option>
+                        <option value="Jordaan">Jordaan</option>
+                        <option value="Oud-West">Oud-West</option>
+                        <option value="Oost">Oost</option>
+                        <option value="Noord">Noord</option>
+                        <option value="Zuid">Zuid</option>
+                        <option value="West">West</option>
+                        <option value="IJburg">IJburg</option>
+                    </select>
+                </div>
+                <button class="btn-primary btn-full" id="applyFilters">Filters toepassen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Favorites Modal -->
+    <div id="favoritesModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>❤️ Mijn Favorieten</h2>
+                <button class="btn-close" id="closeFavModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="favoritesList" class="favorites-list">
+                    <!-- Favorites will be dynamically inserted here -->
+                </div>
+                <div id="noFavorites" class="no-favorites">
+                    <p>Nog geen favorieten!</p>
+                    <p>Swipe naar rechts of druk op ❤️ om huizen toe te voegen.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="detailTitle">Woning Details</h2>
+                <button class="btn-close" id="closeDetailModal">&times;</button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <!-- Detail content will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Funda Import Modal -->
+    <div id="fundaModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>🏠 Importeer van Funda</h2>
+                <button class="btn-close" id="closeFundaModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">Plak een Funda zoek-URL om echte woningen te importeren!</p>
+                
+                <div class="filter-group">
+                    <label>Funda URL</label>
+                    <input type="url" id="fundaUrl" placeholder="https://www.funda.nl/zoeken/koop?selected_area=[&quot;amsterdam&quot;]" class="input-full">
+                </div>
+                
+                <div class="quick-links">
+                    <p>Of kies een snelle zoekopdracht:</p>
+                    <div class="quick-link-grid">
+                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22">🆕 Nieuw vandaag</button>
+                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%223%22">📅 Laatste 3 dagen</button>
+                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22&price=%22200000-500000%22">💰 Nieuw €200k-500k</button>
+                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22&rooms=%223%2B%22">🛏️ Nieuw 3+ kamers</button>
+                    </div>
+                </div>
+
+                <button class="btn-primary btn-full" id="importFundaBtn">
+                    <span id="importBtnText">🔍 Importeer woningen</span>
+                    <span id="importSpinner" class="spinner hidden"></span>
+                </button>
+
+                <div id="importStatus" class="import-status hidden">
+                    <div class="import-progress">
+                        <div class="import-progress-bar" id="importProgressBar"></div>
+                    </div>
+                    <p id="importStatusText">Bezig met importeren...</p>
+                </div>
+
+                <div class="import-note">
+                    <p>💡 <strong>Tip:</strong> Ga naar <a href="https://www.funda.nl" target="_blank">funda.nl</a>, 
+                    zoek naar woningen, en kopieer de URL uit je browser.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Family Modal -->
+    <div id="familyModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>👨‍👩‍👧‍👦 Familie Modus</h2>
+                <button class="btn-close" id="closeFamilyModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Not in family -->
+                <div id="familySetup" class="family-section">
+                    <p class="modal-description">Zoek samen met je gezin naar jullie droomhuis! 
+                    Als meerdere familieleden hetzelfde huis liken, wordt het een <strong>Familie Match</strong>! 🎉</p>
+                    
+                    <div class="filter-group">
+                        <label>Jouw naam</label>
+                        <input type="text" id="familyUserName" placeholder="Bijv. Papa, Mama, Sophie..." class="input-full">
+                    </div>
+
+                    <div class="family-options">
+                        <div class="family-option">
+                            <h3>🆕 Nieuwe familie starten</h3>
+                            <p>Maak een nieuwe familie aan en deel de code met je gezinsleden.</p>
+                            <button class="btn-primary" id="createFamilyBtn">Familie aanmaken</button>
+                        </div>
+                        
+                        <div class="family-divider">of</div>
+                        
+                        <div class="family-option">
+                            <h3>🔗 Bestaande familie joinen</h3>
+                            <div class="filter-group">
+                                <input type="text" id="joinFamilyCode" placeholder="bijv. huis-boot-42" class="input-full">
+                            </div>
+                            <button class="btn-secondary" id="joinFamilyBtn">Familie joinen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- In family -->
+                <div id="familyDashboard" class="family-section hidden">
+                    <div class="family-code-display">
+                        <p>Jullie familie code:</p>
+                        <div class="family-code" id="displayFamilyCode">---</div>
+                        <button class="btn-small" id="copyFamilyCode">📋 Kopieer</button>
+                    </div>
+
+                    <div class="family-members">
+                        <h3>👥 Gezinsleden</h3>
+                        <div id="familyMembersList" class="members-list">
+                            <!-- Members will be inserted here -->
+                        </div>
+                    </div>
+
+                    <div class="family-matches-section">
+                        <h3>🎉 Familie Matches</h3>
+                        <p class="matches-description">Woningen die door meerdere gezinsleden zijn geliked:</p>
+                        <div id="familyMatchesList" class="matches-list">
+                            <!-- Matches will be inserted here -->
+                        </div>
+                        <div id="noFamilyMatches" class="no-matches">
+                            <p>Nog geen matches! Blijf swipen en kijk of jullie dezelfde smaak hebben. 😊</p>
+                        </div>
+                    </div>
+
+                    <button class="btn-danger btn-full" id="leaveFamilyBtn">Familie verlaten</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confetti Container -->
+    <div id="confetti" class="confetti-container"></div>
+
+    <!-- Toast Container -->
+    <div id="toasts" class="toast-container"></div>
+
+    <script src="js/data.js"></script>
+    <script src="js/scraper.js"></script>
+    <script src="js/firebase-sync.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

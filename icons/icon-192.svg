@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B35"/>
+      <stop offset="100%" style="stop-color:#E85A2A"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#grad)"/>
+  <g fill="white">
+    <!-- House icon -->
+    <path d="M96 35L35 85V157H75V117H117V157H157V85L96 35Z"/>
+    <!-- Heart inside -->
+    <path d="M96 90C96 90 75 70 60 80C45 90 50 110 96 135C142 110 147 90 132 80C117 70 96 90 96 90Z" fill="#FF6B35"/>
+  </g>
+</svg>

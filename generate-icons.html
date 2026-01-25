@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Fun-da Icons</title>
+</head>
+<body>
+    <h1>Fun-da Icon Generator</h1>
+    <p>Open browser console and icons will be generated as data URLs.</p>
+    <canvas id="canvas"></canvas>
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        sizes.forEach(size => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#FF6B35');
+            gradient.addColorStop(1, '#E85A2A');
+            
+            // Rounded rectangle
+            const radius = size * 0.2;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // House
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            const s = size / 192; // scale factor
+            ctx.moveTo(96*s, 35*s);
+            ctx.lineTo(35*s, 85*s);
+            ctx.lineTo(35*s, 157*s);
+            ctx.lineTo(75*s, 157*s);
+            ctx.lineTo(75*s, 117*s);
+            ctx.lineTo(117*s, 117*s);
+            ctx.lineTo(117*s, 157*s);
+            ctx.lineTo(157*s, 157*s);
+            ctx.lineTo(157*s, 85*s);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Heart
+            ctx.fillStyle = '#FF6B35';
+            ctx.beginPath();
+            const cx = 96*s, cy = 100*s;
+            const heartSize = 25*s;
+            ctx.moveTo(cx, cy - heartSize*0.3);
+            ctx.bezierCurveTo(cx - heartSize, cy - heartSize, cx - heartSize, cy + heartSize*0.3, cx, cy + heartSize);
+            ctx.bezierCurveTo(cx + heartSize, cy + heartSize*0.3, cx + heartSize, cy - heartSize, cx, cy - heartSize*0.3);
+            ctx.fill();
+            
+            console.log(`Icon ${size}x${size}:`, canvas.toDataURL('image/png'));
+        });
+    </script>
+</body>
+</html>
