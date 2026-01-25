@@ -730,24 +730,31 @@ class FundaScraper {
         if (cardMatches.length > 0) {
             cardMatches.forEach((block, i) => {
                 const priceMatch = block.match(/€\s*([\d.,]+)/);
-                const addressMatch = block.match(/([A-Za-z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|steeg|markt)\s*\d+[a-z]?)/i);
+                // Verbeterde adres regex met huisnummer toevoegingen (-2, -H, /I etc)
+                const addressMatch = block.match(/([A-Za-z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|steeg|markt|park)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/i);
                 // Verbeterde image regex voor Funda
                 const imageMatch = block.match(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/i);
+                // Extra details uit block
+                const sizeMatch = block.match(/(\d+)\s*m²/i);
+                const roomMatch = block.match(/(\d+)\s*(?:kamers?|slaapkamers?)/i);
+                const postcodeMatch = block.match(/\b(\d{4}\s*[A-Z]{2})\b/);
                 
                 if (priceMatch) {
                     const price = this.extractPrice(priceMatch[0]);
                     // Get multiple images for this house using the helper
                     const houseImages = getImagesForHouse(i, cardMatches.length);
+                    const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
                     
                     houses.push({
                         id: `funda-block-${i}-${Date.now()}`,
                         price: price,
                         address: addressMatch ? addressMatch[1] : `Woning ${i + 1}`,
+                        postalCode: postcode,
                         city: 'Amsterdam',
-                        neighborhood: this.extractNeighborhood(addressMatch ? addressMatch[1] : ''),
-                        bedrooms: 0,
+                        neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(addressMatch ? addressMatch[1] : ''),
+                        bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
                         bathrooms: 1,
-                        size: 0,
+                        size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
                         image: houseImages[0] || (imageMatch ? imageMatch[0] : this.getPlaceholderImage()),
                         images: houseImages.length > 0 ? houseImages : [],
                         url: '#',
@@ -784,12 +791,16 @@ class FundaScraper {
         // NIEUWE AANPAK: Zoek naar Funda listing cards/items via meerdere methodes
         // Funda 2024+ gebruikt vaak data-attributes of specifieke class patterns
         
+        // Verbeterde adres pattern die ook huisnummer toevoegingen vangt (bijv: 68-2, 10-H, 12-I, 15A-1)
+        // Format: Straatnaam + huisnummer + optioneel: letter en/of -toevoeging
+        const addressPattern = '([A-Z][a-zA-Z\\s\\-\\']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg|burcht|haven|brug|sluis|ring)\\s*\\d+[a-zA-Z]?(?:[\\-\\/][a-zA-Z0-9]+)?)';
+        
         // Methode 1: Zoek naar listing items met prijs en adres dicht bij elkaar
         const listingPatterns = [
             // Pattern 1: "€ 650.000 k.k." gevolgd door postcode en adres
-            /€\s*([\d.,]+)\s*(?:k\.k\.|v\.o\.n\.)?[^<]*?(\d{4}\s*[A-Z]{2})[^<]*?([A-Z][a-zA-Z\s\-]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt)\s*\d+[a-zA-Z]?)/gi,
+            new RegExp(`€\\s*([\\d.,]+)\\s*(?:k\\.k\\.|v\\.o\\.n\\.)?[^<]*?(\\d{4}\\s*[A-Z]{2})[^<]*?${addressPattern}`, 'gi'),
             // Pattern 2: Adres gevolgd door postcode en prijs
-            /([A-Z][a-zA-Z\s\-]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt)\s*\d+[a-zA-Z]?)[^<]*?(\d{4}\s*[A-Z]{2})[^<]*?€\s*([\d.,]+)/gi,
+            new RegExp(`${addressPattern}[^<]*?(\\d{4}\\s*[A-Z]{2})[^<]*?€\\s*([\\d.,]+)`, 'gi'),
         ];
         
         let foundListings = [];
@@ -804,7 +815,7 @@ class FundaScraper {
         
         // Methode 2: Zoek naar listing blokken met alle data erin
         // Funda structureert data vaak als: [prijs] [m²] [kamers] [adres] [postcode]
-        const completeListingRegex = /€\s*([\d.,]+)[^€]{0,800}?(\d+)\s*m²[^€]{0,200}?(\d+)\s*(?:kamers?|slaapkamers?)[^€]{0,200}?([A-Z][a-zA-Z\s\-]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt)\s*\d+[a-zA-Z]?)[^€]{0,100}?(\d{4}\s*[A-Z]{2})/gi;
+        const completeListingRegex = new RegExp(`€\\s*([\\d.,]+)[^€]{0,800}?(\\d+)\\s*m²[^€]{0,200}?(\\d+)\\s*(?:kamers?|slaapkamers?)[^€]{0,200}?${addressPattern}[^€]{0,100}?(\\d{4}\\s*[A-Z]{2})`, 'gi');
         const blockMatches = [...html.matchAll(completeListingRegex)];
         console.log(`📊 Block pattern found ${blockMatches.length} complete listings`);
         
@@ -849,7 +860,9 @@ class FundaScraper {
         }
         
         // Fallback: Door te zoeken naar secties die beide bevatten
-        const sectionRegex = /€\s*([\d.,]+)[^€]{0,500}?([A-Z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof)\s*\d+[a-z]?)|([A-Z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof)\s*\d+[a-z]?)[^€]{0,500}?€\s*([\d.,]+)/gi;
+        // Verbeterde adres pattern voor fallback met huisnummer toevoegingen
+        const fallbackAddressPattern = '[A-Z][a-zA-Z\\s\\-\\']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg)\\s*\\d+[a-zA-Z]?(?:[\\-\\/][a-zA-Z0-9]+)?';
+        const sectionRegex = new RegExp(`€\\s*([\\d.,]+)[^€]{0,500}?(${fallbackAddressPattern})|(${fallbackAddressPattern})[^€]{0,500}?€\\s*([\\d.,]+)`, 'gi');
         const sectionMatches = [...html.matchAll(sectionRegex)];
         
         console.log(`📊 Found ${sectionMatches.length} price+address pairs`);
@@ -869,20 +882,27 @@ class FundaScraper {
                     const image = houseImages[0] || this.getPlaceholderImage();
                     houseIndex++;
                     
-                    // Zoek naar size, rooms en postcode in de context rond deze match (200 chars before/after)
+                    // Zoek naar size, rooms en postcode in de context rond deze match (500 chars before/after voor meer data)
                     const matchIndex = match.index || 0;
-                    const contextStart = Math.max(0, matchIndex - 200);
-                    const contextEnd = Math.min(html.length, matchIndex + match[0].length + 200);
+                    const contextStart = Math.max(0, matchIndex - 500);
+                    const contextEnd = Math.min(html.length, matchIndex + match[0].length + 500);
                     const context = html.substring(contextStart, contextEnd);
                     
-                    // Extract data from local context
+                    // Extract data from local context - meer patronen
                     const sizeMatch = context.match(/(\d+)\s*m²/i);
                     const roomMatch = context.match(/(\d+)\s*(?:kamers?|slaapkamers?)/i);
+                    const bedroomMatch = context.match(/(\d+)\s*slaapkamer/i);
+                    const bathroomMatch = context.match(/(\d+)\s*(?:badkamers?|badkamer)/i);
                     const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
+                    const yearMatch = context.match(/(?:bouwjaar|gebouwd)[:\s]*(\d{4})/i) || context.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+                    const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i) || context.match(/\b([A-G]\+{0,4})\s*(?:label|energielabel)/i);
                     
                     const size = sizeMatch ? parseInt(sizeMatch[1]) : 0;
-                    const bedrooms = roomMatch ? parseInt(roomMatch[1]) : 0;
+                    const bedrooms = bedroomMatch ? parseInt(bedroomMatch[1]) : (roomMatch ? parseInt(roomMatch[1]) : 0);
+                    const bathrooms = bathroomMatch ? parseInt(bathroomMatch[1]) : 1;
                     const postalCode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
+                    const yearBuilt = yearMatch ? parseInt(yearMatch[1]) : null;
+                    const energyLabel = energyMatch ? energyMatch[1].toUpperCase() : '';
                     
                     houses.push({
                         id: `funda-pair-${i}-${Date.now()}`,
@@ -892,8 +912,10 @@ class FundaScraper {
                         city: 'Amsterdam',
                         neighborhood: this.getNeighborhoodFromPostcode(postalCode) || this.extractNeighborhood(address),
                         bedrooms: bedrooms,
-                        bathrooms: 1,
+                        bathrooms: bathrooms,
                         size: size,
+                        yearBuilt: yearBuilt,
+                        energyLabel: energyLabel,
                         image: image,
                         images: houseImages.length > 0 ? houseImages : [],
                         url: '#',
@@ -913,7 +935,8 @@ class FundaScraper {
 
         // Fallback: oude methode met verbeterde image matching
         const priceRegex = /€\s*([\d.,]+)\s*(k\.k\.|v\.o\.n\.|p\/mnd)?/gi;
-        const addressRegex = /([A-Z][a-z]+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof)\s*\d+[a-z]?(?:\s*[-–]\s*\d+)?)/gi;
+        // Verbeterde adres regex met huisnummer toevoegingen
+        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|park|markt|steeg)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
         // Verbeterde image regex specifiek voor Funda CDN
         const imageRegex = /https?:\/\/cloud\.funda\.nl\/valentina_media\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi;
 
@@ -941,15 +964,23 @@ class FundaScraper {
             const context = addrIndex >= 0 ? html.substring(contextStart, contextEnd) : '';
             
             // Extract data from local context
+            // Extract data from local context - meer patronen
             const sizeMatch = context.match(/(\d+)\s*m²/i);
             const roomMatch = context.match(/(\d+)\s*(?:kamers?|slaapkamers?)/i);
+            const bedroomMatch = context.match(/(\d+)\s*slaapkamer/i);
+            const bathroomMatch = context.match(/(\d+)\s*(?:badkamers?|badkamer)/i);
             const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
             const priceMatch = context.match(/€\s*([\d.,]+)/);
+            const yearMatch = context.match(/(?:bouwjaar|gebouwd)[:\s]*(\d{4})/i) || context.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+            const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
             
             const size = sizeMatch ? parseInt(sizeMatch[1]) : 0;
-            const bedrooms = roomMatch ? parseInt(roomMatch[1]) : 0;
+            const bedrooms = bedroomMatch ? parseInt(bedroomMatch[1]) : (roomMatch ? parseInt(roomMatch[1]) : 0);
+            const bathrooms = bathroomMatch ? parseInt(bathroomMatch[1]) : 1;
             const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
             const price = priceMatch ? this.extractPrice(priceMatch[0]) : (prices[i] || null);
+            const yearBuilt = yearMatch ? parseInt(yearMatch[1]) : null;
+            const energyLabel = energyMatch ? energyMatch[1].toUpperCase() : '';
             
             // Get images using the helper function
             const houseImages = getImagesForHouse(i, addresses.length);
@@ -962,8 +993,10 @@ class FundaScraper {
                 city: 'Amsterdam',
                 neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(address),
                 bedrooms: bedrooms,
-                bathrooms: 1,
+                bathrooms: bathrooms,
                 size: size,
+                yearBuilt: yearBuilt,
+                energyLabel: energyLabel,
                 image: houseImages[0] || images[i] || this.getPlaceholderImage(),
                 images: houseImages.length > 0 ? houseImages : [],
                 url: '#',
