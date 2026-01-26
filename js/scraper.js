@@ -832,8 +832,8 @@ class FundaScraper {
                 bedrooms: 0,
                 bathrooms: 1,
                 size: sizes[i] || 0,
-                image: images[i] || this.getPlaceholderImage(),
-                images: images.slice(i * 2, i * 2 + 4),
+                image: this.getPlaceholderImage(),
+                images: [],
                 url: propertyMatches[i]?.[1] || '#',
                 source: 'Jaap.nl'
             });
@@ -1676,7 +1676,6 @@ class FundaScraper {
         
         if (sectionMatches.length > 0) {
             const seenAddresses = new Set();
-            let houseIndex = 0;
             sectionMatches.forEach((match, i) => {
                 const price = match[1] || match[4];
                 const address = match[2] || match[3];
@@ -1684,10 +1683,7 @@ class FundaScraper {
                 if (price && address && !seenAddresses.has(address)) {
                     seenAddresses.add(address);
                     
-                    // Get multiple images for this house using the helper
-                    const houseImages = getImagesForHouse(houseIndex, sectionMatches.length);
-                    const image = houseImages[0] || this.getPlaceholderImage();
-                    houseIndex++;
+                    // DON'T use images from search page - real images come from detail page
                     
                     // Zoek naar size, rooms en postcode in de context rond deze match (500 chars before/after voor meer data)
                     const matchIndex = match.index || 0;
