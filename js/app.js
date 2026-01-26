@@ -1111,7 +1111,7 @@ class FunDaApp {
             <div class="swipe-indicator nope">✕ Nee</div>
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
-                <div class="card-address">${house.address}${house.addition ? ' ' + house.addition : ''}</div>
+                <div class="card-address">${house.address}</div>
                 <div class="card-neighborhood">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
                 <div class="card-features">
                     <span class="feature">${house.size || '?'}m²</span>
