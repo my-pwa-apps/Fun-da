@@ -90,6 +90,9 @@ class FunDaApp {
 
         // Setup event listeners
         this.setupEventListeners();
+        
+        // Restore filter UI from saved state
+        this.restoreFilterUI();
 
         // Don't render old cards yet - wait for fresh data
         // Only update stats and family UI
@@ -377,8 +380,34 @@ class FunDaApp {
                     this.houses = houses;
                 }
             }
+            
+            // Load saved filters
+            const savedFilters = localStorage.getItem('funda-filters');
+            if (savedFilters) {
+                this.filters = JSON.parse(savedFilters);
+            }
         } catch (e) {
             console.error('Error loading from storage:', e);
+        }
+    }
+    
+    restoreFilterUI() {
+        // Restore filter UI from saved state
+        if (this.filters.minPrice) {
+            document.getElementById('minPrice').value = this.filters.minPrice;
+        }
+        if (this.filters.maxPrice) {
+            document.getElementById('maxPrice').value = this.filters.maxPrice;
+        }
+        if (this.filters.neighborhood) {
+            document.getElementById('neighborhood').value = this.filters.neighborhood;
+        }
+        if (this.filters.minBedrooms) {
+            document.querySelectorAll('.btn-option').forEach(btn => {
+                if (parseInt(btn.dataset.value, 10) === this.filters.minBedrooms) {
+                    btn.classList.add('active');
+                }
+            });
         }
     }
 
@@ -388,6 +417,7 @@ class FunDaApp {
             localStorage.setItem('funda-viewed', this.viewed.toString());
             localStorage.setItem('funda-index', this.currentIndex.toString());
             localStorage.setItem('funda-houses', JSON.stringify(this.houses));
+            localStorage.setItem('funda-filters', JSON.stringify(this.filters));
         } catch (e) {
             console.error('Error saving to storage:', e);
         }
@@ -473,12 +503,25 @@ class FunDaApp {
             localStorage.removeItem('funda-viewed');
             localStorage.removeItem('funda-index');
             localStorage.removeItem('funda-houses');
+            localStorage.removeItem('funda-filters');
             
             // Reset app state
             this.houses = [];
             this.favorites = [];
             this.currentIndex = 0;
             this.viewed = 0;
+            this.filters = {
+                minPrice: null,
+                maxPrice: null,
+                minBedrooms: null,
+                neighborhood: null
+            };
+            
+            // Reset filter UI
+            document.getElementById('minPrice').value = '';
+            document.getElementById('maxPrice').value = '';
+            document.getElementById('neighborhood').value = '';
+            document.querySelectorAll('.btn-option').forEach(btn => btn.classList.remove('active'));
             
             // Clear scraper cache
             this.scraper.cache.clear();
