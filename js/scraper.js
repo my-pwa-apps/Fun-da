@@ -1434,24 +1434,9 @@ class FundaScraper {
             return nearestPrice;
         };
         
-        // Verzamel ook alle Funda afbeelding URLs
+        // Verzamel ook alle Funda afbeelding URLs (voor debugging)
         const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
         console.log(`📷 Found ${allFundaImages.length} Funda images in HTML`);
-        
-        // Helper function to get images for a house (cycles through available images)
-        const getImagesForHouse = (index, totalHouses) => {
-            if (allFundaImages.length === 0) return [];
-            // Calculate how many images per house we can afford
-            const imagesPerHouse = Math.max(1, Math.floor(allFundaImages.length / Math.max(1, totalHouses)));
-            const startIdx = (index * imagesPerHouse) % allFundaImages.length;
-            // Get up to 4 images, cycling through if needed
-            const houseImages = [];
-            for (let j = 0; j < Math.min(4, allFundaImages.length); j++) {
-                const imgIdx = (startIdx + j) % allFundaImages.length;
-                houseImages.push(allFundaImages[imgIdx]);
-            }
-            return houseImages;
-        };
         
         // NIEUWE METHODE: Zoek naar detail URLs om listings te vinden
         // Format: /detail/koop/amsterdam/[type-]straatnaam-huisnummer/id/
@@ -1513,10 +1498,18 @@ class FundaScraper {
                 const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                 const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
                 
+                // Try to find image specific to this listing (near the URL in HTML)
+                // Look for cloud.funda.nl image within 2000 chars before the URL
+                const imgSearchStart = Math.max(0, urlIndex - 2000);
+                const imgSearchEnd = urlIndex;
+                const imgContext = html.substring(imgSearchStart, imgSearchEnd);
+                const listingImageMatch = imgContext.match(/https?:\/\/cloud\.funda\.nl\/valentina_media[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi);
+                // Get the last image found (closest to the URL)
+                const listingImage = listingImageMatch ? listingImageMatch[listingImageMatch.length - 1] : null;
+                
                 // Add house even if price is 0 (show as "Prijs op aanvraag")
                 // Only skip if we have a nonsense low price like €50
                 if (price === 0 || price > 50000) {
-                    const houseImages = getImagesForHouse(houses.length, detailMatches.length);
                     const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
                     
                     houses.push({
@@ -1531,8 +1524,8 @@ class FundaScraper {
                         size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
                         yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
                         energyLabel: energyMatch ? energyMatch[1].toUpperCase() : '',
-                        image: houseImages[0] || this.getPlaceholderImage(),
-                        images: houseImages,
+                        image: listingImage || this.getPlaceholderImage(),
+                        images: listingImage ? [listingImage] : [],
                         url: `https://www.funda.nl${fullUrl}`,
                         description: '',
                         features: [],
