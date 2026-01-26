@@ -4,6 +4,13 @@
 // Utility function
 const $ = (id) => document.getElementById(id);
 
+// Clean address: remove duplicate floor suffixes like "straat 27-H H" -> "straat 27-H"
+const cleanAddress = (addr) => {
+    if (!addr) return '';
+    // Match patterns like "27-H H", "10-2 2", "15-III III" at the end
+    return addr.replace(/(\d+[a-zA-Z]?[-\/]([a-zA-Z0-9]+))\s+\2\s*$/i, '$1').trim();
+};
+
 class FunDaApp {
     constructor() {
         // App state
@@ -498,30 +505,19 @@ class FunDaApp {
 
     clearAllData() {
         if (confirm('Weet je zeker dat je alle data wilt wissen? Dit verwijdert alle opgeslagen huizen en favorieten.')) {
-            // Clear localStorage
+            // Clear localStorage (keep filters!)
             localStorage.removeItem('funda-favorites');
             localStorage.removeItem('funda-viewed');
             localStorage.removeItem('funda-index');
             localStorage.removeItem('funda-houses');
-            localStorage.removeItem('funda-filters');
+            // Note: We keep funda-filters so user doesn't have to re-enter them
             
-            // Reset app state
+            // Reset app state (keep filters!)
             this.houses = [];
             this.favorites = [];
             this.currentIndex = 0;
             this.viewed = 0;
-            this.filters = {
-                minPrice: null,
-                maxPrice: null,
-                minBedrooms: null,
-                neighborhood: null
-            };
-            
-            // Reset filter UI
-            document.getElementById('minPrice').value = '';
-            document.getElementById('maxPrice').value = '';
-            document.getElementById('neighborhood').value = '';
-            document.querySelectorAll('.btn-option').forEach(btn => btn.classList.remove('active'));
+            // Filters are intentionally kept
             
             // Clear scraper cache
             this.scraper.cache.clear();
@@ -1111,7 +1107,7 @@ class FunDaApp {
             <div class="swipe-indicator nope">✕ Nee</div>
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
-                <div class="card-address">${house.address}</div>
+                <div class="card-address">${cleanAddress(house.address)}</div>
                 <div class="card-neighborhood">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
                 <div class="card-features">
                     <span class="feature">${house.size || '?'}m²</span>
@@ -1380,9 +1376,9 @@ class FunDaApp {
         if (house.enrichedFromBag) sourceBadges.push('<span class="source-badge source-bag">BAG ✓</span>');
         if (house.enrichedFromFunda) sourceBadges.push('<span class="source-badge source-funda">Details ✓</span>');
 
-        document.getElementById('detailTitle').textContent = house.address;
+        document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <img class="detail-image" src="${house.image}" alt="${house.address}">
+            <img class="detail-image" src="${house.image}" alt="${cleanAddress(house.address)}">
             
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
@@ -1451,10 +1447,10 @@ class FunDaApp {
                 const safeId = String(house.id).replace(/'/g, "\\'");
                 return `
                 <div class="favorite-item" onclick="app.showFavoriteDetail('${safeId}')">
-                    <img class="favorite-image" src="${house.image}" alt="${house.address}">
+                    <img class="favorite-image" src="${house.image}" alt="${cleanAddress(house.address)}">
                     <div class="favorite-info">
                         <div class="favorite-price">${formatPrice(house.price)}</div>
-                        <div class="favorite-address">${house.address}</div>
+                        <div class="favorite-address">${cleanAddress(house.address)}</div>
                         <div class="favorite-features">${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city}</div>
                     </div>
                     <button class="favorite-remove" onclick="event.stopPropagation(); app.removeFromFavorites('${safeId}')">
@@ -1475,9 +1471,9 @@ class FunDaApp {
 
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
 
-        document.getElementById('detailTitle').textContent = house.address;
+        document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <img class="detail-image" src="${house.image}" alt="${house.address}">
+            <img class="detail-image" src="${house.image}" alt="${cleanAddress(house.address)}">
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>

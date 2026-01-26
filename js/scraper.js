@@ -430,10 +430,20 @@ class FundaScraper {
                 details.price = this.extractPrice(priceMatch[0]);
             }
             
-            // Woonoppervlakte (living space)
-            const sizeMatch = html.match(/(?:woon(?:oppervlakte)?|gebruiksoppervlakte)[^\d]{0,30}(\d+)\s*m²/i);
-            if (sizeMatch) {
-                details.size = parseInt(sizeMatch[1]);
+            // Woonoppervlakte (living space) - be specific to avoid matching floor sizes
+            // Priority order: "Woonoppervlakte" > "Gebruiksoppervlakte wonen" > "wonen" area
+            const woonOppMatch = html.match(/woonoppervlakte[^<\d]{0,50}?(\d+)\s*m²/i);
+            const gebruiksOppMatch = html.match(/gebruiksoppervlakte\s*wonen[^<\d]{0,50}?(\d+)\s*m²/i);
+            // Also try to find the summary size near address (often in format: "85 m² • 3 kamers")
+            const summaryMatch = html.match(/<span[^>]*>(\d{2,4})\s*m²<\/span>/i);
+            
+            if (woonOppMatch) {
+                details.size = parseInt(woonOppMatch[1]);
+            } else if (gebruiksOppMatch) {
+                details.size = parseInt(gebruiksOppMatch[1]);
+            } else if (summaryMatch && !house.size) {
+                // Only use summary if we don't have a size yet
+                details.size = parseInt(summaryMatch[1]);
             }
             
             // Perceeloppervlakte (plot size)
@@ -1494,7 +1504,10 @@ class FundaScraper {
                 const context = html.substring(contextStart, contextEnd);
                 
                 // Extract other details from context
-                const sizeMatch = context.match(/(\d+)\s*m²/);
+                // For size, look for the summary format first (e.g. "85 m² · 3 kamers")
+                // This is usually the total living area, not floor-specific sizes
+                const summaryMatch = context.match(/(\d{2,4})\s*m²\s*[·•\-]\s*\d+\s*kamer/i);
+                const sizeMatch = summaryMatch || context.match(/woonoppervlakte[^\d]{0,30}(\d+)\s*m²/i) || context.match(/(\d{2,4})\s*m²/);
                 const roomMatch = context.match(/(\d+)\s*kamer/i);
                 const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
                 const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
