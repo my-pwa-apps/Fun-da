@@ -1435,8 +1435,8 @@ class FundaScraper {
         };
         
         // Verzamel ook alle Funda afbeelding URLs (voor debugging)
-        const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
-        console.log(`📷 Found ${allFundaImages.length} Funda images in HTML`);
+        // const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
+        // console.log(`📷 Found ${allFundaImages.length} Funda images in HTML`);
         
         // NIEUWE METHODE: Zoek naar detail URLs om listings te vinden
         // Format: /detail/koop/amsterdam/[type-]straatnaam-huisnummer/id/
@@ -1763,9 +1763,9 @@ class FundaScraper {
         let images = [...new Set([...html.matchAll(imageRegex)].map(m => m[0]))];
         
         // Als geen specifieke images gevonden, gebruik alle eerder gevonden Funda images
-        if (images.length === 0 && allFundaImages.length > 0) {
-            images = allFundaImages;
-        }
+        // if (images.length === 0 && allFundaImages.length > 0) {
+        //     images = allFundaImages;
+        // }
 
         console.log(`📊 Regex fallback found: ${prices.length} prices, ${addresses.length} addresses, ${images.length} images`);
 
@@ -1961,12 +1961,8 @@ class FundaScraper {
     }
 
     getPlaceholderImage() {
-        const images = [
-            'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
-            'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-            'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'
-        ];
-        return images[Math.floor(Math.random() * images.length)];
+        // Gebruik een neutrale placeholder image om verwarring met echte foto's te voorkomen
+        return 'https://via.placeholder.com/800x600.png?text=FOTO+LADEN...';
     }
 
     findListingsInObject(obj, depth = 0) {
