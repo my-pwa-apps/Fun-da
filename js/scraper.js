@@ -1498,14 +1498,8 @@ class FundaScraper {
                 const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                 const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
                 
-                // Try to find image specific to this listing (near the URL in HTML)
-                // Look for cloud.funda.nl image within 2000 chars before the URL
-                const imgSearchStart = Math.max(0, urlIndex - 2000);
-                const imgSearchEnd = urlIndex;
-                const imgContext = html.substring(imgSearchStart, imgSearchEnd);
-                const listingImageMatch = imgContext.match(/https?:\/\/cloud\.funda\.nl\/valentina_media[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi);
-                // Get the last image found (closest to the URL)
-                const listingImage = listingImageMatch ? listingImageMatch[listingImageMatch.length - 1] : null;
+                // DON'T try to match images from search page - they're often wrong/shared
+                // Real images will be fetched from detail page in fetchFundaDetails()
                 
                 // Add house even if price is 0 (show as "Prijs op aanvraag")
                 // Only skip if we have a nonsense low price like €50
@@ -1524,8 +1518,8 @@ class FundaScraper {
                         size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
                         yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
                         energyLabel: energyMatch ? energyMatch[1].toUpperCase() : '',
-                        image: listingImage || this.getPlaceholderImage(),
-                        images: listingImage ? [listingImage] : [],
+                        image: this.getPlaceholderImage(),
+                        images: [],
                         url: `https://www.funda.nl${fullUrl}`,
                         description: '',
                         features: [],
@@ -1548,8 +1542,6 @@ class FundaScraper {
                 const priceMatch = block.match(/€\s*([\d.,]+)/);
                 // Verbeterde adres regex met huisnummer toevoegingen (-2, -H, /I etc)
                 const addressMatch = block.match(/([A-Za-z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|dreef|pad|hof|steeg|markt|park)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/i);
-                // Verbeterde image regex voor Funda
-                const imageMatch = block.match(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/i);
                 // Extra details uit block
                 const sizeMatch = block.match(/(\d+)\s*m²/i);
                 const roomMatch = block.match(/(\d+)\s*(?:kamers?|slaapkamers?)/i);
@@ -1557,8 +1549,7 @@ class FundaScraper {
                 
                 if (priceMatch) {
                     const price = this.extractPrice(priceMatch[0]);
-                    // Get multiple images for this house using the helper
-                    const houseImages = getImagesForHouse(i, cardMatches.length);
+                    // DON'T use images from search page - real images come from detail page
                     const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
                     const addr = addressMatch ? addressMatch[1] : `Woning ${i + 1}`;
                     
@@ -1572,8 +1563,8 @@ class FundaScraper {
                         bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
                         bathrooms: 1,
                         size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
-                        image: houseImages[0] || (imageMatch ? imageMatch[0] : this.getPlaceholderImage()),
-                        images: houseImages.length > 0 ? houseImages : [],
+                        image: this.getPlaceholderImage(),
+                        images: [],
                         url: this.generateFundaUrl(addr, postcode),
                         description: '',
                         features: [],
@@ -1638,15 +1629,12 @@ class FundaScraper {
         
         if (blockMatches.length > 0) {
             const seenAddresses = new Set();
-            let imageIndex = 0;
             
             blockMatches.forEach((match, i) => {
                 const [, price, size, rooms, address, postcode] = match;
                 
                 if (!seenAddresses.has(address)) {
                     seenAddresses.add(address);
-                    const image = allFundaImages[imageIndex] || this.getPlaceholderImage();
-                    imageIndex++;
                     
                     const cleanPostcode = postcode.replace(/\s+/g, ' ');
                     const cleanAddress = address.trim();
@@ -1661,7 +1649,8 @@ class FundaScraper {
                         bedrooms: parseInt(rooms) || 0,
                         bathrooms: 1,
                         size: parseInt(size) || 0,
-                        image: image,
+                        image: this.getPlaceholderImage(),
+                        images: [],
                         url: this.generateFundaUrl(cleanAddress, cleanPostcode),
                         description: '',
                         features: [],
@@ -1748,8 +1737,8 @@ class FundaScraper {
                         size: size,
                         yearBuilt: yearBuilt,
                         energyLabel: energyLabel,
-                        image: image,
-                        images: houseImages.length > 0 ? houseImages : [],
+                        image: this.getPlaceholderImage(),
+                        images: [],
                         url: this.generateFundaUrl(address, postalCode),
                         description: '',
                         features: [],
@@ -1815,8 +1804,8 @@ class FundaScraper {
             const yearBuilt = yearMatch ? parseInt(yearMatch[1]) : null;
             const energyLabel = energyMatch ? energyMatch[1].toUpperCase() : '';
             
-            // Get images using the helper function
-            const houseImages = getImagesForHouse(i, addresses.length);
+            // DON'T use images from search page - they're shared/incorrect
+            // Real images come from fetchFundaDetails
             
             houses.push({
                 id: `funda-regex-${i}-${Date.now()}`,
@@ -1830,8 +1819,8 @@ class FundaScraper {
                 size: size,
                 yearBuilt: yearBuilt,
                 energyLabel: energyLabel,
-                image: houseImages[0] || images[i] || this.getPlaceholderImage(),
-                images: houseImages.length > 0 ? houseImages : [],
+                image: this.getPlaceholderImage(),
+                images: [],
                 url: this.generateFundaUrl(address, postcode),
                 description: '',
                 features: [],
