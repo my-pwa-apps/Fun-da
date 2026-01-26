@@ -20,6 +20,8 @@ class FamilySync {
         this.onFamilyUpdate = null;
         this.unsubscribe = null;
         this.db = null;
+        this.auth = null;
+        this.currentUser = null;
         this.isFirebaseReady = false;
 
         this.init();
@@ -32,6 +34,11 @@ class FamilySync {
                 firebase.initializeApp(FIREBASE_CONFIG);
             }
             this.db = firebase.database();
+            this.auth = firebase.auth();
+            
+            // Sign in anonymously
+            await this.signInAnonymously();
+            
             this.isFirebaseReady = true;
             console.log('🔥 Firebase initialized successfully!');
         } catch (error) {
@@ -45,6 +52,38 @@ class FamilySync {
 
         if (this.familyCode) {
             await this.startRealtimeSync();
+        }
+    }
+
+    async signInAnonymously() {
+        try {
+            // Check if already signed in
+            if (this.auth.currentUser) {
+                this.currentUser = this.auth.currentUser;
+                console.log('🔐 Already signed in:', this.currentUser.uid);
+                return this.currentUser;
+            }
+
+            // Sign in anonymously
+            const result = await this.auth.signInAnonymously();
+            this.currentUser = result.user;
+            console.log('🔐 Signed in anonymously:', this.currentUser.uid);
+            
+            // Listen for auth state changes
+            this.auth.onAuthStateChanged((user) => {
+                if (user) {
+                    this.currentUser = user;
+                    console.log('🔐 Auth state changed:', user.uid);
+                } else {
+                    this.currentUser = null;
+                    console.log('🔐 User signed out');
+                }
+            });
+
+            return this.currentUser;
+        } catch (error) {
+            console.error('❌ Anonymous sign-in failed:', error);
+            throw error;
         }
     }
 
