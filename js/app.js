@@ -1039,8 +1039,9 @@ class FunDaApp {
         };
         
         // Collect and deduplicate images
+        const placeholderImage = 'https://via.placeholder.com/800x600.png?text=FOTO+LADEN...';
         let images = house.images && house.images.length > 0 ? [...house.images] : [];
-        const mainImage = house.image || images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80';
+        const mainImage = house.image || images[0] || placeholderImage;
         
         // Add main image if not already present
         if (mainImage && !images.includes(mainImage)) {
@@ -1070,28 +1071,28 @@ class FunDaApp {
             imageGalleryHtml = `
                 <div class="card-image-gallery">
                     <div>
-                        <img class="gallery-thumb" src="${img1}" alt="${house.address}" loading="lazy" 
-                             onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'">
+                            <img class="gallery-thumb" src="${img1}" alt="${house.address}" loading="lazy" 
+                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
                     </div>
                     <div>
-                        <img class="gallery-thumb" src="${img2}" alt="${house.address}" loading="lazy"
-                             onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80'">
+                            <img class="gallery-thumb" src="${img2}" alt="${house.address}" loading="lazy"
+                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
                     </div>
                     <div>
-                        <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
-                             onerror="this.src='https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'">
+                            <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
+                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
                     </div>
                     <div>
-                        <img class="gallery-thumb" src="${img4}" alt="${house.address}" loading="lazy"
-                             onerror="this.src='https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80'">
+                            <img class="gallery-thumb" src="${img4}" alt="${house.address}" loading="lazy"
+                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
                     </div>
                 </div>
             `;
         } else {
             // Fallback to single image
             imageGalleryHtml = `
-                <img class="card-image" src="${mainImage}" alt="${house.address}" loading="lazy" 
-                     onerror="this.src='https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'">
+                 <img class="card-image" src="${mainImage}" alt="${house.address}" loading="lazy" 
+                     onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
             `;
         }
 
