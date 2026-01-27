@@ -681,17 +681,24 @@ class FundaScraper {
         }
         console.log(`💰 Pararius: Found ${priceMap.size} valid prices`);
         
-        // Helper to find nearest price to a position
+        // Track used prices to prevent same price being assigned to multiple houses
+        const usedPricePositions = new Set();
+        
+        // Helper to find nearest UNUSED price to a position
         const findNearestPrice = (position, maxDistance = 2000) => {
             let nearestPrice = 0;
             let nearestDistance = Infinity;
+            let nearestPricePos = null;
             for (const [pricePos, price] of priceMap) {
+                if (usedPricePositions.has(pricePos)) continue;
                 const distance = Math.abs(pricePos - position);
                 if (distance < nearestDistance && distance < maxDistance) {
                     nearestDistance = distance;
                     nearestPrice = price;
+                    nearestPricePos = pricePos;
                 }
             }
+            if (nearestPricePos !== null) usedPricePositions.add(nearestPricePos);
             return nearestPrice;
         };
         
@@ -1404,7 +1411,9 @@ class FundaScraper {
 
         // NIEUWE STRATEGIE: Verzamel eerst ALLE prijzen en hun posities in de HTML
         // Dan matchen we later prijzen aan adressen op basis van nabijheid
+        // BELANGRIJK: Elke prijs mag maar 1x gebruikt worden om duplicatie te voorkomen!
         const priceMap = new Map(); // position -> price
+        const usedPricePositions = new Set(); // Track welke prijzen al gebruikt zijn
         const allPrices = [...html.matchAll(/€\s*([\d]{3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s*(?:k\.k\.|v\.o\.n\.)?/gi)];
         for (const match of allPrices) {
             const priceStr = match[1].replace(/\./g, '').replace(',', '.');
@@ -1420,16 +1429,26 @@ class FundaScraper {
         const firstPrices = [...priceMap.entries()].slice(0, 5);
         console.log('💰 First 5 prices:', firstPrices.map(([pos, price]) => `pos ${pos}: €${price.toLocaleString()}`));
         
-        // Helper function to find nearest price to a position
+        // Helper function to find nearest UNUSED price to a position
+        // Once a price is used, it won't be assigned to another house
         const findNearestPrice = (position, maxDistance = 3000) => {
             let nearestPrice = 0;
             let nearestDistance = Infinity;
+            let nearestPricePos = null;
             for (const [pricePos, price] of priceMap) {
+                // Skip already used prices
+                if (usedPricePositions.has(pricePos)) continue;
+                
                 const distance = Math.abs(pricePos - position);
                 if (distance < nearestDistance && distance < maxDistance) {
                     nearestDistance = distance;
                     nearestPrice = price;
+                    nearestPricePos = pricePos;
                 }
+            }
+            // Mark this price as used so it won't be assigned to another house
+            if (nearestPricePos !== null) {
+                usedPricePositions.add(nearestPricePos);
             }
             return nearestPrice;
         };
