@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fun-da-v59';
+const CACHE_NAME = 'fun-da-v61';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

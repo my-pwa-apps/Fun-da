@@ -424,10 +424,14 @@ class FundaScraper {
             // Extract more details from Funda detail page
             const details = {};
             
-            // Price - often more prominent on detail page
+            // Price - ALWAYS use price from detail page as it's more reliable
+            // The search page price matching is often incorrect
             const priceMatch = html.match(/€\s*([\d.,]+)(?:\s*(?:k\.k\.|v\.o\.n\.))?/i);
-            if (priceMatch && !house.price) {
-                details.price = this.extractPrice(priceMatch[0]);
+            if (priceMatch) {
+                const detailPrice = this.extractPrice(priceMatch[0]);
+                if (detailPrice && detailPrice > 50000) {
+                    details.price = detailPrice;
+                }
             }
             
             // Woonoppervlakte (living space) - be specific to avoid matching floor sizes
@@ -1307,18 +1311,18 @@ class FundaScraper {
         // Probeer verschillende selectors die Funda zou kunnen gebruiken
         const priceEl = card.querySelector('[class*="price"], [data-test-id="price"], .search-result__price');
         const addressEl = card.querySelector('[class*="address"], [data-test-id="address"], .search-result__address, h2, h3');
-        const imageEl = card.querySelector('img[src*="funda"], img[data-src], .search-result__image img');
+        // DON'T extract images from search page - they get shared between houses
+        // Real images come from detail page enrichment
         const linkEl = card.querySelector('a[href*="/koop/"], a[href*="/huur/"]');
         const sizeEl = card.querySelector('[class*="size"], [class*="living-area"], [class*="woonoppervlakte"]');
         const roomsEl = card.querySelector('[class*="rooms"], [class*="kamers"]');
 
         const price = priceEl ? this.extractPrice(priceEl.textContent) : null;
         const address = addressEl ? addressEl.textContent.trim() : 'Adres onbekend';
-        const image = imageEl ? (imageEl.src || imageEl.dataset.src) : this.getPlaceholderImage();
         const url = linkEl ? linkEl.href : '#';
 
         return {
-            id: `funda-html-${index}-${Date.now()}`,
+            id: `funda-html-${index}-${Math.random().toString(36).substring(2, 9)}`,
             price: price,
             address: address,
             city: 'Amsterdam',
@@ -1326,7 +1330,7 @@ class FundaScraper {
             bedrooms: roomsEl ? parseInt(roomsEl.textContent) || 0 : 0,
             bathrooms: 1,
             size: sizeEl ? parseInt(sizeEl.textContent) || 0 : 0,
-            image: image,
+            image: this.getPlaceholderImage(),
             url: url,
             description: '',
             features: [],
@@ -1526,7 +1530,7 @@ class FundaScraper {
                     const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
                     
                     houses.push({
-                        id: `funda-url-${listingId}-${Date.now()}`,
+                        id: `funda-url-${listingId}`,
                         price: price || null, // null for "Prijs op aanvraag"
                         address: address,
                         postalCode: postcode,
