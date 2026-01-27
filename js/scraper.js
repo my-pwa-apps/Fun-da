@@ -127,11 +127,18 @@ class FundaScraper {
     }
 
     getCacheKey(url) {
-        // Verwijder cache busters voor consistente keys
-        return btoa(url.split('?')[0] + url.split('&').filter(p => !p.startsWith('_=')).join('&')).substring(0, 32);
+        // Use full URL as cache key to avoid collisions
+        // Only remove cache buster parameters
+        const cleanUrl = url.split('?')[0] + 
+            (url.includes('?') ? '?' + url.split('?')[1].split('&').filter(p => !p.startsWith('_=')).join('&') : '');
+        return cleanUrl;
     }
 
     getFromCache(url) {
+        // DISABLE cache for detail pages to ensure each house gets its own data
+        if (url.includes('/detail/')) {
+            return null;
+        }
         const key = this.getCacheKey(url);
         const cached = this.cache.get(key);
         if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
@@ -1497,21 +1504,22 @@ class FundaScraper {
                 const houseNumberClean = houseNumber.replace(/-/g, '-');
                 const address = `${streetCapitalized} ${houseNumberClean}`;
                 
-                // Find price using position-based matching
-                const urlIndex = html.indexOf(fullUrl);
-                let price = findNearestPrice(urlIndex, 3000);
+                // DON'T use price from search page - it's unreliable and causes duplicates
+                // Real price will be fetched from detail page in fetchFundaDetails()
+                // Just set price to null here - it will be filled in during enrichment
                 
                 // Debug first house
                 if (i === 0) {
-                    console.log('🏠 First house:', { address, price, urlIndex, url: fullUrl });
+                    console.log('🏠 First house:', { address, url: fullUrl, listingId });
                 }
                 
                 // Find the listing card context for other details
+                const urlIndex = html.indexOf(fullUrl);
                 const contextStart = Math.max(0, urlIndex - 2000);
                 const contextEnd = Math.min(html.length, urlIndex + 2000);
                 const context = html.substring(contextStart, contextEnd);
                 
-                // Extract other details from context
+                // Extract other details from context (but NOT price - that comes from detail page)
                 // For size, look for the summary format first (e.g. "85 m² · 3 kamers")
                 // This is usually the total living area, not floor-specific sizes
                 const summaryMatch = context.match(/(\d{2,4})\s*m²\s*[·•\-]\s*\d+\s*kamer/i);
@@ -1521,35 +1529,31 @@ class FundaScraper {
                 const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                 const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i);
                 
-                // DON'T try to match images from search page - they're often wrong/shared
-                // Real images will be fetched from detail page in fetchFundaDetails()
+                // DON'T try to match images or prices from search page - they're often wrong/shared
+                // Real data will be fetched from detail page in fetchFundaDetails()
                 
-                // Add house even if price is 0 (show as "Prijs op aanvraag")
-                // Only skip if we have a nonsense low price like €50
-                if (price === 0 || price > 50000) {
-                    const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
-                    
-                    houses.push({
-                        id: `funda-url-${listingId}`,
-                        price: price || null, // null for "Prijs op aanvraag"
-                        address: address,
-                        postalCode: postcode,
-                        city: 'Amsterdam',
-                        neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(address),
-                        bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
-                        bathrooms: 1,
-                        size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
-                        yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
-                        energyLabel: energyMatch ? energyMatch[1].toUpperCase() : '',
-                        image: this.getPlaceholderImage(),
-                        images: [],
-                        url: `https://www.funda.nl${fullUrl}`,
-                        description: '',
-                        features: [],
-                        isNew: context.toLowerCase().includes('nieuw'),
-                        daysOnMarket: 0
-                    });
-                }
+                const postcode = postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '';
+                
+                houses.push({
+                    id: `funda-url-${listingId}`,
+                    price: null, // Will be filled from detail page
+                    address: address,
+                    postalCode: postcode,
+                    city: 'Amsterdam',
+                    neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(address),
+                    bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
+                    bathrooms: 1,
+                    size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
+                    yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
+                    energyLabel: energyMatch ? energyMatch[1].toUpperCase() : '',
+                    image: this.getPlaceholderImage(),
+                    images: [],
+                    url: `https://www.funda.nl${fullUrl}`,
+                    description: '',
+                    features: [],
+                    isNew: context.toLowerCase().includes('nieuw'),
+                    daysOnMarket: 0
+                });
             });
             
             if (houses.length > 0) {
