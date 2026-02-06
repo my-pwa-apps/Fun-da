@@ -23,82 +23,23 @@ class FundaScraper {
                 baseUrl: 'https://www.funda.nl',
                 searchUrl: 'https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&publication_date="1"',
                 enabled: true
-            },
-            pararius: {
-                name: 'Pararius',
-                baseUrl: 'https://www.pararius.nl',
-                searchUrl: 'https://www.pararius.nl/koopwoningen/amsterdam',
-                enabled: false  // Uitgeschakeld - focus op Funda
-            },
-            jaap: {
-                name: 'Jaap.nl',
-                baseUrl: 'https://www.jaap.nl',
-                searchUrl: 'https://www.jaap.nl/koophuizen/amsterdam',
-                enabled: false  // Geblokkeerd door anti-bot
-            },
-            huizenzoeker: {
-                name: 'Huizenzoeker',
-                baseUrl: 'https://www.huizenzoeker.nl',
-                searchUrl: 'https://www.huizenzoeker.nl/koop/amsterdam/',
-                enabled: false  // Geblokkeerd door anti-bot
             }
         };
         
-        // BAG API voor overheidsdata (bouwjaar, oppervlakte, woningtype)
-        // Dit is een gratis API van het Kadaster
-        this.bagApiUrl = 'https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2';
-        
         // PDOK Locatieserver voor adres lookup
         this.pdokUrl = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free';
-        
-        // Realistische User-Agents (Desktop browsers)
-        this.userAgents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
-        ];
         
         // Cache voor recent opgehaalde data
         this.cache = new Map();
         this.cacheExpiry = 5 * 60 * 1000; // 5 minuten cache
         
-        // Rate limiting (verlaagd voor snelheid)
+        // Rate limiting
         this.lastRequestTime = 0;
         this.minRequestInterval = 500; // 0.5 seconde tussen requests
         
         // Request counter voor deze sessie
         this.requestCount = 0;
         this.maxRequestsPerSession = 20;
-        
-        // Fingerprint randomization
-        this.sessionId = this.generateSessionId();
-        this.viewportSizes = [
-            { width: 1920, height: 1080 },
-            { width: 1536, height: 864 },
-            { width: 1440, height: 900 },
-            { width: 1366, height: 768 },
-            { width: 2560, height: 1440 }
-        ];
-    }
-
-    generateSessionId() {
-        // Genereer een random session ID die er realistisch uitziet
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
-    getRandomViewport() {
-        return this.viewportSizes[Math.floor(Math.random() * this.viewportSizes.length)];
-    }
-
-    getRandomUserAgent() {
-        return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
     }
 
     getNextProxy() {
@@ -207,11 +148,7 @@ class FundaScraper {
                     
                     // Valideer dat we echte HTML hebben
                     if (html && (html.includes('<!DOCTYPE') || html.includes('<html') || html.includes('funda') || html.includes('pararius'))) {
-                        // Debug: log eerste 500 chars om te zien wat we krijgen
-                        console.log('📄 Response preview:', html.substring(0, 500));
-                        
                         // Check of het een bot-detectie pagina is
-                        // Alleen flaggen als het ECHT een captcha/block pagina is
                         const hasPrices = html.includes('€') || html.includes('EUR');
                         const hasListings = html.includes('koopprijs') || html.includes('koopwoningen') || html.includes('te-koop') || html.includes('searchResults');
                         
@@ -263,24 +200,6 @@ class FundaScraper {
             sourceNames.push('Funda');
         }
         
-        if (this.dataSources.jaap.enabled) {
-            const jaapUrl = this.buildJaapUrl(searchParams);
-            scrapePromises.push(this.scrapeJaap(jaapUrl));
-            sourceNames.push('Jaap.nl');
-        }
-        
-        if (this.dataSources.pararius.enabled) {
-            const parariusUrl = this.buildParariusUrl(searchParams);
-            scrapePromises.push(this.scrapePararius(parariusUrl));
-            sourceNames.push('Pararius');
-        }
-        
-        if (this.dataSources.huizenzoeker.enabled) {
-            const huizenzoekerUrl = this.buildHuizenzoekerUrl(searchParams);
-            scrapePromises.push(this.scrapeHuizenzoeker(huizenzoekerUrl));
-            sourceNames.push('Huizenzoeker');
-        }
-        
         onProgress('Woningen zoeken...', 35);
         
         // Fetch from enabled sources in parallel
@@ -322,18 +241,6 @@ class FundaScraper {
         const area = params.area || 'amsterdam';
         const days = params.days || '1';
         return `https://www.funda.nl/zoeken/koop?selected_area=["${area}"]&publication_date="${days}"`;
-    }
-    
-    buildParariusUrl(params = {}) {
-        return 'https://www.pararius.nl/koopwoningen/amsterdam';
-    }
-    
-    buildJaapUrl(params = {}) {
-        return 'https://www.jaap.nl/koophuizen/amsterdam';
-    }
-    
-    buildHuizenzoekerUrl(params = {}) {
-        return 'https://www.huizenzoeker.nl/koop/amsterdam/';
     }
     
     deduplicateHouses(houses) {
@@ -573,9 +480,9 @@ class FundaScraper {
         try {
             // Use PDOK Locatieserver to find address and get BAG data
             const searchQuery = `${house.address} ${house.postalCode || 'Amsterdam'}`;
-            const pdokUrl = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(searchQuery)}&rows=1&fq=type:adres`;
+            const url = `${this.pdokUrl}?q=${encodeURIComponent(searchQuery)}&rows=1&fq=type:adres`;
             
-            const response = await fetch(pdokUrl);
+            const response = await fetch(url);
             if (!response.ok) return house;
             
             const data = await response.json();
@@ -649,356 +556,10 @@ class FundaScraper {
             return [];
         }
     }
-    
-    // ==========================================
-    // PARARIUS SCRAPER
-    // ==========================================
-    
-    async scrapePararius(searchUrl) {
-        console.log('🏠 Scraping Pararius:', searchUrl);
-        
-        try {
-            await this.randomDelay(300, 800);
-            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
-            return this.parseParariusResults(html);
-        } catch (error) {
-            console.warn('Pararius scraping failed:', error.message);
-            return [];
-        }
-    }
-    
-    parseParariusResults(html) {
-        const houses = [];
-        
-        // Pararius has a clean HTML structure with listing cards
-        // Format: address, postcode (neighborhood), price, m², kamers, bouwjaar
-        
-        // Find property URLs - format: /appartement-te-koop/amsterdam/ID/straat
-        const propertyRegex = /href="(\/(?:appartement|huis)-te-koop\/amsterdam\/[^"]+)"/gi;
-        const propertyMatches = [...html.matchAll(propertyRegex)];
-        const propertyUrls = [...new Set(propertyMatches.map(m => m[1]))];
-        
-        console.log(`📊 Pararius: Found ${propertyUrls.length} property URLs`);
-        
-        // IMPROVED: Build a map of all prices and their positions
-        const priceMap = new Map();
-        const allPrices = [...html.matchAll(/€\s*([\d]{3}(?:[.,]\d{3})*(?:[.,]\d+)?)/gi)];
-        for (const match of allPrices) {
-            const priceStr = match[1].replace(/\./g, '').replace(',', '.');
-            const price = parseInt(priceStr);
-            if (price >= 100000 && price <= 20000000) {
-                priceMap.set(match.index, price);
-            }
-        }
-        console.log(`💰 Pararius: Found ${priceMap.size} valid prices`);
-        
-        // Track used prices to prevent same price being assigned to multiple houses
-        const usedPricePositions = new Set();
-        
-        // Helper to find nearest UNUSED price to a position
-        const findNearestPrice = (position, maxDistance = 2000) => {
-            let nearestPrice = 0;
-            let nearestDistance = Infinity;
-            let nearestPricePos = null;
-            for (const [pricePos, price] of priceMap) {
-                if (usedPricePositions.has(pricePos)) continue;
-                const distance = Math.abs(pricePos - position);
-                if (distance < nearestDistance && distance < maxDistance) {
-                    nearestDistance = distance;
-                    nearestPrice = price;
-                    nearestPricePos = pricePos;
-                }
-            }
-            if (nearestPricePos !== null) usedPricePositions.add(nearestPricePos);
-            return nearestPrice;
-        };
-        
-        // Find all addresses in the HTML - Pararius often has addresses like "Straatnaam 123"
-        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk|baan|park|plantsoen|lei|dreef|oord|plaats|hof|steeg|sloot|vaart|markt|dam|haven|eiland|buurt|poort)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
-        const addressMatches = [...html.matchAll(addressRegex)];
-        
-        console.log(`📫 Pararius: Found ${addressMatches.length} address patterns`);
-        
-        // Find postcodes
-        const postcodeRegex = /\b(\d{4}\s*[A-Z]{2})\b/g;
-        const postcodeMatches = [...html.matchAll(postcodeRegex)];
-        
-        // For each property URL, extract information
-        let i = 0;
-        const seenAddresses = new Set();
-        
-        for (const url of propertyUrls.slice(0, 30)) {
-            // Extract address from URL: /appartement-te-koop/amsterdam/ID/street-name-123
-            const urlParts = url.split('/');
-            const urlAddress = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2] || '';
-            
-            // Convert URL-style address back to readable format
-            let address = urlAddress
-                .replace(/-/g, ' ')
-                .replace(/\b\w/g, l => l.toUpperCase())
-                .trim();
-            
-            // Skip if not a valid address pattern
-            if (!address || address.length < 5 || seenAddresses.has(address.toLowerCase())) continue;
-            seenAddresses.add(address.toLowerCase());
-            
-            // Find the URL position in HTML and search for price nearby
-            const urlIndex = html.indexOf(url);
-            const price = findNearestPrice(urlIndex, 2000);
-            
-            // Extract context around URL for other details
-            const contextStart = Math.max(0, urlIndex - 1000);
-            const contextEnd = Math.min(html.length, urlIndex + 1000);
-            const context = html.substring(contextStart, contextEnd);
-            
-            // Extract details from context
-            const sizeMatch = context.match(/(\d+)\s*m²/);
-            const roomMatch = context.match(/(\d+)\s*kamers?/i);
-            const postcodeMatch = context.match(/\b(\d{4}\s*[A-Z]{2})\b/);
-            const yearMatch = context.match(/(?:bouwjaar|gebouwd)[:\s]*(\d{4})/i);
-            
-            // Debug first listing
-            if (i === 0) {
-                console.log('🏠 Pararius first house:', { address, price, urlIndex, postcode: postcodeMatch?.[1] });
-            }
-            
-            // Only add if we have a valid price
-            if (price > 100000) {
-                houses.push({
-                    id: `pararius-${i}-${Date.now()}`,
-                    price: price,
-                    address: address,
-                    postalCode: postcodeMatch ? postcodeMatch[1].replace(/\s+/g, ' ') : '',
-                    city: 'Amsterdam',
-                    neighborhood: postcodeMatch ? this.getNeighborhoodFromPostcode(postcodeMatch[1]) : '',
-                    bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
-                    bathrooms: 1,
-                    size: sizeMatch ? parseInt(sizeMatch[1]) : 0,
-                    yearBuilt: yearMatch ? parseInt(yearMatch[1]) : null,
-                    image: this.getPlaceholderImage(),
-                    images: [],
-                    url: `https://www.pararius.nl${url}`,
-                    source: 'Pararius'
-                });
-                i++;
-            }
-        }
-        
-        console.log(`📊 Pararius extracted: ${houses.length} houses`);
-        return houses;
-    }
-    
-    // ==========================================
-    // JAAP.NL SCRAPER
-    // ==========================================
-    
-    async scrapeJaap(searchUrl) {
-        console.log('🏠 Scraping Jaap.nl:', searchUrl);
-        
-        try {
-            await this.randomDelay(300, 800);
-            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
-            return this.parseJaapResults(html);
-        } catch (error) {
-            console.warn('Jaap.nl scraping failed:', error.message);
-            return [];
-        }
-    }
-    
-    parseJaapResults(html) {
-        const houses = [];
-        
-        // Jaap.nl uses a different HTML structure
-        // Look for listing cards with price and address
-        
-        // Find all property links
-        const propertyRegex = /href="(https:\/\/www\.jaap\.nl\/te-koop\/[^"]+)"/gi;
-        const propertyMatches = [...html.matchAll(propertyRegex)];
-        
-        // Find prices
-        const priceRegex = /€\s*([\d.,]+)(?:\s*k\.k\.|\s*v\.o\.n\.)?/gi;
-        const prices = [...html.matchAll(priceRegex)].map(m => this.extractPrice(m[0])).filter(p => p > 100000);
-        
-        // Find addresses - Jaap uses different patterns
-        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel|dijk)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
-        const addresses = [...new Set([...html.matchAll(addressRegex)].map(m => m[0]))];
-        
-        // Find images
-        const imageRegex = /https?:\/\/[^"'\s]+jaap[^"'\s]*\.(?:jpg|jpeg|png|webp)/gi;
-        const images = [...new Set([...html.matchAll(imageRegex)].map(m => m[0]))];
-        
-        // Find postcodes
-        const postcodeRegex = /\b(\d{4}\s*[A-Z]{2})\b/g;
-        const postcodes = [...html.matchAll(postcodeRegex)].map(m => m[1].replace(/\s+/g, ' '));
-        
-        // Find m² values
-        const sizeRegex = /(\d+)\s*m²/gi;
-        const sizes = [...html.matchAll(sizeRegex)].map(m => parseInt(m[1]));
-        
-        console.log(`📊 Jaap.nl raw: ${prices.length} prices, ${addresses.length} addresses, ${sizes.length} sizes`);
-        
-        // Match prices to addresses
-        const count = Math.min(prices.length, addresses.length, 20);
-        for (let i = 0; i < count; i++) {
-            houses.push({
-                id: `jaap-${i}-${Date.now()}`,
-                price: prices[i] || null,
-                address: addresses[i] || `Woning ${i + 1}`,
-                postalCode: postcodes[i] || '',
-                city: 'Amsterdam',
-                neighborhood: this.getNeighborhoodFromPostcode(postcodes[i] || ''),
-                bedrooms: 0,
-                bathrooms: 1,
-                size: sizes[i] || 0,
-                image: this.getPlaceholderImage(),
-                images: [],
-                url: propertyMatches[i]?.[1] || '#',
-                source: 'Jaap.nl'
-            });
-        }
-        
-        return houses;
-    }
-    
-    // ==========================================
-    // HUIZENZOEKER SCRAPER
-    // ==========================================
-    
-    async scrapeHuizenzoeker(searchUrl) {
-        console.log('🏠 Scraping Huizenzoeker:', searchUrl);
-        
-        try {
-            await this.randomDelay(300, 800);
-            const html = await this.fetchWithProxy(this.addCacheBuster(searchUrl));
-            return this.parseHuizenzoekerResults(html);
-        } catch (error) {
-            console.warn('Huizenzoeker scraping failed:', error.message);
-            return [];
-        }
-    }
-    
-    parseHuizenzoekerResults(html) {
-        const houses = [];
-        
-        // Similar parsing approach as Jaap.nl
-        const priceRegex = /€\s*([\d.,]+)/gi;
-        const prices = [...html.matchAll(priceRegex)].map(m => this.extractPrice(m[0])).filter(p => p > 100000);
-        
-        const addressRegex = /([A-Z][a-zA-Z\s\-']+(?:straat|weg|laan|plein|gracht|kade|singel)\s*\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)/gi;
-        const addresses = [...new Set([...html.matchAll(addressRegex)].map(m => m[0]))];
-        
-        const sizeRegex = /(\d+)\s*m²/gi;
-        const sizes = [...html.matchAll(sizeRegex)].map(m => parseInt(m[1]));
-        
-        const postcodeRegex = /\b(\d{4}\s*[A-Z]{2})\b/g;
-        const postcodes = [...html.matchAll(postcodeRegex)].map(m => m[1]);
-        
-        console.log(`📊 Huizenzoeker raw: ${prices.length} prices, ${addresses.length} addresses`);
-        
-        const count = Math.min(prices.length, addresses.length, 20);
-        for (let i = 0; i < count; i++) {
-            houses.push({
-                id: `huizenzoeker-${i}-${Date.now()}`,
-                price: prices[i] || null,
-                address: addresses[i] || `Woning ${i + 1}`,
-                postalCode: postcodes[i] || '',
-                city: 'Amsterdam',
-                neighborhood: '',
-                bedrooms: 0,
-                size: sizes[i] || 0,
-                image: this.getPlaceholderImage(),
-                images: [],
-                url: '#',
-                source: 'Huizenzoeker'
-            });
-        }
-        
-        return houses;
-    }
-
-    // ==========================================
-    // LEGACY SINGLE-SOURCE METHOD (for backwards compatibility)
-    // ==========================================
-
-    async scrapeSearchResults(searchUrl) {
-        console.log('🏠 Scraping Funda:', searchUrl);
-        
-        // Voeg kleine variaties toe aan URL om caching te omzeilen
-        const urlWithCacheBuster = this.addCacheBuster(searchUrl);
-        
-        try {
-            // Random initiële delay om menselijk gedrag te simuleren
-            await this.randomDelay(500, 1500);
-            
-            // Scrape HTML pagina via CORS proxy
-            const html = await this.fetchWithProxy(urlWithCacheBuster);
-            const results = this.parseSearchResults(html, searchUrl);
-            
-            console.log(`📊 Totaal ${results.length} woningen gevonden`);
-            return results;
-        } catch (error) {
-            console.error('Scraping error:', error);
-            throw error;
-        }
-    }
 
     addCacheBuster(url) {
-        // Voeg een subtiele timestamp toe die er natuurlijk uitziet
         const separator = url.includes('?') ? '&' : '?';
-        // Gebruik een timestamp die er uitziet als een normale query parameter
         return url + separator + '_=' + Date.now().toString(36);
-    }
-
-    // Simuleer menselijk scroll/navigatie gedrag door meerdere pagina's
-    async scrapeMultiplePages(baseUrl, maxPages = 3) {
-        const allHouses = [];
-        
-        for (let page = 1; page <= maxPages; page++) {
-            console.log(`📄 Pagina ${page} van ${maxPages}...`);
-            
-            // Bouw URL met paginering
-            const pageUrl = this.addPageToUrl(baseUrl, page);
-            
-            try {
-                const houses = await this.scrapeSearchResults(pageUrl);
-                allHouses.push(...houses);
-                
-                // Stop als er geen resultaten meer zijn
-                if (houses.length === 0) {
-                    console.log('📭 Geen resultaten meer, stoppen...');
-                    break;
-                }
-                
-                // Langere delay tussen pagina's (lijkt op menselijk gedrag)
-                if (page < maxPages) {
-                    await this.randomDelay(3000, 6000);
-                }
-            } catch (error) {
-                console.warn(`⚠️ Fout bij pagina ${page}:`, error.message);
-                break;
-            }
-        }
-        
-        // Verwijder duplicaten
-        const uniqueHouses = this.removeDuplicates(allHouses);
-        console.log(`🏠 Totaal ${uniqueHouses.length} unieke woningen gevonden`);
-        return uniqueHouses;
-    }
-
-    addPageToUrl(url, page) {
-        if (page === 1) return url;
-        const separator = url.includes('?') ? '&' : '?';
-        return url + separator + 'search_result_page=' + page;
-    }
-
-    removeDuplicates(houses) {
-        const seen = new Set();
-        return houses.filter(house => {
-            const key = house.id || `${house.address}-${house.price}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
     }
 
     parseSearchResults(html, baseUrl) {
@@ -1068,23 +629,15 @@ class FundaScraper {
         const houses = [];
         
         try {
-            // Navigeer door de Next.js data structuur
             const props = data.props?.pageProps;
             if (!props) {
-                console.log('❌ No pageProps found');
+                console.debug('No pageProps found in __NEXT_DATA__');
                 return houses;
             }
-
-            console.log('📦 PageProps keys:', Object.keys(props));
-            
-            // Debug: log de hele props structuur (eerste 3000 chars)
-            const propsStr = JSON.stringify(props);
-            console.log('🔍 Full pageProps (first 3000 chars):', propsStr.substring(0, 3000));
 
             // Nieuwe Funda structuur (2024+) - zoek in verschillende locaties
             let listings = [];
             
-            // Probeer alle bekende locaties
             const possiblePaths = [
                 props.searchResult?.resultList,
                 props.searchResult?.objects,
@@ -1097,7 +650,6 @@ class FundaScraper {
                 props.results,
                 props.data?.searchResult?.resultList,
                 props.data?.objects,
-                // Nieuwe Funda 2025 structuur
                 props.pageData?.searchResult?.resultList,
                 props.dehydratedState?.queries?.[0]?.state?.data?.resultList,
             ];
@@ -1105,79 +657,40 @@ class FundaScraper {
             for (const path of possiblePaths) {
                 if (Array.isArray(path) && path.length > 0) {
                     listings = path;
-                    console.log('📍 Found listings in known path, count:', path.length);
                     break;
                 }
             }
 
             // Deep search for arrays that look like listings
             if (listings.length === 0) {
-                console.log('🔍 Deep searching for listings...');
-                const findListings = (obj, path = '', depth = 0) => {
+                const findListings = (obj, depth = 0) => {
                     if (depth > 8 || !obj) return [];
                     
                     if (Array.isArray(obj) && obj.length > 0) {
-                        // Check if this looks like a listing array
                         const first = obj[0];
                         if (first && typeof first === 'object') {
-                            // Check for common listing properties
                             const hasListingProps = first.id || first.address || first.price || 
                                 first.sellPrice || first.askingPrice || first.url || first.globalId;
-                            if (hasListingProps) {
-                                console.log(`📍 Found potential listings at ${path}, count:`, obj.length);
-                                return obj;
-                            }
+                            if (hasListingProps) return obj;
                         }
                     }
                     
                     if (typeof obj === 'object' && obj !== null) {
                         for (const key of Object.keys(obj)) {
-                            const result = findListings(obj[key], `${path}.${key}`, depth + 1);
+                            const result = findListings(obj[key], depth + 1);
                             if (result.length > 0) return result;
                         }
                     }
                     return [];
                 };
-                listings = findListings(props, 'props');
+                listings = findListings(props);
             }
 
-            console.log(`📋 Found ${listings.length} listings`);
-            
-            // Debug: log eerste item om structuur te zien
-            if (listings.length > 0) {
-                console.log('🏠 First listing structure:', JSON.stringify(listings[0], null, 2));
-            }
+            console.log(`📦 __NEXT_DATA__: ${listings.length} listings gevonden`);
 
             listings.forEach((item, index) => {
-                // Debug: log ALLE velden van eerste item
-                if (index === 0) {
-                    console.log('🏠 All item keys:', Object.keys(item));
-                    console.log('💰 Raw price data:', JSON.stringify({
-                        price: item.price,
-                        priceInfo: item.priceInfo,
-                        koopprijs: item.koopprijs,
-                        sellPrice: item.sellPrice,
-                        askingPrice: item.askingPrice,
-                        salePrice: item.salePrice,
-                        prijs: item.prijs,
-                        vraagprijs: item.vraagprijs,
-                        koopsomTotaal: item.koopsomTotaal,
-                        // Nested price objects
-                        priceSale: item.priceSale,
-                        priceRent: item.priceRent,
-                    }));
-                }
-                
-                // Handle different property name formats
                 const id = item.id || item.globalId || item.objectId || `funda-${Date.now()}-${index}`;
-                
-                // Price extraction - try ALL possible locations
                 let price = this.extractPriceFromItem(item);
-                
-                // Debug: log extracted price for first 3 items
-                if (index < 3) {
-                    console.log(`💵 Item ${index} price extracted:`, price, 'from item:', item.address || item.id);
-                }
 
                 // Address handling
                 let address = 'Adres onbekend';
@@ -1201,24 +714,6 @@ class FundaScraper {
                 // Image handling - try all possible image fields
                 let image = null;
                 
-                // Debug: log alle mogelijke image velden voor eerste item
-                if (index === 0) {
-                    console.log('📷 Image fields:', {
-                        mainPhoto: item.mainPhoto,
-                        coverPhoto: item.coverPhoto,
-                        photo: item.photo,
-                        photos: item.photos,
-                        images: item.images,
-                        image: item.image,
-                        media: item.media,
-                        thumbnail: item.thumbnail,
-                        primaryPhoto: item.primaryPhoto,
-                        fotoPrimair: item.fotoPrimair,
-                        foto: item.foto
-                    });
-                }
-                
-                // Try all possible image field locations
                 const imageFields = [
                     item.mainPhoto?.url,
                     item.mainPhoto?.src,
@@ -1349,12 +844,6 @@ class FundaScraper {
     parseWithRegex(html) {
         const houses = [];
         
-        console.log('🔍 Falling back to regex parsing...');
-        
-        // Debug: check of __NEXT_DATA__ in de HTML zit
-        const hasNextData = html.includes('__NEXT_DATA__');
-        console.log('📦 HTML contains __NEXT_DATA__:', hasNextData);
-        
         // Probeer eerst de __NEXT_DATA__ te vinden via meerdere regex patronen
         const nextDataPatterns = [
             /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/,
@@ -1374,7 +863,6 @@ class FundaScraper {
                     }
                     
                     const nextData = JSON.parse(jsonStr);
-                    console.log('📦 Found __NEXT_DATA__ via regex, parsing...');
                     const parsed = this.parseNextData(nextData);
                     if (parsed.length > 0) {
                         return parsed;
@@ -1436,12 +924,7 @@ class FundaScraper {
         }
         console.log(`💰 Found ${priceMap.size} valid prices in HTML`);
         
-        // Log first few prices for debugging
-        const firstPrices = [...priceMap.entries()].slice(0, 5);
-        console.log('💰 First 5 prices:', firstPrices.map(([pos, price]) => `pos ${pos}: €${price.toLocaleString()}`));
-        
         // Helper function to find nearest UNUSED price to a position
-        // Once a price is used, it won't be assigned to another house
         const findNearestPrice = (position, maxDistance = 3000) => {
             let nearestPrice = 0;
             let nearestDistance = Infinity;
@@ -1464,9 +947,7 @@ class FundaScraper {
             return nearestPrice;
         };
         
-        // Verzamel ook alle Funda afbeelding URLs (voor debugging)
-        // const allFundaImages = [...new Set([...html.matchAll(/https?:\/\/cloud\.funda\.nl\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi)].map(m => m[0]))];
-        // console.log(`📷 Found ${allFundaImages.length} Funda images in HTML`);
+
         
         // NIEUWE METHODE: Zoek naar detail URLs om listings te vinden
         // Format: /detail/koop/amsterdam/[type-]straatnaam-huisnummer/id/
@@ -1503,15 +984,6 @@ class FundaScraper {
                 // Handle house number with suffix like "36-h" or "10-2"
                 const houseNumberClean = houseNumber.replace(/-/g, '-');
                 const address = `${streetCapitalized} ${houseNumberClean}`;
-                
-                // DON'T use price from search page - it's unreliable and causes duplicates
-                // Real price will be fetched from detail page in fetchFundaDetails()
-                // Just set price to null here - it will be filled in during enrichment
-                
-                // Debug first house
-                if (i === 0) {
-                    console.log('🏠 First house:', { address, url: fullUrl, listingId });
-                }
                 
                 // Find the listing card context for other details
                 const urlIndex = html.indexOf(fullUrl);
@@ -1561,6 +1033,10 @@ class FundaScraper {
                 return houses;
             }
         }
+        
+        // Search for listing blocks using data-test-id or search-result patterns
+        const cardBlockRegex = /data-test-id="search-result-item"[^]*?(?=data-test-id="search-result-item"|$)/gi;
+        const cardMatches = html.match(cardBlockRegex) || [];
         
         console.log(`📊 Found ${cardMatches.length} listing blocks via data-test-id`);
         
@@ -1728,19 +1204,6 @@ class FundaScraper {
                     const yearMatch = context.match(/(?:bouwjaar|gebouwd\s*(?:in)?)[:\s]*(\d{4})/i);
                     const energyMatch = context.match(/(?:energielabel|energie)[:\s]*([A-G]\+*)/i) || context.match(/\b([A-G]\+{0,4})\s*(?:label|energielabel)/i);
                     
-                    // Debug: log first house context to see what we're working with
-                    if (i === 0) {
-                        console.log('🔍 First house context sample:', context.substring(0, 300));
-                        console.log('🔍 Details found:', { 
-                            size: sizeMatch?.[1], 
-                            rooms: roomMatch?.[1], 
-                            bedrooms: bedroomMatch?.[1],
-                            postcode: postcodeMatch?.[1],
-                            year: yearMatch?.[1],
-                            energy: energyMatch?.[1]
-                        });
-                    }
-                    
                     const size = sizeMatch ? parseInt(sizeMatch[1]) : 0;
                     const bedrooms = bedroomMatch ? parseInt(bedroomMatch[1]) : (roomMatch ? parseInt(roomMatch[1]) : 0);
                     const bathrooms = bathroomMatch ? parseInt(bathroomMatch[1]) : 1;
@@ -1789,10 +1252,7 @@ class FundaScraper {
         const addresses = [...new Set([...html.matchAll(addressRegex)].map(m => m[0]))];
         let images = [...new Set([...html.matchAll(imageRegex)].map(m => m[0]))];
         
-        // Als geen specifieke images gevonden, gebruik alle eerder gevonden Funda images
-        // if (images.length === 0 && allFundaImages.length > 0) {
-        //     images = allFundaImages;
-        // }
+
 
         console.log(`📊 Regex fallback found: ${prices.length} prices, ${addresses.length} addresses, ${images.length} images`);
 
@@ -1974,7 +1434,7 @@ class FundaScraper {
             '1056': 'Nieuw-West', '1057': 'Nieuw-West', '1058': 'Nieuw-West', '1059': 'Nieuw-West',
             '1060': 'Nieuw-West', '1061': 'Nieuw-West', '1062': 'Nieuw-West', '1063': 'Nieuw-West', '1064': 'Nieuw-West', '1065': 'Nieuw-West', '1066': 'Nieuw-West', '1067': 'Nieuw-West', '1068': 'Nieuw-West', '1069': 'Nieuw-West',
             '1071': 'Oud-Zuid', '1072': 'Oud-Zuid', '1073': 'De Pijp', '1074': 'De Pijp', '1075': 'Oud-Zuid', '1076': 'Oud-Zuid', '1077': 'Oud-Zuid', '1078': 'Oud-Zuid', '1079': 'Zuid',
-            '1081': 'Zuid', '1082': 'Zuid', '1083': 'Zuid', '1086': 'Zuid', '1087': 'Zuid', '1091': 'Oost', '1092': 'Oost', '1093': 'Oost', '1094': 'Oost', '1095': 'Oost', '1096': 'Oost', '1097': 'Oost', '1098': 'Oost',
+            '1081': 'Zuid', '1082': 'Zuid', '1083': 'Zuid', '1091': 'Oost', '1092': 'Oost', '1093': 'Oost', '1094': 'Oost', '1095': 'Oost', '1096': 'Oost', '1097': 'Oost', '1098': 'Oost',
             '1021': 'Noord', '1022': 'Noord', '1023': 'Noord', '1024': 'Noord', '1025': 'Noord', '1026': 'Noord', '1027': 'Noord', '1028': 'Noord', '1029': 'Noord', '1030': 'Noord', '1031': 'Noord', '1032': 'Noord', '1033': 'Noord', '1034': 'Noord', '1035': 'Noord', '1036': 'Noord', '1037': 'Noord', '1038': 'Noord', '1039': 'Noord',
             '1101': 'Zuidoost', '1102': 'Zuidoost', '1103': 'Zuidoost', '1104': 'Zuidoost', '1105': 'Zuidoost', '1106': 'Zuidoost', '1107': 'Zuidoost', '1108': 'Zuidoost', '1109': 'Zuidoost',
             '1086': 'IJburg', '1087': 'IJburg',
@@ -1988,8 +1448,7 @@ class FundaScraper {
     }
 
     getPlaceholderImage() {
-        // Gebruik een neutrale placeholder image om verwarring met echte foto's te voorkomen
-        return 'https://via.placeholder.com/800x600.png?text=FOTO+LADEN...';
+        return PLACEHOLDER_IMAGE;
     }
 
     findListingsInObject(obj, depth = 0) {

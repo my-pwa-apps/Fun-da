@@ -1,6 +1,21 @@
 // Helper functies voor Fun-da
 // Mock data is verwijderd - app gebruikt alleen echte Funda data
 
+// Clean address: remove duplicate floor suffixes like "straat 27-H H" -> "straat 27-H"
+const cleanAddress = (addr) => {
+    if (!addr) return '';
+    return addr.replace(/(\d+[a-zA-Z]?[-\/]([a-zA-Z0-9]+))\s+\2\s*$/i, '$1').trim();
+};
+
+// Placeholder image as inline SVG data URI (no external dependency)
+const PLACEHOLDER_IMAGE = `data:image/svg+xml,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" fill="%23f0f0f0">' +
+    '<rect width="800" height="600"/>' +
+    '<text x="400" y="290" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%23999">Foto laden...</text>' +
+    '<text x="400" y="330" text-anchor="middle" font-family="sans-serif" font-size="40" fill="%23ccc">🏠</text>' +
+    '</svg>'
+)}`;
+
 // Fun facts about Amsterdam neighborhoods
 const NEIGHBORHOOD_FACTS = {
     "Centrum": "🏛️ Het historische hart van Amsterdam met de beroemde grachten!",

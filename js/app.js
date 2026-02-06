@@ -4,13 +4,6 @@
 // Utility function
 const $ = (id) => document.getElementById(id);
 
-// Clean address: remove duplicate floor suffixes like "straat 27-H H" -> "straat 27-H"
-const cleanAddress = (addr) => {
-    if (!addr) return '';
-    // Match patterns like "27-H H", "10-2 2", "15-III III" at the end
-    return addr.replace(/(\d+[a-zA-Z]?[-\/]([a-zA-Z0-9]+))\s+\2\s*$/i, '$1').trim();
-};
-
 class FunDaApp {
     constructor() {
         // App state
@@ -71,6 +64,12 @@ class FunDaApp {
         this.detailModal = this.elements.detailModal;
         this.fundaModal = this.elements.fundaModal;
         this.familyModal = this.elements.familyModal;
+
+        // Bind drag handlers once to avoid re-creating on every card render
+        this._onDragMove = (e) => this.onDragMove(e);
+        this._onDragEnd = (e) => this.onDragEnd(e);
+        document.addEventListener('mousemove', this._onDragMove);
+        document.addEventListener('mouseup', this._onDragEnd);
 
         this.init();
     }
@@ -741,6 +740,11 @@ class FunDaApp {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
+        // Create BarcodeDetector once (not per frame)
+        const detector = ('BarcodeDetector' in window) 
+            ? new BarcodeDetector({ formats: ['qr_code'] }) 
+            : null;
+        
         const scan = () => {
             if (!this.qrStream) return;
             
@@ -748,14 +752,7 @@ class FunDaApp {
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
             
-            // Get image data
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            // Simple QR detection - look for the family code pattern in URL bar
-            // For a full solution, you'd use a library like jsQR
-            // For now, we'll use a simpler approach with BarcodeDetector if available
-            if ('BarcodeDetector' in window) {
-                const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            if (detector) {
                 detector.detect(video).then(barcodes => {
                     if (barcodes.length > 0) {
                         const data = barcodes[0].rawValue;
@@ -764,7 +761,6 @@ class FunDaApp {
                             this.stopQRScanner();
                             document.getElementById('joinFamilyCode').value = code;
                             this.showToast('QR code herkend!');
-                            // Auto-join
                             this.joinFamily();
                         }
                     }
@@ -1039,7 +1035,7 @@ class FunDaApp {
         };
         
         // Collect and deduplicate images
-        const placeholderImage = 'https://via.placeholder.com/800x600.png?text=FOTO+LADEN...';
+        const placeholderImage = PLACEHOLDER_IMAGE;
         let images = house.images && house.images.length > 0 ? [...house.images] : [];
         const mainImage = house.image || images[0] || placeholderImage;
         
@@ -1072,19 +1068,19 @@ class FunDaApp {
                 <div class="card-image-gallery">
                     <div>
                             <img class="gallery-thumb" src="${img1}" alt="${house.address}" loading="lazy" 
-                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
+                                onerror="this.src=PLACEHOLDER_IMAGE">
                     </div>
                     <div>
                             <img class="gallery-thumb" src="${img2}" alt="${house.address}" loading="lazy"
-                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
+                                onerror="this.src=PLACEHOLDER_IMAGE">
                     </div>
                     <div>
                             <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
-                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
+                                onerror="this.src=PLACEHOLDER_IMAGE">
                     </div>
                     <div>
                             <img class="gallery-thumb" src="${img4}" alt="${house.address}" loading="lazy"
-                                onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
+                                onerror="this.src=PLACEHOLDER_IMAGE">
                     </div>
                 </div>
             `;
@@ -1092,7 +1088,7 @@ class FunDaApp {
             // Fallback to single image
             imageGalleryHtml = `
                  <img class="card-image" src="${mainImage}" alt="${house.address}" loading="lazy" 
-                     onerror="this.src='https://via.placeholder.com/800x600.png?text=FOTO+LADEN...'">
+                     onerror="this.src=PLACEHOLDER_IMAGE">
             `;
         }
 
@@ -1131,10 +1127,8 @@ class FunDaApp {
         card.addEventListener('touchmove', (e) => this.onDragMove(e), { passive: false });
         card.addEventListener('touchend', (e) => this.onDragEnd(e));
 
-        // Mouse events
+        // Mouse events (only mousedown on card; move/up are on document, bound once in constructor)
         card.addEventListener('mousedown', (e) => this.onDragStart(e));
-        document.addEventListener('mousemove', (e) => this.onDragMove(e));
-        document.addEventListener('mouseup', (e) => this.onDragEnd(e));
 
         // Double click for details
         card.addEventListener('dblclick', () => this.showDetail());
@@ -1144,14 +1138,14 @@ class FunDaApp {
         const card = this.cardStack.querySelector('.house-card:last-child');
         if (!card) return;
 
-        this.isDragging = true;
-        this.startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-        this.startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+        this.touch.isDragging = true;
+        this.touch.startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+        this.touch.startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
         card.style.transition = 'none';
     }
 
     onDragMove(e) {
-        if (!this.isDragging) return;
+        if (!this.touch.isDragging) return;
 
         const card = this.cardStack.querySelector('.house-card:last-child');
         if (!card) return;
@@ -1159,27 +1153,27 @@ class FunDaApp {
         const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
         const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
 
-        this.currentX = clientX - this.startX;
-        const currentY = clientY - this.startY;
+        this.touch.currentX = clientX - this.touch.startX;
+        const currentY = clientY - this.touch.startY;
 
         // Prevent scrolling while swiping horizontally
-        if (Math.abs(this.currentX) > Math.abs(currentY) && e.cancelable) {
+        if (Math.abs(this.touch.currentX) > Math.abs(currentY) && e.cancelable) {
             e.preventDefault();
         }
 
-        const rotate = this.currentX * 0.1;
-        card.style.transform = `translateX(${this.currentX}px) translateY(${currentY * 0.3}px) rotate(${rotate}deg)`;
+        const rotate = this.touch.currentX * 0.1;
+        card.style.transform = `translateX(${this.touch.currentX}px) translateY(${currentY * 0.3}px) rotate(${rotate}deg)`;
 
         // Show indicators
         const likeIndicator = card.querySelector('.swipe-indicator.like');
         const nopeIndicator = card.querySelector('.swipe-indicator.nope');
 
         const threshold = 50;
-        if (this.currentX > threshold) {
-            likeIndicator.style.opacity = Math.min((this.currentX - threshold) / 100, 1);
+        if (this.touch.currentX > threshold) {
+            likeIndicator.style.opacity = Math.min((this.touch.currentX - threshold) / 100, 1);
             nopeIndicator.style.opacity = 0;
-        } else if (this.currentX < -threshold) {
-            nopeIndicator.style.opacity = Math.min((-this.currentX - threshold) / 100, 1);
+        } else if (this.touch.currentX < -threshold) {
+            nopeIndicator.style.opacity = Math.min((-this.touch.currentX - threshold) / 100, 1);
             likeIndicator.style.opacity = 0;
         } else {
             likeIndicator.style.opacity = 0;
@@ -1188,17 +1182,17 @@ class FunDaApp {
     }
 
     onDragEnd(e) {
-        if (!this.isDragging) return;
-        this.isDragging = false;
+        if (!this.touch.isDragging) return;
+        this.touch.isDragging = false;
 
         const card = this.cardStack.querySelector('.house-card:last-child');
         if (!card) return;
 
         const threshold = 100;
 
-        if (this.currentX > threshold) {
+        if (this.touch.currentX > threshold) {
             this.swipe('right');
-        } else if (this.currentX < -threshold) {
+        } else if (this.touch.currentX < -threshold) {
             this.swipe('left');
         } else {
             // Reset card position
@@ -1215,7 +1209,7 @@ class FunDaApp {
             }, 300);
         }
 
-        this.currentX = 0;
+        this.touch.currentX = 0;
     }
 
     swipe(direction) {
