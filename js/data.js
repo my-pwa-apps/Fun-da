@@ -56,6 +56,18 @@ function formatPrice(price) {
     }).format(price);
 }
 
+// Escape HTML special characters to prevent XSS when inserting user-controlled
+// or external strings into innerHTML
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
 // Helper function to shuffle array
 function shuffleArray(array) {
     const shuffled = [...array];

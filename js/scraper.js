@@ -653,10 +653,16 @@ class FundaScraper {
                 details.plotSize = parseInt(plotMatch[1]);
             }
             
-            // Aantal kamers
-            const roomMatch = html.match(/(?:aantal\s*(?:slaap)?kamers?|kamers?)[^\d]{0,20}(\d+)/i);
+            // Aantal kamers - require explicit slaapkamer/aantal prefix with word boundary
+            // to avoid matching compound words like "woonkamers" where the next number
+            // could be the floor area, causing bedrooms = size.
+            const roomMatch = html.match(/(?:\baantal\s*(?:slaap)?kamers?|\bslaapkamers?)[^\d]{0,20}(\d+)/i);
             if (roomMatch) {
-                details.bedrooms = parseInt(roomMatch[1]);
+                const bedroomCandidate = parseInt(roomMatch[1]);
+                // Sanity check: skip if the number looks like a floor area (> 20)
+                if (bedroomCandidate <= 20) {
+                    details.bedrooms = bedroomCandidate;
+                }
             }
             
             // Bouwjaar

@@ -1,0 +1,37 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "families": {
+      "$familyCode": {
+        ".read": true,
+        ".write": true,
+        "members": {
+          "$userId": {
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+            },
+            "favoriteCount": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+            },
+            "isOnline": {
+              ".validate": "newData.isBoolean()"
+            },
+            "lastSeen": {
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
+        "favorites": {
+          "$userId": {
+            "favorites": {
+              "$item": {
+                ".validate": "newData.isString() && newData.val().length <= 200"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

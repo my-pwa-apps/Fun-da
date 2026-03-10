@@ -1,0 +1,18 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "database.rules.json",
+      "gen-icon.ps1",
+      "generate-icons.html",
+      "cloudflare-worker/**",
+      ".github/**",
+      "README.md"
+    ]
+  }
+}

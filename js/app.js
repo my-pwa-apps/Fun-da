@@ -496,6 +496,20 @@ class FunDaApp {
         document.querySelector('.logo').addEventListener('click', () => {
             this.showToast('🎉 Fun-da - Huizenjacht was nog nooit zo leuk!');
         });
+
+        // Delegated click handler for dynamic elements.
+        // Replaces inline onclick attributes, which are blocked by a strict CSP.
+        document.body.addEventListener('click', (e) => {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            const { action, id } = target.dataset;
+            switch (action) {
+                case 'showFavoriteDetail':     this.showFavoriteDetail(id); break;
+                case 'removeFavorite':          e.stopPropagation(); this.removeFromFavorites(id); break;
+                case 'showMatchDetail':         this.showMatchDetail(id); break;
+                case 'removeFavoriteAndClose':  this.removeFromFavorites(id); this.closeModal(this.detailModal); break;
+            }
+        });
     }
 
     // ==========================================
@@ -601,10 +615,17 @@ class FunDaApp {
         } catch (error) {
             console.error('Import error:', error);
             const fundaSearchUrl = this.scraper.generateFundaUrl(url);
-            statusText.innerHTML = `❌ ${error.message}<br><br>
-                <a href="${fundaSearchUrl}" target="_blank" rel="noopener" class="funda-direct-link">
-                    🔗 Open Funda.nl direct →
-                </a>`;
+            // Build error message safely without innerHTML injection
+            statusText.textContent = `❌ ${error.message}`;
+            const link = document.createElement('a');
+            link.href = fundaSearchUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.className = 'funda-direct-link';
+            link.textContent = '🔗 Open Funda.nl direct →';
+            statusText.appendChild(document.createElement('br'));
+            statusText.appendChild(document.createElement('br'));
+            statusText.appendChild(link);
             this.showToast('⚠️ Open Funda handmatig via de link');
         } finally {
             btnText.textContent = '🔍 Importeer woningen';
@@ -630,9 +651,14 @@ class FunDaApp {
             return;
         }
 
-        const code = await this.familySync.createFamily(name);
-        this.showToast(`🎉 Familie aangemaakt! Code: ${code}`);
-        this.updateFamilyUI();
+        try {
+            const code = await this.familySync.createFamily(name);
+            this.showToast(`🎉 Familie aangemaakt! Code: ${code}`);
+            this.updateFamilyUI();
+        } catch (e) {
+            console.error('createFamily error:', e);
+            this.showToast('❌ Familie aanmaken mislukt. Controleer je internetverbinding.');
+        }
     }
 
     async joinFamily() {
@@ -651,9 +677,14 @@ class FunDaApp {
             return;
         }
 
-        await this.familySync.joinFamily(code, name);
-        this.showToast(`👨‍👩‍👧‍👦 Je bent nu lid van familie ${code}!`);
-        this.updateFamilyUI();
+        try {
+            await this.familySync.joinFamily(code, name);
+            this.showToast(`👨‍👩‍👧‍👦 Je bent nu lid van familie ${code}!`);
+            this.updateFamilyUI();
+        } catch (e) {
+            console.error('joinFamily error:', e);
+            this.showToast('❌ Familie joinen mislukt. Controleer de code en je internetverbinding.');
+        }
     }
 
     leaveFamily() {
@@ -736,10 +767,6 @@ class FunDaApp {
     }
     
     scanQRCode(video, status) {
-        // Create canvas for frame capture
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
         // Create BarcodeDetector once (not per frame)
         const detector = ('BarcodeDetector' in window) 
             ? new BarcodeDetector({ formats: ['qr_code'] }) 
@@ -747,10 +774,6 @@ class FunDaApp {
         
         const scan = () => {
             if (!this.qrStream) return;
-            
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
             
             if (detector) {
                 detector.detect(video).then(barcodes => {
@@ -822,8 +845,8 @@ class FunDaApp {
                 <div class="member-item ${m.isCurrentUser ? 'current-user' : ''}">
                     <div class="member-avatar">${this.getAvatarEmoji(m.name)}</div>
                     <div class="member-info">
-                        <div class="member-name">${m.name} ${m.isCurrentUser ? '<span class="member-badge">Jij</span>' : ''}</div>
-                        <div class="member-stats">❤️ ${m.favoriteCount} favorieten</div>
+                        <div class="member-name">${escapeHtml(m.name)} ${m.isCurrentUser ? '<span class="member-badge">Jij</span>' : ''}</div>
+                        <div class="member-stats">❤️ ${escapeHtml(String(m.favoriteCount))} favorieten</div>
                     </div>
                 </div>
             `).join('');
@@ -837,15 +860,14 @@ class FunDaApp {
                 for (const [houseId, memberNames] of this.familyMatches) {
                     const house = this.findHouseById(houseId);
                     if (house) {
-                        const safeId = String(houseId).replace(/'/g, "\\'");
                         matchHtml.push(`
-                            <div class="match-item" onclick="app.showMatchDetail('${safeId}')">
+                            <div class="match-item" data-action="showMatchDetail" data-id="${escapeHtml(String(houseId))}">
                                 <img class="match-image" src="${house.image}" alt="${house.address}">
                                 <div class="match-info">
                                     <div class="match-price">${formatPrice(house.price)}</div>
                                     <div class="match-address">${house.address}</div>
                                     <div class="match-members">
-                                        ${memberNames.map(n => `<span class="match-member-badge">${n}</span>`).join('')}
+                                        ${memberNames.map(n => `<span class="match-member-badge">${escapeHtml(n)}</span>`).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -933,7 +955,7 @@ class FunDaApp {
                         padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; text-align: center;">
                 <p style="font-weight: 600; margin-bottom: 0.5rem;">Deze woning is geliked door:</p>
                 <div style="display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
-                    ${memberNames ? memberNames.map(n => `<span class="match-member-badge">${n}</span>`).join('') : ''}
+                    ${memberNames ? memberNames.map(n => `<span class="match-member-badge">${escapeHtml(n)}</span>`).join('') : ''}
                 </div>
             </div>
             
@@ -1501,16 +1523,16 @@ class FunDaApp {
             noFavorites.classList.add('hidden');
 
             list.innerHTML = this.favorites.map(house => {
-                const safeId = String(house.id).replace(/'/g, "\\'");
+                const escapedId = escapeHtml(String(house.id));
                 return `
-                <div class="favorite-item" onclick="app.showFavoriteDetail('${safeId}')">
+                <div class="favorite-item" data-action="showFavoriteDetail" data-id="${escapedId}">
                     <img class="favorite-image" src="${house.image}" alt="${cleanAddress(house.address)}">
                     <div class="favorite-info">
                         <div class="favorite-price">${formatPrice(house.price)}</div>
                         <div class="favorite-address">${cleanAddress(house.address)}</div>
                         <div class="favorite-features">${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city}</div>
                     </div>
-                    <button class="favorite-remove" onclick="event.stopPropagation(); app.removeFromFavorites('${safeId}')">
+                    <button class="favorite-remove" data-action="removeFavorite" data-id="${escapedId}">
                         ✕
                     </button>
                 </div>
@@ -1545,8 +1567,6 @@ class FunDaApp {
             <a href="${house.googleMapsUrl}" target="_blank" rel="noopener" class="btn-secondary btn-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
                 🗺️ Bekijk op Maps
             </a>` : '';
-
-        const safeId = String(house.id).replace(/'/g, "\\'");
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
@@ -1595,7 +1615,7 @@ class FunDaApp {
             ` : ''}
             ${mapsLinkHtml}
 
-            <button class="btn-primary btn-full" style="background: var(--danger);" onclick="app.removeFromFavorites('${safeId}'); app.closeModal(app.detailModal);">
+            <button class="btn-primary btn-full" style="background: var(--danger);" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(house.id))}">
                 🗑️ Verwijderen uit favorieten
             </button>
         `;

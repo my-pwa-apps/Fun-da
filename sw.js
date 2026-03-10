@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fun-da-v66';
+const CACHE_NAME = 'fun-da-v69';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -9,6 +9,7 @@ const ASSETS_TO_CACHE = [
     './js/firebase-sync.js',
     './manifest.json',
     './icons/icon-192.svg',
+    './icons/icon-180.png',
     './favicon.svg'
 ];
 

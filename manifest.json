@@ -2,12 +2,19 @@
     "name": "Fun-da - Bring the fun back!",
     "short_name": "Fun-da",
     "description": "De leukste manier om een huis te vinden in Amsterdam!",
-    "start_url": "/",
+    "start_url": "/Fun-da/",
+    "scope": "/Fun-da/",
     "display": "standalone",
     "background_color": "#FFF5F0",
     "theme_color": "#FF6B35",
     "orientation": "portrait",
     "icons": [
+        {
+            "src": "icons/icon-180.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
         {
             "src": "icons/icon-192.svg",
             "sizes": "any",
