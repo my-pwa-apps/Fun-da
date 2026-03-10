@@ -81,7 +81,7 @@ class FundaScraper {
             type: ['single'],
             zoning: ['residential'],
             object_type: ['house', 'apartment'],
-            publication_date: { no_preference: true },
+            publication_date: params.days ? { days: parseInt(params.days) } : { no_preference: true },
             offering_type: 'buy',
             selected_area: [area],
             sort: { field: 'publish_date_utc', order: 'desc' },
@@ -137,7 +137,7 @@ class FundaScraper {
                 plotArea: source.plot_area_range?.gte || 0,
                 energyLabel: source.energy_label || '',
                 yearBuilt: null,           // Not in search results – fetched from detail
-                propertyType: source.object_type || '',
+                propertyType: { house: 'Woning', apartment: 'Appartement', parking_space: 'Parkeerplaats', building_plot: 'Bouwgrond' }[source.object_type] || source.object_type || '',
                 constructionType: source.construction_type || '',
                 publicationDate: source.publish_date || '',
                 brokerName: source.agent?.[0]?.name || '',
@@ -310,7 +310,7 @@ class FundaScraper {
                     if (house.url && house.url !== '#') {
                         const detail = await this.fetchFundaMobileDetail(house.url);
                         if (detail) {
-                            return { ...house, ...detail, id: house.id };
+                            return { ...house, ...detail, id: house.id, address: detail.address || house.address };
                         }
                     }
                     return house;
@@ -481,7 +481,7 @@ class FundaScraper {
         // Requires the Cloudflare Worker proxy to be deployed and support POST + funda.io headers.
         onProgress('Verbinden met Funda API...', 15);
         try {
-            const mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam' });
+            const mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days });
             if (mobileResults.length > 0) {
                 console.log(`📱 Mobile API: ${mobileResults.length} woningen via JSON API`);
                 onProgress(`${mobileResults.length} woningen gevonden, details ophalen...`, 50);

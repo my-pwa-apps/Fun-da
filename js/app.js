@@ -67,6 +67,7 @@ class FunDaApp {
         this.browseOpen = false;
         this.browseSort = 'default';
         this.browseLayout = 'list';
+        this.daysBack = 3; // Configurable days back for auto-load
         this.browseFilters = {
             minPrice: null, maxPrice: null,
             minSize: null, maxSize: null,
@@ -207,7 +208,7 @@ class FunDaApp {
             // Use the scraper directly for splash screen updates
             const houses = await this.scraper.scrapeAllSources({ 
                 area: 'amsterdam', 
-                days: '1',
+                days: String(this.daysBack),
                 onProgress: (message, progress) => {
                     this.stopProgressAnimation(); // Stop auto-animation once we have real progress
                     this.updateSplashStatus(message);
@@ -446,7 +447,10 @@ class FunDaApp {
             if (savedMeta) {
                 this.favoriteMeta = JSON.parse(savedMeta);
             }
-        } catch (e) {
+
+            // Load saved daysBack setting
+            const savedDaysBack = localStorage.getItem('funda-days-back');
+            if (savedDaysBack) this.daysBack = parseInt(savedDaysBack, 10);
             console.error('Error loading from storage:', e);
         }
     }
@@ -479,6 +483,7 @@ class FunDaApp {
             localStorage.setItem('funda-houses', JSON.stringify(this.houses));
             localStorage.setItem('funda-filters', JSON.stringify(this.filters));
             localStorage.setItem('funda-favorite-meta', JSON.stringify(this.favoriteMeta));
+            localStorage.setItem('funda-days-back', this.daysBack.toString());
         } catch (e) {
             console.error('Error saving to storage:', e);
         }
@@ -494,7 +499,11 @@ class FunDaApp {
         // Header buttons
         document.getElementById('filterBtn').addEventListener('click', () => this.openModal(this.filterModal));
         document.getElementById('favoritesBtn').addEventListener('click', () => this.openFavorites());
-        document.getElementById('fundaImportBtn').addEventListener('click', () => this.openModal(this.fundaModal));
+        document.getElementById('fundaImportBtn').addEventListener('click', () => {
+            const sel = document.getElementById('importDaysBack');
+            if (sel) sel.value = String(this.daysBack);
+            this.openModal(this.fundaModal);
+        });
         document.getElementById('familyBtn').addEventListener('click', () => this.openFamilyModal());
 
         // Modal close buttons
@@ -518,6 +527,10 @@ class FunDaApp {
 
         // Funda import
         document.getElementById('importFundaBtn').addEventListener('click', () => this.importFromFunda());
+        document.getElementById('importDaysBack').addEventListener('change', (e) => {
+            this.daysBack = parseInt(e.target.value, 10);
+            localStorage.setItem('funda-days-back', this.daysBack.toString());
+        });
         
         // Clear data button
         document.getElementById('clearDataBtn').addEventListener('click', () => this.clearAllData());
@@ -675,7 +688,8 @@ class FunDaApp {
             statusText.textContent = '📡 Data ophalen van Funda, Jaap.nl, overheid...';
 
             // Use the new multi-source parallel scraper
-            const houses = await this.scraper.scrapeAllSources({ area: 'amsterdam', days: '1' });
+            const days = parseInt(document.getElementById('importDaysBack')?.value || this.daysBack, 10);
+            const houses = await this.scraper.scrapeAllSources({ area: 'amsterdam', days: String(days) });
 
             progressBar.style.width = '70%';
             statusText.textContent = '🏛️ Verrijken met overheidsdata...';

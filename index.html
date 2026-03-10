@@ -362,6 +362,17 @@
                 <p class="modal-description">Plak een Funda zoek-URL om echte woningen te importeren!</p>
                 
                 <div class="filter-group">
+                    <label>Zoekperiode (ook bij automatisch laden)</label>
+                    <select id="importDaysBack" class="input-full">
+                        <option value="1">🆕 Vandaag</option>
+                        <option value="3" selected>📅 Laatste 3 dagen</option>
+                        <option value="7">📅 Laatste week</option>
+                        <option value="14">📆 Laatste 2 weken</option>
+                        <option value="30">🗓️ Laatste maand</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
                     <label>Funda URL</label>
                     <input type="url" id="fundaUrl" value="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22" placeholder="https://www.funda.nl/zoeken/koop?selected_area=[&quot;amsterdam&quot;]" class="input-full">
                 </div>
