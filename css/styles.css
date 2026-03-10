@@ -326,6 +326,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.card-container.hidden { display: none; }
     position: relative;
     min-height: 420px;
     perspective: 1000px;
@@ -623,6 +626,8 @@ body {
     gap: 1.25rem;
     padding: 1.75rem 0;
 }
+
+.actions.hidden { display: none; }
 
 .action-btn {
     width: 64px;
