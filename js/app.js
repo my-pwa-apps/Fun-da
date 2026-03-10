@@ -1911,6 +1911,9 @@ class FunDaApp {
         if (mainImg) mainImg.src = safeImageUrl(imgs[this.detailGalleryIndex]);
         document.querySelectorAll('#detailContent .detail-thumb').forEach((t, i) => {
             t.classList.toggle('active', i === this.detailGalleryIndex);
+            if (i === this.detailGalleryIndex) {
+                t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
         });
     }
 
