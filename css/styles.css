@@ -2888,3 +2888,125 @@ body {
     outline-color: var(--primary);
 }
 
+/* ==========================================
+   FAVORITE META BADGES
+   ========================================== */
+
+.fav-meta-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.fav-meta-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    background: var(--light);
+    color: var(--text-secondary);
+    border: 1px solid var(--gray-lighter);
+    white-space: nowrap;
+}
+
+.fav-meta-badge.fav-meta-bid {
+    background: #fff5f1;
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+/* ==========================================
+   BID PANEL (favorite detail modal)
+   ========================================== */
+
+.bid-panel {
+    background: var(--light);
+    border-radius: var(--radius);
+    padding: 1rem;
+    border: 1px solid var(--gray-lighter);
+}
+
+.bid-panel h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.bid-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.bid-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.bid-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.bid-input {
+    padding: 0.45rem 0.6rem;
+    border: 1.5px solid var(--gray-lighter);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.85rem;
+    background: var(--white);
+    color: var(--dark);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.bid-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+textarea.bid-input {
+    resize: vertical;
+    min-height: 72px;
+}
+
+.bid-status-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.bid-status-btn {
+    padding: 0.3rem 0.6rem;
+    border: 1.5px solid var(--gray-lighter);
+    border-radius: 1rem;
+    background: var(--white);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.bid-status-btn:hover,
+.bid-status-btn.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #fff5f1;
+}
+

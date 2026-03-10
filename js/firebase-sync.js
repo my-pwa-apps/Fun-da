@@ -387,6 +387,107 @@ class FamilySync {
         }
         return Array.from(allFavorites);
     }
+
+    // ==========================================
+    // HOUSE PERSISTENCE (all found houses, not just favorites)
+    // ==========================================
+
+    async saveHousesToDB(houses) {
+        if (!this.familyCode || !this.isFirebaseReady || !houses.length) return;
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        const updates = {};
+        for (const house of houses) {
+            const key = this.sanitizeForFirebase(String(house.id));
+            updates[`families/${sanitizedCode}/houses/${key}`] = {
+                id: house.id,
+                globalId: house.globalId || '',
+                price: house.price || 0,
+                address: house.address || '',
+                postalCode: house.postalCode || '',
+                city: house.city || '',
+                neighborhood: house.neighborhood || '',
+                bedrooms: house.bedrooms || 0,
+                rooms: house.rooms || 0,
+                size: house.size || 0,
+                plotArea: house.plotArea || 0,
+                image: house.image || '',
+                images: (house.images || []).slice(0, 6),
+                url: house.url || '',
+                energyLabel: house.energyLabel || '',
+                yearBuilt: house.yearBuilt || null,
+                propertyType: house.propertyType || '',
+                hasGarden: house.hasGarden || false,
+                hasBalcony: house.hasBalcony || false,
+                hasRoofTerrace: house.hasRoofTerrace || false,
+                hasSolarPanels: house.hasSolarPanels || false,
+                hasHeatPump: house.hasHeatPump || false,
+                hasParking: house.hasParking || false,
+                daysOnMarket: house.daysOnMarket || null,
+                pricePerM2: house.pricePerM2 || null,
+                importedAt: house.importedAt || Date.now(),
+                savedAt: firebase.database.ServerValue.TIMESTAMP,
+            };
+        }
+        try {
+            await this.db.ref().update(updates);
+        } catch (e) {
+            console.error('Error saving houses to DB:', e);
+        }
+    }
+
+    async loadHousesFromDB() {
+        if (!this.familyCode || !this.isFirebaseReady) return [];
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        try {
+            const snapshot = await this.db.ref(`families/${sanitizedCode}/houses`).once('value');
+            const data = snapshot.val();
+            return data ? Object.values(data) : [];
+        } catch (e) {
+            console.error('Error loading houses from DB:', e);
+            return [];
+        }
+    }
+
+    async discardHouseInDB(houseId) {
+        if (!this.familyCode || !this.isFirebaseReady) return;
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        const key = this.sanitizeForFirebase(String(houseId));
+        try {
+            await this.db.ref(`families/${sanitizedCode}/houses/${key}`).remove();
+        } catch (e) {
+            // silently ignore
+        }
+    }
+
+    // ==========================================
+    // FAVORITE META (bid timeline, notes, dates)
+    // ==========================================
+
+    async saveFavoriteMetaInDB(houseId, meta) {
+        if (!this.familyCode || !this.isFirebaseReady) return;
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        const key = this.sanitizeForFirebase(String(houseId));
+        try {
+            await this.db.ref(`families/${sanitizedCode}/favoriteMeta/${key}`).set({
+                ...meta,
+                updatedAt: firebase.database.ServerValue.TIMESTAMP,
+            });
+        } catch (e) {
+            console.error('Error saving favorite meta:', e);
+        }
+    }
+
+    async loadAllFavoriteMetaFromDB() {
+        if (!this.familyCode || !this.isFirebaseReady) return {};
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        try {
+            const snapshot = await this.db.ref(`families/${sanitizedCode}/favoriteMeta`).once('value');
+            return snapshot.val() || {};
+        } catch (e) {
+            console.error('Error loading favorite meta:', e);
+            return {};
+        }
+    }
 }
 
 // Export

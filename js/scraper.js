@@ -85,7 +85,7 @@ class FundaScraper {
             offering_type: 'buy',
             selected_area: [area],
             sort: { field: 'publish_date_utc', order: 'desc' },
-            page: { from: 0 },
+            page: { from: 0, size: params.size || 40 },
         };
 
         // Add price filter

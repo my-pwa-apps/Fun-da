@@ -60,6 +60,9 @@ class FunDaApp {
         // Family matches
         this.familyMatches = new Map();
 
+        // Favorite meta (bid timeline, notes, etc.)
+        this.favoriteMeta = {};
+
         // Browse view state
         this.browseOpen = false;
         this.browseSort = 'default';
@@ -216,17 +219,40 @@ class FunDaApp {
                 houses.forEach(h => {
                     h.importedAt = Date.now();
                 });
-                
-                // Replace all houses with fresh data
-                this.houses = houses;
+
+                // Merge with Firebase houses (previously found, not yet discarded)
+                let allHouses = [...houses];
+                if (this.familySync.isInFamily()) {
+                    try {
+                        const firebaseHouses = await this.familySync.loadHousesFromDB();
+                        const freshIds = new Set(houses.map(h => String(h.id)));
+                        const extraFromFirebase = firebaseHouses.filter(h => !freshIds.has(String(h.id)));
+                        allHouses = [...houses, ...extraFromFirebase];
+                    } catch (e) { /* ignore if Firebase unavailable */ }
+                }
+
+                // Replace all houses with merged data
+                this.houses = allHouses;
                 this.currentIndex = 0;
                 this.viewed = 0;
                 
                 this.saveToStorage();
                 this.renderCards();
                 this.updateStats();
+
+                // Save fresh houses to Firebase for cross-device persistence
+                if (this.familySync.isInFamily()) {
+                    this.familySync.saveHousesToDB(houses).catch(() => {});
+                    // Also load favoriteMeta from Firebase
+                    this.familySync.loadAllFavoriteMetaFromDB().then(meta => {
+                        if (meta && Object.keys(meta).length > 0) {
+                            this.favoriteMeta = { ...meta, ...this.favoriteMeta };
+                            this.saveToStorage();
+                        }
+                    }).catch(() => {});
+                }
                 
-                this.updateSplashStatus(`${houses.length} woningen geladen`);
+                this.updateSplashStatus(`${allHouses.length} woningen geladen`);
                 this.updateSplashProgress(100);
                 
                 // Small delay to show success message
@@ -410,6 +436,12 @@ class FunDaApp {
             if (savedFilters) {
                 this.filters = JSON.parse(savedFilters);
             }
+
+            // Load saved favorite meta
+            const savedMeta = localStorage.getItem('funda-favorite-meta');
+            if (savedMeta) {
+                this.favoriteMeta = JSON.parse(savedMeta);
+            }
         } catch (e) {
             console.error('Error loading from storage:', e);
         }
@@ -442,6 +474,7 @@ class FunDaApp {
             localStorage.setItem('funda-index', this.currentIndex.toString());
             localStorage.setItem('funda-houses', JSON.stringify(this.houses));
             localStorage.setItem('funda-filters', JSON.stringify(this.filters));
+            localStorage.setItem('funda-favorite-meta', JSON.stringify(this.favoriteMeta));
         } catch (e) {
             console.error('Error saving to storage:', e);
         }
@@ -1324,6 +1357,10 @@ class FunDaApp {
             this.addToFavorites(house);
         } else {
             card.style.transform = 'translateX(-150%) rotate(-30deg)';
+            // Remove from Firebase house pool (discard)
+            if (house && this.familySync.isInFamily()) {
+                this.familySync.discardHouseInDB(house.id);
+            }
         }
 
         this.viewed++;
@@ -1347,10 +1384,21 @@ class FunDaApp {
         }
     }
 
+    saveFavoriteMeta(houseId, meta) {
+        this.favoriteMeta[String(houseId)] = { ...meta, updatedAt: Date.now() };
+        this.saveToStorage();
+        if (this.familySync.isInFamily()) {
+            this.familySync.saveFavoriteMetaInDB(houseId, meta);
+        }
+        this.showToast('✅ Notities opgeslagen');
+    }
+
     removeFromFavorites(houseId) {
         console.log('🗑️ Removing favorite:', houseId);
         const beforeCount = this.favorites.length;
         this.favorites = this.favorites.filter(h => String(h.id) !== String(houseId));
+        // Clean up meta too
+        delete this.favoriteMeta[String(houseId)];
         const afterCount = this.favorites.length;
         console.log(`📊 Favorites: ${beforeCount} -> ${afterCount}`);
         
@@ -1611,6 +1659,10 @@ class FunDaApp {
                 const safeImage = escapeHtml(safeImageUrl(house.image));
                 const safeAddress = escapeHtml(cleanAddress(house.address));
                 const safeFeatures = escapeHtml(`${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city || ''}`);
+                const meta = this.favoriteMeta[String(house.id)] || {};
+                const statusLabels = { interested: '👀 Interessant', viewing: '📅 Bezichtiging', bid: '💰 Bod uitgebracht', accepted: '✅ Geaccepteerd', rejected: '❌ Afgewezen' };
+                const statusBadge = meta.status ? `<span class="fav-meta-badge">${escapeHtml(statusLabels[meta.status] || meta.status)}</span>` : '';
+                const bidBadge = meta.bidAmount ? `<span class="fav-meta-badge fav-meta-bid">Bod: €${escapeHtml(String(meta.bidAmount))}</span>` : '';
                 return `
                 <div class="favorite-item" data-action="showFavoriteDetail" data-id="${escapedId}">
                     <img class="favorite-image" src="${safeImage}" alt="${safeAddress}">
@@ -1618,6 +1670,7 @@ class FunDaApp {
                         <div class="favorite-price">${formatPrice(house.price)}</div>
                         <div class="favorite-address">${safeAddress}</div>
                         <div class="favorite-features">${safeFeatures}</div>
+                        ${statusBadge || bidBadge ? `<div class="fav-meta-badges">${statusBadge}${bidBadge}</div>` : ''}
                     </div>
                     <button class="favorite-remove" data-action="removeFavorite" data-id="${escapedId}">
                         ✕
@@ -1636,6 +1689,7 @@ class FunDaApp {
         this.closeModal(this.favoritesModal);
 
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
+        const meta = this.favoriteMeta[String(houseId)] || {};
 
         // Extra features
         const extraDetails = [];
@@ -1654,33 +1708,58 @@ class FunDaApp {
         const safeImage = escapeHtml(safeImageUrl(house.image));
         const safeLocation = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || ''}`);
         const safeFact = escapeHtml(fact);
-        const safeMapsUrl = house.googleMapsUrl ? safeExternalUrl(house.googleMapsUrl) : '#';
-        const safeFundaUrl = safeExternalUrl(house.url);
+        const safeMapsUrl = house.googleMapsUrl
+            ? safeExternalUrl(house.googleMapsUrl)
+            : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
 
         const mapsLinkHtml = safeMapsUrl !== '#' ? `
             <a href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
                 🗺️ Bekijk op Maps
             </a>` : '';
 
+        // Photo gallery
+        const galleryThumbsHtml = (house.images?.length > 1) ? `
+            <div class="detail-thumbs">
+                ${house.images.slice(0, 8).map((img, i) => `
+                    <img class="detail-thumb${i === 0 ? ' active' : ''}"
+                         src="${escapeHtml(safeImageUrl(img))}"
+                         data-action="switchDetailPhoto"
+                         data-src="${escapeHtml(safeImageUrl(img))}"
+                         loading="lazy" alt="Foto ${i + 1}">
+                `).join('')}
+            </div>` : '';
+
+        // Bid status options
+        const statusOptions = [
+            { key: 'interested', label: '👀 Interessant' },
+            { key: 'viewing', label: '📅 Bezichtiging' },
+            { key: 'bid', label: '💰 Bod' },
+            { key: 'accepted', label: '✅ Geaccepteerd' },
+            { key: 'rejected', label: '❌ Afgewezen' },
+        ];
+
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <img class="detail-image" src="${safeImage}" alt="${safeAddress}">
-            
-            <div class="detail-section">
-                <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">${safeLocation}</div>
-                ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${safeFact}</p>` : ''}
+            <div class="detail-gallery">
+                <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
+                ${galleryThumbsHtml}
+            </div>
+
+            <div class="detail-section" style="margin-bottom: 0.75rem;">
+                <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
+                <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${safeLocation}</div>
+                ${fact ? `<p style="margin-top:0.5rem;font-style:italic;font-size:0.85rem;color:var(--secondary);">${safeFact}</p>` : ''}
             </div>
 
             <div class="detail-section">
                 <h3>Kenmerken</h3>
                 <div class="detail-grid">
                     <div class="detail-item">
-                        <div class="detail-item-label">Oppervlakte</div>
-                        <div class="detail-item-value">${house.size || '?'} m²</div>
+                        <div class="detail-item-label">m²</div>
+                        <div class="detail-item-value">${house.size || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Slaapkamers</div>
+                        <div class="detail-item-label">Slaapk.</div>
                         <div class="detail-item-value">${house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
@@ -1702,17 +1781,74 @@ class FunDaApp {
                 </div>
             ` : ''}
 
-            ${safeFundaUrl !== '#' ? `
-                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-full" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">
-                    🔗 Bekijk op Funda
-                </a>
-            ` : ''}
+            <div class="detail-section bid-panel" id="bidPanel" data-house-id="${escapeHtml(String(houseId))}">
+                <h3>📋 Notities &amp; Bieding</h3>
+                <div class="bid-fields">
+                    <div class="bid-field">
+                        <label class="bid-label">Status</label>
+                        <div class="bid-status-group">
+                            ${statusOptions.map(s => `
+                                <button class="bid-status-btn${meta.status === s.key ? ' active' : ''}" data-status="${escapeHtml(s.key)}">${escapeHtml(s.label)}</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="bid-row">
+                        <div class="bid-field">
+                            <label class="bid-label" for="metaViewingDate">Bezichtiging</label>
+                            <input type="date" class="bid-input" id="metaViewingDate" value="${escapeHtml(meta.viewingDate || '')}">
+                        </div>
+                        <div class="bid-field">
+                            <label class="bid-label" for="metaBidDeadline">Bod deadline</label>
+                            <input type="datetime-local" class="bid-input" id="metaBidDeadline" value="${escapeHtml(meta.bidDeadline || '')}">
+                        </div>
+                    </div>
+                    <div class="bid-field">
+                        <label class="bid-label" for="metaBidAmount">Bieding (€)</label>
+                        <input type="number" class="bid-input" id="metaBidAmount" placeholder="bijv. 450000" value="${escapeHtml(String(meta.bidAmount || ''))}">
+                    </div>
+                    <div class="bid-field">
+                        <label class="bid-label" for="metaNotes">Notities</label>
+                        <textarea class="bid-input" id="metaNotes" rows="3" placeholder="Aantekeningen over dit huis...">${escapeHtml(meta.notes || '')}</textarea>
+                    </div>
+                </div>
+                <button class="btn-primary btn-full" id="saveBidMetaBtn" style="margin-top:0.75rem;">💾 Notities opslaan</button>
+            </div>
+
             ${mapsLinkHtml}
 
-            <button class="btn-primary btn-full" style="background: var(--danger);" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(house.id))}">
+            <button class="btn-primary btn-full" style="background: var(--danger); margin-top: 0.5rem;" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
                 🗑️ Verwijderen uit favorieten
             </button>
         `;
+
+        // Wire up the bid panel interactions after inserting HTML
+        let selectedStatus = meta.status || null;
+        const bidPanel = document.getElementById('bidPanel');
+
+        // Status buttons toggle
+        bidPanel.querySelectorAll('.bid-status-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                bidPanel.querySelectorAll('.bid-status-btn').forEach(b => b.classList.remove('active'));
+                if (selectedStatus === btn.dataset.status) {
+                    selectedStatus = null; // toggle off
+                } else {
+                    selectedStatus = btn.dataset.status;
+                    btn.classList.add('active');
+                }
+            });
+        });
+
+        // Save button
+        document.getElementById('saveBidMetaBtn').addEventListener('click', () => {
+            const newMeta = {
+                status: selectedStatus || null,
+                viewingDate: document.getElementById('metaViewingDate').value || null,
+                bidDeadline: document.getElementById('metaBidDeadline').value || null,
+                bidAmount: document.getElementById('metaBidAmount').value ? parseInt(document.getElementById('metaBidAmount').value, 10) : null,
+                notes: document.getElementById('metaNotes').value.trim() || null,
+            };
+            this.saveFavoriteMeta(houseId, newMeta);
+        });
 
         setTimeout(() => this.openModal(this.detailModal), 300);
     }
