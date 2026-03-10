@@ -91,14 +91,14 @@
 
         <!-- View Mode Tabs -->
         <div class="view-tabs">
-            <button class="view-tab active" id="tabSwipe">
+            <button class="view-tab" id="tabSwipe">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <rect x="2" y="3" width="20" height="18" rx="3"/>
                     <path d="M8 12l3 3 5-6"/>
                 </svg>
                 Swipen
             </button>
-            <button class="view-tab" id="tabBrowse">
+            <button class="view-tab active" id="tabBrowse">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                     <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
@@ -108,7 +108,7 @@
         </div>
 
         <!-- Card Stack (Swipe View) -->
-        <main class="card-container" id="swipeView">
+        <main class="card-container hidden" id="swipeView">
             <div id="cardStack" class="card-stack">
                 <!-- Cards will be dynamically inserted here -->
             </div>
@@ -123,7 +123,7 @@
         </main>
 
         <!-- Action Buttons -->
-        <div class="actions" id="swipeActions">
+        <div class="actions hidden" id="swipeActions">
             <button class="action-btn action-nope" id="nopeBtn" aria-label="Nee">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M18 6L6 18M6 6l12 12"/>
@@ -140,7 +140,7 @@
         </div>
 
         <!-- Browse View -->
-        <div id="browseView" class="browse-view hidden">
+        <div id="browseView" class="browse-view">
 
             <!-- Filter Sidebar (always visible on desktop, slide-in on mobile) -->
             <aside class="browse-sidebar" id="browseSidebar" aria-label="Filters">
@@ -193,9 +193,20 @@
                             <option value="">Alle buurten</option>
                         </select>
                     </div>
+                    <div class="bfs" id="bfsExcludeNeigh">
+                        <h4 class="bfs-title">Buurten uitsluiten</h4>
+                        <div id="excludedNeighPills" class="excl-neigh-pills"></div>
+                        <select id="bfExcludeNeighAdd" class="input-full" title="Buurt uitsluiten">
+                            <option value="">+ Buurt uitsluiten...</option>
+                        </select>
+                    </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Bouwjaar vanaf</h4>
                         <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full">
+                    </div>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Op de markt (min. dagen)</h4>
+                        <input type="number" id="bfMinDaysOnMarket" placeholder="bijv. 30" min="0" step="1" class="input-full">
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Kenmerken</h4>

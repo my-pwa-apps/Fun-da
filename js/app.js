@@ -74,7 +74,9 @@ class FunDaApp {
             minEnergyLabel: null,
             neighborhood: '',
             minYear: null,
-            hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false
+            hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false,
+            excludedNeighborhoods: [],
+            minDaysOnMarket: null
         };
         
         // Backward compatibility getters
@@ -185,6 +187,7 @@ class FunDaApp {
         setTimeout(() => {
             this.elements.splash.classList.add('hidden');
             this.elements.app.classList.remove('hidden');
+            this.openBrowseView();
         }, 200);
     }
 
@@ -597,6 +600,9 @@ class FunDaApp {
         document.getElementById('applyBrowseFilters').addEventListener('click', () => this.applyBrowseFilters());
         document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
         document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => this.resetBrowseFilters());
+        document.getElementById('bfExcludeNeighAdd').addEventListener('change', (e) => {
+            this._addExcludedNeighborhood(e.target.value);
+        });
     }
 
     // ==========================================
@@ -1798,7 +1804,7 @@ class FunDaApp {
                             <input type="date" class="bid-input" id="metaViewingDate" value="${escapeHtml(meta.viewingDate || '')}">
                         </div>
                         <div class="bid-field">
-                            <label class="bid-label" for="metaBidDeadline">Bod deadline</label>
+                            <label class="bid-label" for="metaBidDeadline">Uiterste biedatum (makelaar)</label>
                             <input type="datetime-local" class="bid-input" id="metaBidDeadline" value="${escapeHtml(meta.bidDeadline || '')}">
                         </div>
                     </div>
@@ -1972,7 +1978,9 @@ class FunDaApp {
 
     _populateBrowseNeighborhoods() {
         const select = document.getElementById('bfNeighborhood');
+        const excludeSelect = document.getElementById('bfExcludeNeighAdd');
         const existing = new Set(Array.from(select.options).map(o => o.value).filter(Boolean));
+        const existingExclude = new Set(Array.from(excludeSelect.options).map(o => o.value).filter(Boolean));
         const neighborhoods = [...new Set(
             this.houses.map(h => h.neighborhood || h.city || '').filter(Boolean)
         )].sort();
@@ -1983,7 +1991,31 @@ class FunDaApp {
                 opt.textContent = n;
                 select.appendChild(opt);
             }
+            if (!existingExclude.has(n)) {
+                const opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n;
+                excludeSelect.appendChild(opt);
+            }
         });
+    }
+
+    _addExcludedNeighborhood(name) {
+        if (!name) return;
+        if (this.browseFilters.excludedNeighborhoods.includes(name)) return;
+        this.browseFilters.excludedNeighborhoods.push(name);
+        const pills = document.getElementById('excludedNeighPills');
+        const pill = document.createElement('span');
+        pill.className = 'excl-neigh-pill';
+        pill.dataset.name = name;
+        pill.innerHTML = `${this.escapeHtml(name)}<button type="button" aria-label="Verwijder ${this.escapeHtml(name)}">×</button>`;
+        pill.querySelector('button').addEventListener('click', () => {
+            this.browseFilters.excludedNeighborhoods = this.browseFilters.excludedNeighborhoods.filter(n => n !== name);
+            pill.remove();
+        });
+        pills.appendChild(pill);
+        // Reset exclude select
+        document.getElementById('bfExcludeNeighAdd').value = '';
     }
 
     // Energy label ranks: lower = better
@@ -2010,6 +2042,11 @@ class FunDaApp {
             if (f.hasBalcony && !house.hasBalcony && !house.hasRoofTerrace) return false;
             if (f.hasParking && !house.hasParking) return false;
             if (f.hasSolar && !house.hasSolarPanels) return false;
+            if (f.excludedNeighborhoods && f.excludedNeighborhoods.length > 0) {
+                const neigh = house.neighborhood || house.city || '';
+                if (f.excludedNeighborhoods.includes(neigh)) return false;
+            }
+            if (f.minDaysOnMarket && (house.daysOnMarket || 0) < f.minDaysOnMarket) return false;
             return true;
         });
 
@@ -2044,6 +2081,7 @@ class FunDaApp {
         f.hasBalcony = document.getElementById('bfHasBalcony').checked;
         f.hasParking = document.getElementById('bfHasParking').checked;
         f.hasSolar   = document.getElementById('bfHasSolar').checked;
+        f.minDaysOnMarket = parseInt(document.getElementById('bfMinDaysOnMarket').value, 10) || null;
 
         this.closeBrowseSidebarPanel();
         this.renderBrowseGrid();
@@ -2055,14 +2093,17 @@ class FunDaApp {
             minSize: null, maxSize: null,
             minBedrooms: null, minEnergyLabel: null,
             neighborhood: '', minYear: null,
-            hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false
+            hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false,
+            excludedNeighborhoods: [],
+            minDaysOnMarket: null
         };
 
         // Reset form controls
-        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear'].forEach(id => {
+        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear','bfMinDaysOnMarket'].forEach(id => {
             document.getElementById(id).value = '';
         });
         document.getElementById('bfNeighborhood').value = '';
+        document.getElementById('excludedNeighPills').innerHTML = '';
         ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar'].forEach(id => {
             document.getElementById(id).checked = false;
         });
@@ -2083,7 +2124,9 @@ class FunDaApp {
         const activeCount = [
             f.minPrice, f.maxPrice, f.minSize, f.maxSize, f.minBedrooms,
             f.minEnergyLabel, f.neighborhood || null, f.minYear,
-            f.hasTuin || null, f.hasBalcony || null, f.hasParking || null, f.hasSolar || null
+            f.hasTuin || null, f.hasBalcony || null, f.hasParking || null, f.hasSolar || null,
+            f.minDaysOnMarket,
+            ...(f.excludedNeighborhoods || [])
         ].filter(Boolean).length;
         const badge = document.getElementById('browseFilterBadge');
         if (activeCount > 0) {
