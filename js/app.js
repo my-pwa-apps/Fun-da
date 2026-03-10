@@ -63,6 +63,7 @@ class FunDaApp {
         // Browse view state
         this.browseOpen = false;
         this.browseSort = 'default';
+        this.browseLayout = 'list';
         this.browseFilters = {
             minPrice: null, maxPrice: null,
             minSize: null, maxSize: null,
@@ -536,6 +537,13 @@ class FunDaApp {
                 case 'removeFavoriteAndClose':  this.removeFromFavorites(id); this.closeModal(this.detailModal); break;
                 case 'showBrowseDetail':        this.showHouseDetail(id); break;
                 case 'browseAddFavorite':       e.stopPropagation(); this.browseToggleFavorite(id, target); break;
+                case 'switchDetailPhoto': {
+                    const mainImg = document.getElementById('detailMainImg');
+                    if (mainImg && target.dataset.src) mainImg.src = target.dataset.src;
+                    document.querySelectorAll('#detailContent .detail-thumb').forEach(t => t.classList.remove('active'));
+                    target.classList.add('active');
+                    break;
+                }
             }
         });
 
@@ -543,16 +551,16 @@ class FunDaApp {
         document.getElementById('tabSwipe').addEventListener('click', () => this.openSwipeView());
         document.getElementById('tabBrowse').addEventListener('click', () => this.openBrowseView());
 
-        // Browse view: filter panel toggle
-        document.getElementById('browseFilterToggleBtn').addEventListener('click', () => this.toggleBrowseFiltersPanel());
-
-        // Browse view: sort
+        // Browse view controls
+        document.getElementById('browseFilterToggleBtn').addEventListener('click', () => this.openBrowseSidebarPanel());
+        document.getElementById('closeBrowseSidebar').addEventListener('click', () => this.closeBrowseSidebarPanel());
+        document.getElementById('browseSidebarOverlay').addEventListener('click', () => this.closeBrowseSidebarPanel());
         document.getElementById('browseSortBy').addEventListener('change', (e) => {
             this.browseSort = e.target.value;
             this.renderBrowseGrid();
         });
-
-        // Browse view: apply / reset filters
+        document.getElementById('browseLayoutList').addEventListener('click', () => this.setBrowseLayout('list'));
+        document.getElementById('browseLayoutGrid').addEventListener('click', () => this.setBrowseLayout('grid'));
         document.getElementById('applyBrowseFilters').addEventListener('click', () => this.applyBrowseFilters());
         document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
         document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => this.resetBrowseFilters());
@@ -1489,7 +1497,6 @@ class FunDaApp {
         const safeMunicipality = escapeHtml(house.municipality || '');
         const safePricePerM2 = escapeHtml(house.pricePerM2 || '');
         const safeFact = escapeHtml(fact);
-        const safeFundaUrl = safeExternalUrl(house.url);
         const safeMapsUrl = house.googleMapsUrl
             ? safeExternalUrl(house.googleMapsUrl)
             : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
@@ -1514,9 +1521,24 @@ class FunDaApp {
                 <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
             </div>` : '';
 
+        // Build photo gallery thumbnails
+        const galleryThumbsHtml = (house.images?.length > 1) ? `
+            <div class="detail-thumbs">
+                ${house.images.slice(0, 8).map((img, i) => `
+                    <img class="detail-thumb${i === 0 ? ' active' : ''}"
+                         src="${escapeHtml(safeImageUrl(img))}"
+                         data-action="switchDetailPhoto"
+                         data-src="${escapeHtml(safeImageUrl(img))}"
+                         loading="lazy" alt="Foto ${i + 1}">
+                `).join('')}
+            </div>` : '';
+
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <img class="detail-image" src="${safeImage}" alt="${safeAddress}">
+            <div class="detail-gallery">
+                <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
+                ${galleryThumbsHtml}
+            </div>
             
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
@@ -1557,12 +1579,6 @@ class FunDaApp {
 
             ${descHtml}
             ${floorplanHtml}
-
-            ${safeFundaUrl !== '#' ? `
-                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display: block; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; margin-top: 0.75rem;">
-                    🔗 Bekijk op Funda
-                </a>
-            ` : ''}
             ${mapsLinkHtml}
         `;
 
@@ -1782,6 +1798,7 @@ class FunDaApp {
         document.getElementById('swipeView').classList.remove('hidden');
         document.getElementById('swipeActions').classList.remove('hidden');
         document.getElementById('browseView').classList.add('hidden');
+        this.elements.app.classList.remove('app--browse');
     }
 
     openBrowseView() {
@@ -1791,13 +1808,30 @@ class FunDaApp {
         document.getElementById('swipeView').classList.add('hidden');
         document.getElementById('swipeActions').classList.add('hidden');
         document.getElementById('browseView').classList.remove('hidden');
+        this.elements.app.classList.add('app--browse');
         this._populateBrowseNeighborhoods();
         this.renderBrowseGrid();
     }
 
-    toggleBrowseFiltersPanel() {
-        const panel = document.getElementById('browseFiltersPanel');
-        panel.classList.toggle('hidden');
+    openBrowseSidebarPanel() {
+        document.getElementById('browseSidebar').classList.add('open');
+        document.getElementById('browseSidebarOverlay').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeBrowseSidebarPanel() {
+        document.getElementById('browseSidebar').classList.remove('open');
+        document.getElementById('browseSidebarOverlay').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    setBrowseLayout(layout) {
+        this.browseLayout = layout;
+        const grid = document.getElementById('browseGrid');
+        grid.classList.toggle('browse-layout-list', layout === 'list');
+        grid.classList.toggle('browse-layout-grid', layout === 'grid');
+        document.getElementById('browseLayoutList').classList.toggle('active', layout === 'list');
+        document.getElementById('browseLayoutGrid').classList.toggle('active', layout === 'grid');
     }
 
     _populateBrowseNeighborhoods() {
@@ -1875,8 +1909,7 @@ class FunDaApp {
         f.hasParking = document.getElementById('bfHasParking').checked;
         f.hasSolar   = document.getElementById('bfHasSolar').checked;
 
-        // Collapse filter panel
-        document.getElementById('browseFiltersPanel').classList.add('hidden');
+        this.closeBrowseSidebarPanel();
         this.renderBrowseGrid();
     }
 
@@ -1897,9 +1930,9 @@ class FunDaApp {
         ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar'].forEach(id => {
             document.getElementById(id).checked = false;
         });
-        document.querySelectorAll('#browseFiltersPanel .btn-option').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#browseSidebar .btn-option').forEach(b => b.classList.remove('active'));
 
-        document.getElementById('browseFiltersPanel').classList.add('hidden');
+        this.closeBrowseSidebarPanel();
         this.renderBrowseGrid();
     }
 
@@ -1926,6 +1959,10 @@ class FunDaApp {
 
         count.textContent = `${houses.length} woning${houses.length !== 1 ? 'en' : ''}`;
 
+        // Keep layout class in sync
+        grid.classList.toggle('browse-layout-list', this.browseLayout === 'list');
+        grid.classList.toggle('browse-layout-grid', this.browseLayout === 'grid');
+
         if (houses.length === 0) {
             grid.innerHTML = '';
             grid.classList.add('hidden');
@@ -1943,36 +1980,87 @@ class FunDaApp {
         const escapedId  = escapeHtml(String(house.id));
         const safeImage  = escapeHtml(safeImageUrl(house.image));
         const safeAddr   = escapeHtml(cleanAddress(house.address));
-        const safeNeigh  = escapeHtml(house.neighborhood || house.city || '');
+        const safeNeigh  = escapeHtml(house.neighborhood || '');
+        const safeCity   = escapeHtml(house.city || 'Amsterdam');
+        const safePostal = escapeHtml(house.postalCode || '');
+        const safeType   = escapeHtml(house.houseType || house.propertyType || '');
         const isFav      = this.favorites.some(f => String(f.id) === String(house.id));
-        const favClass   = isFav ? 'browse-fav-btn active' : 'browse-fav-btn';
         const favLabel   = isFav ? '❤️' : '🤍';
+        const favClass   = isFav ? 'bt-fav active' : 'bt-fav';
 
+        // Badges
         const badges = [];
-        if (house.isNew || house.daysOnMarket === 0) badges.push('<span class="browse-badge browse-badge-new">Nieuw</span>');
-        if (house.energyLabel && ['A','A+','A++','A+++'].includes(house.energyLabel.toUpperCase()))
-            badges.push(`<span class="browse-badge browse-badge-energy">${escapeHtml(house.energyLabel)}</span>`);
+        if (house.isNew || house.daysOnMarket === 0)
+            badges.push('<span class="bt-badge bt-badge-new">Nieuw</span>');
+        if (house.status && /onderhandeling/i.test(house.status))
+            badges.push('<span class="bt-badge bt-badge-nego">In onderhandeling</span>');
 
-        const icons = [];
-        if (house.size)     icons.push(`<span>${house.size}m²</span>`);
-        if (house.bedrooms) icons.push(`<span>${house.bedrooms} slpk</span>`);
-        if (house.yearBuilt) icons.push(`<span>${house.yearBuilt}</span>`);
-        if (house.hasGarden) icons.push('<span>🌿</span>');
-        if (house.hasBalcony || house.hasRoofTerrace) icons.push('<span>🌅</span>');
-        if (house.hasParking) icons.push('<span>🚗</span>');
+        // Price per m²
+        const ppm2 = (house.price && house.size)
+            ? `<span class="bt-price-m2">€\u202f${Math.round(house.price / house.size).toLocaleString('nl-NL')}\u00a0/\u00a0m²</span>`
+            : '';
+
+        // Energy label (Funda-style colour)
+        const energyClass = house.energyLabel
+            ? `el-${escapeHtml(house.energyLabel.replace(/[^A-Za-z+]/g, '').toUpperCase())}`
+            : '';
+        const energyHtml = house.energyLabel
+            ? `<span class="energy-label ${energyClass}">${escapeHtml(house.energyLabel)}</span>`
+            : '';
+
+        // Spec icons (using Unicode + text — no external assets, CSP-safe)
+        const specs = [];
+        if (house.size)      specs.push(`<span class="bt-spec">◻ ${house.size}\u00a0m²</span>`);
+        if (house.bedrooms)  specs.push(`<span class="bt-spec">🛏 ${house.bedrooms}</span>`);
+        if (house.bathrooms && house.bathrooms > 0)
+                             specs.push(`<span class="bt-spec">🚿 ${house.bathrooms}</span>`);
+        if (house.yearBuilt) specs.push(`<span class="bt-spec">📅 ${house.yearBuilt}</span>`);
+
+        // Feature pills
+        const feats = [];
+        if (house.hasGarden)  feats.push('🌿 Tuin');
+        if (house.hasBalcony) feats.push('🌅 Balkon');
+        if (house.hasRoofTerrace) feats.push('🏙 Dakterras');
+        if (house.hasParking) feats.push('🚗 Parkeren');
+        if (house.hasSolarPanels) feats.push('☀️ Zonnepanelen');
+
+        // Days on market
+        const daysHtml = (house.daysOnMarket != null && house.daysOnMarket > 0)
+            ? `<span class="bt-days">${house.daysOnMarket}\u00a0dag${house.daysOnMarket !== 1 ? 'en' : ''} geleden</span>`
+            : '';
+
+        // Photo count
+        const photoCount = house.images?.length > 1
+            ? `<span class="bt-photo-count">📷\u00a0${house.images.length}</span>`
+            : '';
+
+        // Location line
+        const locParts = [safePostal, safeNeigh || safeCity].filter(Boolean);
+        const locHtml = locParts.length ? `<div class="bt-location">${locParts.join('\u00a0·\u00a0')}</div>` : '';
 
         return `
         <div class="browse-tile" data-action="showBrowseDetail" data-id="${escapedId}">
-            <div class="browse-tile-img-wrap">
-                <img class="browse-tile-img" src="${safeImage}" alt="${safeAddr}" loading="lazy">
-                ${badges.length ? `<div class="browse-tile-badges">${badges.join('')}</div>` : ''}
-                <button class="${favClass}" data-action="browseAddFavorite" data-id="${escapedId}" title="${isFav ? 'Verwijder favoriet' : 'Voeg toe aan favorieten'}">${favLabel}</button>
+            <div class="bt-photo">
+                <img class="bt-img" src="${safeImage}" alt="${safeAddr}" loading="lazy">
+                ${badges.length ? `<div class="bt-badges">${badges.join('')}</div>` : ''}
+                ${photoCount ? `<div class="bt-photo-count-wrap">${photoCount}</div>` : ''}
+                <button class="${favClass}" data-action="browseAddFavorite" data-id="${escapedId}"
+                    title="${isFav ? 'Verwijder favoriet' : 'Voeg toe aan favorieten'}">${favLabel}</button>
             </div>
-            <div class="browse-tile-body">
-                <div class="browse-tile-price">${formatPrice(house.price)}</div>
-                <div class="browse-tile-addr">${safeAddr}</div>
-                ${safeNeigh ? `<div class="browse-tile-neigh">${safeNeigh}</div>` : ''}
-                ${icons.length ? `<div class="browse-tile-icons">${icons.join('')}</div>` : ''}
+            <div class="bt-info">
+                ${safeType ? `<div class="bt-type">${safeType}</div>` : ''}
+                <div class="bt-address">${safeAddr}</div>
+                ${locHtml}
+                <div class="bt-price-row">
+                    <span class="bt-price">${formatPrice(house.price)}</span>
+                    ${ppm2}
+                </div>
+                ${specs.length ? `<div class="bt-specs">${specs.join('')}</div>` : ''}
+                ${feats.length ? `<div class="bt-feats">${feats.map(f => `<span class="bt-feat">${escapeHtml(f)}</span>`).join('')}</div>` : ''}
+                <div class="bt-footer">
+                    ${energyHtml}
+                    ${daysHtml}
+                </div>
             </div>
         </div>`;
     }

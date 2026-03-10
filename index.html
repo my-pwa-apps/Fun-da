@@ -141,47 +141,36 @@
 
         <!-- Browse View -->
         <div id="browseView" class="browse-view hidden">
-            <!-- Toolbar: filters + sort + count -->
-            <div class="browse-toolbar">
-                <button class="browse-filter-btn" id="browseFilterToggleBtn" title="Filters">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
-                    </svg>
-                    Filters
-                    <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
-                </button>
-                <select id="browseSortBy" class="browse-sort" title="Sorteer op">
-                    <option value="default">Volgorde</option>
-                    <option value="price-asc">Prijs laag → hoog</option>
-                    <option value="price-desc">Prijs hoog → laag</option>
-                    <option value="size-desc">Grootste eerst</option>
-                    <option value="bedrooms-desc">Meeste kamers</option>
-                    <option value="newest">Nieuwste eerst</option>
-                </select>
-                <span id="browseCount" class="browse-count">0 woningen</span>
-            </div>
 
-            <!-- Collapsible filter panel -->
-            <div id="browseFiltersPanel" class="browse-filters-panel hidden">
-                <div class="browse-filters-grid">
-                    <div class="filter-group">
-                        <label>Prijs</label>
+            <!-- Filter Sidebar (always visible on desktop, slide-in on mobile) -->
+            <aside class="browse-sidebar" id="browseSidebar" aria-label="Filters">
+                <div class="browse-sidebar-head">
+                    <span class="browse-sidebar-title">Filters</span>
+                    <button class="browse-sidebar-close" id="closeBrowseSidebar" aria-label="Sluit filters">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="browse-sidebar-body">
+                    <div class="bfs">
+                        <h4 class="bfs-title">Prijs</h4>
                         <div class="range-inputs">
                             <input type="number" id="bfMinPrice" placeholder="Min €" step="25000" min="0">
                             <span>—</span>
                             <input type="number" id="bfMaxPrice" placeholder="Max €" step="25000" min="0">
                         </div>
                     </div>
-                    <div class="filter-group">
-                        <label>Oppervlak (m²)</label>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Woonoppervlak (m²)</h4>
                         <div class="range-inputs">
-                            <input type="number" id="bfMinSize" placeholder="Min m²" step="10" min="0">
+                            <input type="number" id="bfMinSize" placeholder="Min" step="10" min="0">
                             <span>—</span>
-                            <input type="number" id="bfMaxSize" placeholder="Max m²" step="10" min="0">
+                            <input type="number" id="bfMaxSize" placeholder="Max" step="10" min="0">
                         </div>
                     </div>
-                    <div class="filter-group">
-                        <label>Min. slaapkamers</label>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Slaapkamers</h4>
                         <div class="btn-group" id="bfBedroomsGroup">
                             <button class="btn-option" data-value="1">1+</button>
                             <button class="btn-option" data-value="2">2+</button>
@@ -189,8 +178,8 @@
                             <button class="btn-option" data-value="4">4+</button>
                         </div>
                     </div>
-                    <div class="filter-group">
-                        <label>Min. energielabel</label>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Min. energielabel</h4>
                         <div class="btn-group" id="bfEnergyGroup">
                             <button class="btn-option" data-value="A">A</button>
                             <button class="btn-option" data-value="B">B</button>
@@ -198,40 +187,77 @@
                             <button class="btn-option" data-value="D">D</button>
                         </div>
                     </div>
-                    <div class="filter-group">
-                        <label>Buurt</label>
-                        <select id="bfNeighborhood" title="Kies een buurt">
+                    <div class="bfs">
+                        <h4 class="bfs-title">Buurt</h4>
+                        <select id="bfNeighborhood" title="Kies een buurt" class="input-full">
                             <option value="">Alle buurten</option>
                         </select>
                     </div>
-                    <div class="filter-group">
-                        <label>Bouwjaar vanaf</label>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Bouwjaar vanaf</h4>
                         <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full">
                     </div>
-                    <div class="filter-group filter-group-full">
-                        <label>Kenmerken</label>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Kenmerken</h4>
                         <div class="feature-checks">
                             <label class="check-label"><input type="checkbox" id="bfHasTuin"> 🌿 Tuin</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> 🌅 Balkon/dakterras</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> 🌅 Balkon / dakterras</label>
                             <label class="check-label"><input type="checkbox" id="bfHasParking"> 🚗 Parkeren</label>
                             <label class="check-label"><input type="checkbox" id="bfHasSolar"> ☀️ Zonnepanelen</label>
                         </div>
                     </div>
                 </div>
-                <div class="browse-filter-actions">
-                    <button class="btn-primary" id="applyBrowseFilters">Filters toepassen</button>
-                    <button class="btn-secondary" id="resetBrowseFilters">Wis alles</button>
+                <div class="browse-sidebar-actions">
+                    <button class="btn-primary btn-full" id="applyBrowseFilters">Filters toepassen</button>
+                    <button class="browse-reset-link" id="resetBrowseFilters">Wis alle filters</button>
                 </div>
-            </div>
+            </aside>
 
-            <!-- Results grid -->
-            <div id="browseGrid" class="browse-grid"></div>
+            <!-- Mobile sidebar overlay -->
+            <div class="browse-sidebar-overlay hidden" id="browseSidebarOverlay"></div>
 
-            <!-- Empty message -->
-            <div id="browseEmpty" class="browse-empty hidden">
-                <div class="empty-emoji">🔍</div>
-                <p>Geen woningen gevonden met deze filters.</p>
-                <button class="btn-secondary" id="clearBrowseFiltersBtn">Wis filters</button>
+            <!-- Results column -->
+            <div class="browse-main">
+                <div class="browse-toolbar">
+                    <button class="browse-filter-btn" id="browseFilterToggleBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                            <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+                        </svg>
+                        Filters
+                        <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
+                    </button>
+                    <span id="browseCount" class="browse-count">0 woningen</span>
+                    <select id="browseSortBy" class="browse-sort" title="Sorteer op">
+                        <option value="default">Volgorde</option>
+                        <option value="price-asc">Prijs laag → hoog</option>
+                        <option value="price-desc">Prijs hoog → laag</option>
+                        <option value="size-desc">Grootste eerst</option>
+                        <option value="bedrooms-desc">Meeste kamers</option>
+                        <option value="newest">Nieuwste eerst</option>
+                    </select>
+                    <div class="browse-layout-toggle">
+                        <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                            </svg>
+                        </button>
+                        <button class="browse-layout-btn" id="browseLayoutGrid" title="Raster">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="browseGrid" class="browse-grid browse-layout-list"></div>
+
+                <div id="browseEmpty" class="browse-empty hidden">
+                    <div class="empty-emoji">🔍</div>
+                    <p>Geen woningen gevonden met deze filters.</p>
+                    <button class="btn-secondary" id="clearBrowseFiltersBtn">Wis filters</button>
+                </div>
             </div>
         </div>
     </div>
