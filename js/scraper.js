@@ -2,11 +2,9 @@
 // Bronnen: Funda, Jaap.nl, BAG (overheid), en meer
 // Parallel fetching voor snelheid
 
-if (window.__FUNDA_SILENCE_LOGS__) {
-    console.log = () => {};
-    console.warn = () => {};
-    console.debug = () => {};
-}
+console.log = () => {};
+console.warn = () => {};
+console.debug = () => {};
 
 class FundaScraper {
     constructor() {

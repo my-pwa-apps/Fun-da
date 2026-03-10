@@ -18,19 +18,6 @@ const PLACEHOLDER_IMAGE = `data:image/svg+xml,${encodeURIComponent(
 
 const APP_DEBUG = false;
 
-if (!APP_DEBUG && !window.__FUNDA_CONSOLE_PATCHED__) {
-    window.__FUNDA_CONSOLE_PATCHED__ = true;
-    window.__FUNDA_SILENCE_LOGS__ = true;
-    window.__FUNDA_ORIGINAL_CONSOLE__ = {
-        log: console.log.bind(console),
-        warn: console.warn.bind(console),
-        debug: console.debug.bind(console),
-    };
-    console.log = () => {};
-    console.warn = () => {};
-    console.debug = () => {};
-}
-
 // Fun facts about Amsterdam neighborhoods
 const NEIGHBORHOOD_FACTS = {
     "Centrum": "🏛️ Het historische hart van Amsterdam met de beroemde grachten!",

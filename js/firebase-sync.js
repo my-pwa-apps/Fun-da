@@ -1,11 +1,9 @@
 // Firebase Configuration voor Familie Sync
 // Gebruikt Firebase Realtime Database voor het delen van favorieten tussen gezinsleden
 
-if (window.__FUNDA_SILENCE_LOGS__) {
-    console.log = () => {};
-    console.warn = () => {};
-    console.debug = () => {};
-}
+console.log = () => {};
+console.warn = () => {};
+console.debug = () => {};
 
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyBfpRQOaWISrNH9rb7Yn_-FOtACrGVXQhM",

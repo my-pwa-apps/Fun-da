@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com; script-src-elem 'self' https://www.gstatic.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Fun-da - De leukste manier om een huis te vinden in Amsterdam!">
     <meta name="theme-color" content="#FF6B35">
@@ -89,8 +89,26 @@
             </div>
         </div>
 
-        <!-- Card Stack -->
-        <main class="card-container">
+        <!-- View Mode Tabs -->
+        <div class="view-tabs">
+            <button class="view-tab active" id="tabSwipe">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="2" y="3" width="20" height="18" rx="3"/>
+                    <path d="M8 12l3 3 5-6"/>
+                </svg>
+                Swipen
+            </button>
+            <button class="view-tab" id="tabBrowse">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Bladeren
+            </button>
+        </div>
+
+        <!-- Card Stack (Swipe View) -->
+        <main class="card-container" id="swipeView">
             <div id="cardStack" class="card-stack">
                 <!-- Cards will be dynamically inserted here -->
             </div>
@@ -105,7 +123,7 @@
         </main>
 
         <!-- Action Buttons -->
-        <div class="actions">
+        <div class="actions" id="swipeActions">
             <button class="action-btn action-nope" id="nopeBtn" aria-label="Nee">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M18 6L6 18M6 6l12 12"/>
@@ -119,6 +137,102 @@
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
             </button>
+        </div>
+
+        <!-- Browse View -->
+        <div id="browseView" class="browse-view hidden">
+            <!-- Toolbar: filters + sort + count -->
+            <div class="browse-toolbar">
+                <button class="browse-filter-btn" id="browseFilterToggleBtn" title="Filters">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+                    </svg>
+                    Filters
+                    <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
+                </button>
+                <select id="browseSortBy" class="browse-sort" title="Sorteer op">
+                    <option value="default">Volgorde</option>
+                    <option value="price-asc">Prijs laag → hoog</option>
+                    <option value="price-desc">Prijs hoog → laag</option>
+                    <option value="size-desc">Grootste eerst</option>
+                    <option value="bedrooms-desc">Meeste kamers</option>
+                    <option value="newest">Nieuwste eerst</option>
+                </select>
+                <span id="browseCount" class="browse-count">0 woningen</span>
+            </div>
+
+            <!-- Collapsible filter panel -->
+            <div id="browseFiltersPanel" class="browse-filters-panel hidden">
+                <div class="browse-filters-grid">
+                    <div class="filter-group">
+                        <label>Prijs</label>
+                        <div class="range-inputs">
+                            <input type="number" id="bfMinPrice" placeholder="Min €" step="25000" min="0">
+                            <span>—</span>
+                            <input type="number" id="bfMaxPrice" placeholder="Max €" step="25000" min="0">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Oppervlak (m²)</label>
+                        <div class="range-inputs">
+                            <input type="number" id="bfMinSize" placeholder="Min m²" step="10" min="0">
+                            <span>—</span>
+                            <input type="number" id="bfMaxSize" placeholder="Max m²" step="10" min="0">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Min. slaapkamers</label>
+                        <div class="btn-group" id="bfBedroomsGroup">
+                            <button class="btn-option" data-value="1">1+</button>
+                            <button class="btn-option" data-value="2">2+</button>
+                            <button class="btn-option" data-value="3">3+</button>
+                            <button class="btn-option" data-value="4">4+</button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Min. energielabel</label>
+                        <div class="btn-group" id="bfEnergyGroup">
+                            <button class="btn-option" data-value="A">A</button>
+                            <button class="btn-option" data-value="B">B</button>
+                            <button class="btn-option" data-value="C">C</button>
+                            <button class="btn-option" data-value="D">D</button>
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Buurt</label>
+                        <select id="bfNeighborhood" title="Kies een buurt">
+                            <option value="">Alle buurten</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Bouwjaar vanaf</label>
+                        <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full">
+                    </div>
+                    <div class="filter-group filter-group-full">
+                        <label>Kenmerken</label>
+                        <div class="feature-checks">
+                            <label class="check-label"><input type="checkbox" id="bfHasTuin"> 🌿 Tuin</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> 🌅 Balkon/dakterras</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasParking"> 🚗 Parkeren</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasSolar"> ☀️ Zonnepanelen</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="browse-filter-actions">
+                    <button class="btn-primary" id="applyBrowseFilters">Filters toepassen</button>
+                    <button class="btn-secondary" id="resetBrowseFilters">Wis alles</button>
+                </div>
+            </div>
+
+            <!-- Results grid -->
+            <div id="browseGrid" class="browse-grid"></div>
+
+            <!-- Empty message -->
+            <div id="browseEmpty" class="browse-empty hidden">
+                <div class="empty-emoji">🔍</div>
+                <p>Geen woningen gevonden met deze filters.</p>
+                <button class="btn-secondary" id="clearBrowseFiltersBtn">Wis filters</button>
+            </div>
         </div>
     </div>
 

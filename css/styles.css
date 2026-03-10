@@ -2067,3 +2067,405 @@ body {
 .btn-secondary-mt {
     margin-top: 0.5rem;
 }
+
+/* ==========================================
+   VIEW TABS (Swipen / Bladeren)
+   ========================================== */
+
+.view-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem 1rem 0;
+    background: var(--white);
+    border-bottom: 2px solid var(--gray-lighter);
+    flex-shrink: 0;
+}
+
+.view-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.5rem;
+    border: none;
+    background: transparent;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    border-radius: 0;
+}
+
+.view-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.view-tab:hover:not(.active) {
+    color: var(--text-secondary);
+}
+
+/* ==========================================
+   BROWSE VIEW CONTAINER
+   ========================================== */
+
+.browse-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    overflow: hidden;
+    background: var(--light);
+    animation: fadeIn 0.2s ease;
+}
+
+.browse-view.hidden {
+    display: none;
+}
+
+/* ==========================================
+   BROWSE TOOLBAR
+   ========================================== */
+
+.browse-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-lighter);
+    flex-shrink: 0;
+}
+
+.browse-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.75rem;
+    border: 2px solid var(--gray-lighter);
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    white-space: nowrap;
+    position: relative;
+}
+
+.browse-filter-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.browse-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--primary);
+    color: var(--white);
+    border-radius: 9px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.browse-filter-badge.hidden {
+    display: none;
+}
+
+.browse-sort {
+    flex: 1;
+    padding: 0.45rem 0.6rem;
+    border: 2px solid var(--gray-lighter);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.8rem;
+    background: var(--white);
+    color: var(--text-secondary);
+    cursor: pointer;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    padding-right: 1.75rem;
+}
+
+.browse-sort:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.browse-count {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* ==========================================
+   BROWSE FILTER PANEL
+   ========================================== */
+
+.browse-filters-panel {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-lighter);
+    padding: 1rem 1rem 0.75rem;
+    flex-shrink: 0;
+    overflow-y: auto;
+    max-height: 55vh;
+}
+
+.browse-filters-panel.hidden {
+    display: none;
+}
+
+.browse-filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1rem;
+}
+
+.filter-group-full {
+    grid-column: 1 / -1;
+}
+
+.feature-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.check-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.check-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.browse-filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--gray-lighter);
+}
+
+.browse-filter-actions .btn-primary {
+    flex: 1;
+}
+
+/* ==========================================
+   BROWSE GRID
+   ========================================== */
+
+.browse-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    padding: 0.75rem;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    align-content: start;
+}
+
+@media (min-width: 600px) {
+    .browse-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 900px) {
+    .browse-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* ==========================================
+   BROWSE TILE
+   ========================================== */
+
+.browse-tile {
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform 0.2s var(--ease-out), box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.browse-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.browse-tile:active {
+    transform: translateY(-1px);
+}
+
+.browse-tile-img-wrap {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--gray-lighter);
+}
+
+.browse-tile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.browse-tile:hover .browse-tile-img {
+    transform: scale(1.04);
+}
+
+.browse-tile-badges {
+    position: absolute;
+    top: 0.4rem;
+    left: 0.4rem;
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.browse-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    line-height: 1;
+}
+
+.browse-badge-new {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.browse-badge-energy {
+    background: var(--success);
+    color: var(--white);
+}
+
+.browse-fav-btn {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, background 0.15s;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    z-index: 2;
+    line-height: 1;
+}
+
+.browse-fav-btn:hover {
+    transform: scale(1.2);
+    background: var(--white);
+}
+
+.browse-tile-body {
+    padding: 0.6rem 0.6rem 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+}
+
+.browse-tile-price {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.browse-tile-addr {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.browse-tile-neigh {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.browse-tile-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.2rem;
+}
+
+.browse-tile-icons span {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    background: var(--light);
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* ==========================================
+   BROWSE EMPTY STATE
+   ========================================== */
+
+.browse-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.browse-empty.hidden {
+    display: none;
+}
+
+.browse-empty .empty-emoji {
+    font-size: 2.5rem;
+}
+

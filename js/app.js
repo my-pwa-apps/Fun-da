@@ -1,11 +1,9 @@
 // Fun-da App - De leukste manier om een huis te vinden!
 // Features: Funda scraping, Familie sync, Swipe interface
 
-if (window.__FUNDA_SILENCE_LOGS__) {
-    console.log = () => {};
-    console.warn = () => {};
-    console.debug = () => {};
-}
+console.log = () => {};
+console.warn = () => {};
+console.debug = () => {};
 
 // Utility function
 const $ = (id) => document.getElementById(id);
@@ -61,6 +59,19 @@ class FunDaApp {
 
         // Family matches
         this.familyMatches = new Map();
+
+        // Browse view state
+        this.browseOpen = false;
+        this.browseSort = 'default';
+        this.browseFilters = {
+            minPrice: null, maxPrice: null,
+            minSize: null, maxSize: null,
+            minBedrooms: null,
+            minEnergyLabel: null,
+            neighborhood: '',
+            minYear: null,
+            hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false
+        };
         
         // Backward compatibility getters
         this.cardStack = this.elements.cardStack;
@@ -523,8 +534,28 @@ class FunDaApp {
                 case 'removeFavorite':          e.stopPropagation(); this.removeFromFavorites(id); break;
                 case 'showMatchDetail':         this.showMatchDetail(id); break;
                 case 'removeFavoriteAndClose':  this.removeFromFavorites(id); this.closeModal(this.detailModal); break;
+                case 'showBrowseDetail':        this.showHouseDetail(id); break;
+                case 'browseAddFavorite':       e.stopPropagation(); this.browseToggleFavorite(id, target); break;
             }
         });
+
+        // View tab toggle
+        document.getElementById('tabSwipe').addEventListener('click', () => this.openSwipeView());
+        document.getElementById('tabBrowse').addEventListener('click', () => this.openBrowseView());
+
+        // Browse view: filter panel toggle
+        document.getElementById('browseFilterToggleBtn').addEventListener('click', () => this.toggleBrowseFiltersPanel());
+
+        // Browse view: sort
+        document.getElementById('browseSortBy').addEventListener('change', (e) => {
+            this.browseSort = e.target.value;
+            this.renderBrowseGrid();
+        });
+
+        // Browse view: apply / reset filters
+        document.getElementById('applyBrowseFilters').addEventListener('click', () => this.applyBrowseFilters());
+        document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
+        document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => this.resetBrowseFilters());
     }
 
     // ==========================================
@@ -1408,9 +1439,11 @@ class FunDaApp {
         this.showToast(`🔍 ${filtered.length} woningen gevonden`);
     }
 
-    showDetail() {
-        const houses = this.getFilteredHouses();
-        const house = houses[this.currentIndex];
+    showDetail(houseArg = null) {
+        const house = houseArg || (() => {
+            const houses = this.getFilteredHouses();
+            return houses[this.currentIndex];
+        })();
         if (!house) return;
 
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
@@ -1731,6 +1764,236 @@ class FunDaApp {
 
             setTimeout(() => confetti.remove(), 3000);
         }
+    }
+
+    // ==========================================
+    // BROWSE VIEW
+    // ==========================================
+
+    showHouseDetail(houseId) {
+        const house = [...this.houses, ...this.favorites].find(h => String(h.id) === String(houseId));
+        if (house) this.showDetail(house);
+    }
+
+    openSwipeView() {
+        this.browseOpen = false;
+        document.getElementById('tabSwipe').classList.add('active');
+        document.getElementById('tabBrowse').classList.remove('active');
+        document.getElementById('swipeView').classList.remove('hidden');
+        document.getElementById('swipeActions').classList.remove('hidden');
+        document.getElementById('browseView').classList.add('hidden');
+    }
+
+    openBrowseView() {
+        this.browseOpen = true;
+        document.getElementById('tabBrowse').classList.add('active');
+        document.getElementById('tabSwipe').classList.remove('active');
+        document.getElementById('swipeView').classList.add('hidden');
+        document.getElementById('swipeActions').classList.add('hidden');
+        document.getElementById('browseView').classList.remove('hidden');
+        this._populateBrowseNeighborhoods();
+        this.renderBrowseGrid();
+    }
+
+    toggleBrowseFiltersPanel() {
+        const panel = document.getElementById('browseFiltersPanel');
+        panel.classList.toggle('hidden');
+    }
+
+    _populateBrowseNeighborhoods() {
+        const select = document.getElementById('bfNeighborhood');
+        const existing = new Set(Array.from(select.options).map(o => o.value).filter(Boolean));
+        const neighborhoods = [...new Set(
+            this.houses.map(h => h.neighborhood || h.city || '').filter(Boolean)
+        )].sort();
+        neighborhoods.forEach(n => {
+            if (!existing.has(n)) {
+                const opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n;
+                select.appendChild(opt);
+            }
+        });
+    }
+
+    // Energy label ranks: lower = better
+    _energyRank(label) {
+        const ranks = { 'A+++': 0, 'A++': 1, 'A+': 2, 'A': 3, 'B': 4, 'C': 5, 'D': 6, 'E': 7, 'F': 8, 'G': 9 };
+        return ranks[String(label || '').toUpperCase()] ?? 99;
+    }
+
+    getBrowseHouses() {
+        const f = this.browseFilters;
+        let houses = this.houses.filter(house => {
+            if (f.minPrice && house.price < f.minPrice) return false;
+            if (f.maxPrice && house.price > f.maxPrice) return false;
+            if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
+            if (f.minSize && house.size < f.minSize) return false;
+            if (f.maxSize && house.size > f.maxSize) return false;
+            if (f.neighborhood && house.neighborhood !== f.neighborhood && house.city !== f.neighborhood) return false;
+            if (f.minYear && house.yearBuilt && house.yearBuilt < f.minYear) return false;
+            if (f.minEnergyLabel) {
+                const maxRank = this._energyRank(f.minEnergyLabel);
+                if (this._energyRank(house.energyLabel) > maxRank) return false;
+            }
+            if (f.hasTuin && !house.hasGarden) return false;
+            if (f.hasBalcony && !house.hasBalcony && !house.hasRoofTerrace) return false;
+            if (f.hasParking && !house.hasParking) return false;
+            if (f.hasSolar && !house.hasSolarPanels) return false;
+            return true;
+        });
+
+        // Sort
+        switch (this.browseSort) {
+            case 'price-asc':      houses.sort((a, b) => (a.price || 0) - (b.price || 0)); break;
+            case 'price-desc':     houses.sort((a, b) => (b.price || 0) - (a.price || 0)); break;
+            case 'size-desc':      houses.sort((a, b) => (b.size || 0) - (a.size || 0)); break;
+            case 'bedrooms-desc':  houses.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0)); break;
+            case 'newest':         houses.sort((a, b) => (b.importedAt || 0) - (a.importedAt || 0)); break;
+        }
+        return houses;
+    }
+
+    applyBrowseFilters() {
+        const f = this.browseFilters;
+
+        f.minPrice    = parseInt(document.getElementById('bfMinPrice').value, 10) || null;
+        f.maxPrice    = parseInt(document.getElementById('bfMaxPrice').value, 10) || null;
+        f.minSize     = parseInt(document.getElementById('bfMinSize').value, 10) || null;
+        f.maxSize     = parseInt(document.getElementById('bfMaxSize').value, 10) || null;
+        f.minYear     = parseInt(document.getElementById('bfMinYear').value, 10) || null;
+        f.neighborhood = document.getElementById('bfNeighborhood').value;
+
+        const activeBedroomBtn = document.querySelector('#bfBedroomsGroup .btn-option.active');
+        f.minBedrooms = activeBedroomBtn ? parseInt(activeBedroomBtn.dataset.value, 10) : null;
+
+        const activeEnergyBtn = document.querySelector('#bfEnergyGroup .btn-option.active');
+        f.minEnergyLabel = activeEnergyBtn ? activeEnergyBtn.dataset.value : null;
+
+        f.hasTuin    = document.getElementById('bfHasTuin').checked;
+        f.hasBalcony = document.getElementById('bfHasBalcony').checked;
+        f.hasParking = document.getElementById('bfHasParking').checked;
+        f.hasSolar   = document.getElementById('bfHasSolar').checked;
+
+        // Collapse filter panel
+        document.getElementById('browseFiltersPanel').classList.add('hidden');
+        this.renderBrowseGrid();
+    }
+
+    resetBrowseFilters() {
+        this.browseFilters = {
+            minPrice: null, maxPrice: null,
+            minSize: null, maxSize: null,
+            minBedrooms: null, minEnergyLabel: null,
+            neighborhood: '', minYear: null,
+            hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false
+        };
+
+        // Reset form controls
+        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('bfNeighborhood').value = '';
+        ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar'].forEach(id => {
+            document.getElementById(id).checked = false;
+        });
+        document.querySelectorAll('#browseFiltersPanel .btn-option').forEach(b => b.classList.remove('active'));
+
+        document.getElementById('browseFiltersPanel').classList.add('hidden');
+        this.renderBrowseGrid();
+    }
+
+    renderBrowseGrid() {
+        const houses = this.getBrowseHouses();
+        const grid   = document.getElementById('browseGrid');
+        const empty  = document.getElementById('browseEmpty');
+        const count  = document.getElementById('browseCount');
+
+        // Active filter badge
+        const f = this.browseFilters;
+        const activeCount = [
+            f.minPrice, f.maxPrice, f.minSize, f.maxSize, f.minBedrooms,
+            f.minEnergyLabel, f.neighborhood || null, f.minYear,
+            f.hasTuin || null, f.hasBalcony || null, f.hasParking || null, f.hasSolar || null
+        ].filter(Boolean).length;
+        const badge = document.getElementById('browseFilterBadge');
+        if (activeCount > 0) {
+            badge.textContent = activeCount;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+
+        count.textContent = `${houses.length} woning${houses.length !== 1 ? 'en' : ''}`;
+
+        if (houses.length === 0) {
+            grid.innerHTML = '';
+            grid.classList.add('hidden');
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        grid.classList.remove('hidden');
+        empty.classList.add('hidden');
+
+        grid.innerHTML = houses.map(house => this._browseTile(house)).join('');
+    }
+
+    _browseTile(house) {
+        const escapedId  = escapeHtml(String(house.id));
+        const safeImage  = escapeHtml(safeImageUrl(house.image));
+        const safeAddr   = escapeHtml(cleanAddress(house.address));
+        const safeNeigh  = escapeHtml(house.neighborhood || house.city || '');
+        const isFav      = this.favorites.some(f => String(f.id) === String(house.id));
+        const favClass   = isFav ? 'browse-fav-btn active' : 'browse-fav-btn';
+        const favLabel   = isFav ? '❤️' : '🤍';
+
+        const badges = [];
+        if (house.isNew || house.daysOnMarket === 0) badges.push('<span class="browse-badge browse-badge-new">Nieuw</span>');
+        if (house.energyLabel && ['A','A+','A++','A+++'].includes(house.energyLabel.toUpperCase()))
+            badges.push(`<span class="browse-badge browse-badge-energy">${escapeHtml(house.energyLabel)}</span>`);
+
+        const icons = [];
+        if (house.size)     icons.push(`<span>${house.size}m²</span>`);
+        if (house.bedrooms) icons.push(`<span>${house.bedrooms} slpk</span>`);
+        if (house.yearBuilt) icons.push(`<span>${house.yearBuilt}</span>`);
+        if (house.hasGarden) icons.push('<span>🌿</span>');
+        if (house.hasBalcony || house.hasRoofTerrace) icons.push('<span>🌅</span>');
+        if (house.hasParking) icons.push('<span>🚗</span>');
+
+        return `
+        <div class="browse-tile" data-action="showBrowseDetail" data-id="${escapedId}">
+            <div class="browse-tile-img-wrap">
+                <img class="browse-tile-img" src="${safeImage}" alt="${safeAddr}" loading="lazy">
+                ${badges.length ? `<div class="browse-tile-badges">${badges.join('')}</div>` : ''}
+                <button class="${favClass}" data-action="browseAddFavorite" data-id="${escapedId}" title="${isFav ? 'Verwijder favoriet' : 'Voeg toe aan favorieten'}">${favLabel}</button>
+            </div>
+            <div class="browse-tile-body">
+                <div class="browse-tile-price">${formatPrice(house.price)}</div>
+                <div class="browse-tile-addr">${safeAddr}</div>
+                ${safeNeigh ? `<div class="browse-tile-neigh">${safeNeigh}</div>` : ''}
+                ${icons.length ? `<div class="browse-tile-icons">${icons.join('')}</div>` : ''}
+            </div>
+        </div>`;
+    }
+
+    browseToggleFavorite(houseId, btn) {
+        const house = this.houses.find(h => String(h.id) === String(houseId));
+        if (!house) return;
+        const isFav = this.favorites.some(f => String(f.id) === String(houseId));
+        if (isFav) {
+            this.removeFromFavorites(houseId);
+            btn.textContent = '🤍';
+            btn.classList.remove('active');
+            btn.title = 'Voeg toe aan favorieten';
+        } else {
+            this.addToFavorites(house);
+            btn.textContent = '❤️';
+            btn.classList.add('active');
+            btn.title = 'Verwijder favoriet';
+        }
+        this.updateStats();
+        this.saveToStorage();
     }
 }
 
