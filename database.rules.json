@@ -47,6 +47,26 @@
             }
           }
         },
+        "favoriteMeta": {
+          ".read": true,
+          ".write": true,
+          "$houseId": {
+            ".validate": "newData.isString() || newData.hasChildren()",
+            "$field": {
+              ".validate": "newData.isString() || newData.isNumber() || newData.isBoolean()"
+            }
+          }
+        },
+        "houses": {
+          ".read": true,
+          ".write": true,
+          "$houseId": {
+            ".validate": "newData.hasChildren(['id'])",
+            "$field": {
+              ".validate": "newData.isString() || newData.isNumber() || newData.isBoolean()"
+            }
+          }
+        },
         "$other": {
           ".validate": false
         }

@@ -411,7 +411,7 @@ class FamilySync {
                 size: house.size || 0,
                 plotArea: house.plotArea || 0,
                 image: house.image || '',
-                images: (house.images || []).slice(0, 6),
+                images: (house.images || []).slice(0, 30),
                 url: house.url || '',
                 energyLabel: house.energyLabel || '',
                 yearBuilt: house.yearBuilt || null,

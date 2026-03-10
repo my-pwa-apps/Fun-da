@@ -830,18 +830,32 @@ class FunDaApp {
         
         // Generate QR code URL that will be parsed when scanned
         const qrData = `funda-family:${code}`;
-        
-        // Use QR code API service
-        const img = document.createElement('img');
-        img.alt = 'QR Code';
-        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
-        img.onload = () => {
-            qrDisplay.innerHTML = '';
-            qrDisplay.appendChild(img);
+        const encoded = encodeURIComponent(qrData);
+
+        const tryLoad = (src, next) => {
+            const img = document.createElement('img');
+            img.alt = 'QR Code';
+            img.style.cssText = 'width:200px;height:200px;display:block;margin:0 auto;';
+            img.onload = () => {
+                qrDisplay.innerHTML = '';
+                qrDisplay.appendChild(img);
+            };
+            img.onerror = () => {
+                if (next) next();
+                else qrDisplay.innerHTML = `<p style="text-align:center">QR code kon niet laden.<br><strong>${escapeHtml(code)}</strong></p>`;
+            };
+            img.src = src;
         };
-        img.onerror = () => {
-            qrDisplay.innerHTML = `<p>QR code kon niet laden.<br><strong>${escapeHtml(code)}</strong></p>`;
-        };
+
+        tryLoad(
+            `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`,
+            () => tryLoad(
+                `https://quickchart.io/qr?size=200&text=${encoded}`,
+                () => {
+                    qrDisplay.innerHTML = `<p style="text-align:center;padding:1rem;">Deel deze code:<br><br><strong style="font-size:1.1rem;letter-spacing:0.05em;">${escapeHtml(code)}</strong></p>`;
+                }
+            )
+        );
     }
     
     async startQRScanner() {
@@ -1586,7 +1600,7 @@ class FunDaApp {
         const hasMultiplePhotos = this.detailGalleryImages.length > 1;
         const galleryThumbsHtml = hasMultiplePhotos ? `
             <div class="detail-thumbs">
-                ${house.images.slice(0, 8).map((img, i) => `
+                ${house.images.slice(0, 20).map((img, i) => `
                     <img class="detail-thumb${i === 0 ? ' active' : ''}"
                          src="${escapeHtml(safeImageUrl(img))}"
                          data-action="switchDetailPhoto"
@@ -1747,7 +1761,7 @@ class FunDaApp {
         const hasMultiplePhotos = this.detailGalleryImages.length > 1;
         const galleryThumbsHtml = hasMultiplePhotos ? `
             <div class="detail-thumbs">
-                ${house.images.slice(0, 8).map((img, i) => `
+                ${house.images.slice(0, 20).map((img, i) => `
                     <img class="detail-thumb${i === 0 ? ' active' : ''}"
                          src="${escapeHtml(safeImageUrl(img))}"
                          data-action="switchDetailPhoto"

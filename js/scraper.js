@@ -165,18 +165,33 @@ class FundaScraper {
         if (!tinyId) return null;
 
         const detailUrl = `${this.FUNDA_API_DETAIL_BASE}/tinyId/${tinyId}`;
-        const cfProxy = this.corsProxies[0];
-        const proxyUrl = cfProxy.url + encodeURIComponent(detailUrl);
 
-        try {
-            const response = await fetch(proxyUrl);
-            if (!response.ok) return null;
-            const data = await response.json();
-            return this.parseMobileDetail(data);
-        } catch (e) {
-            console.debug(`Mobile detail fetch failed for ${url}:`, e.message);
-            return null;
+        // Try all proxies in order; CF Worker first, then public fallbacks.
+        const proxiesToTry = this.corsProxies;
+
+        for (const proxy of proxiesToTry) {
+            try {
+                const proxyUrl = proxy.url + encodeURIComponent(detailUrl);
+                const response = await fetch(proxyUrl);
+                if (!response.ok) continue;
+                const raw = proxy.jsonResponse
+                    ? await response.json()
+                    : await response.json().catch(async () => {
+                        // Some proxies wrap JSON in a field
+                        return null;
+                    });
+                if (!raw) continue;
+                const data = proxy.dataField ? raw[proxy.dataField] : raw;
+                if (!data) continue;
+                const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+                const result = this.parseMobileDetail(parsed);
+                if (result && result.images?.length > 0) return result;
+                if (result) return result; // accept even if no images
+            } catch (e) {
+                console.debug(`Detail proxy failed for ${tinyId}:`, e.message);
+            }
         }
+        return null;
     }
 
     parseMobileDetail(data) {
@@ -256,7 +271,7 @@ class FundaScraper {
             acceptance: characteristics['Aanvaarding'] || null,
             url: url,
             image: photoUrls[0] || this.getPlaceholderImage(),
-            images: photoUrls.slice(0, 10),
+            images: photoUrls.slice(0, 30),
             floorplanUrls: floorplanUrls,
             latitude: coords.Latitude ? parseFloat(coords.Latitude) : null,
             longitude: coords.Longitude ? parseFloat(coords.Longitude) : null,
@@ -309,6 +324,8 @@ class FundaScraper {
             }
         }
 
+        const withPhotos = enriched.filter(h => h.images?.length > 0).length;
+        console.log(`📸 Photos fetched: ${withPhotos}/${enriched.length} houses have photos`);
         return enriched;
     }
 
@@ -559,7 +576,7 @@ class FundaScraper {
                          (existing.url?.includes('/detail/') ? existing.url : null) || 
                          house.url || existing.url,
                     // Combine images
-                    images: [...new Set([...(existing.images || []), ...(house.images || [])])].slice(0, 6),
+                    images: [...new Set([...(existing.images || []), ...(house.images || [])])].slice(0, 30),
                     // Keep track of sources
                     sources: [...(existing.sources || [existing.source]), house.source]
                 };
@@ -727,7 +744,7 @@ class FundaScraper {
                         uniqueImages.push(url);
                     }
                 }
-                details.images = uniqueImages.slice(0, 10);
+                details.images = uniqueImages.slice(0, 30);
                 details.image = uniqueImages[0];
             }
             
