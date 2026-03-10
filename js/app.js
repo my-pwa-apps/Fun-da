@@ -440,6 +440,7 @@ class FunDaApp {
             // Load saved daysBack setting
             const savedDaysBack = localStorage.getItem('funda-days-back');
             if (savedDaysBack) this.daysBack = parseInt(savedDaysBack, 10);
+        } catch (e) {
             console.error('Error loading from storage:', e);
         }
     }
