@@ -42,10 +42,9 @@ class FunDaApp {
             favCount: $('favCount'),
             familyMatchCount: $('familyMatchCount'),
             // Modals
-            filterModal: $('filterModal'),
             favoritesModal: $('favoritesModal'),
             detailModal: $('detailModal'),
-            fundaModal: $('fundaModal'),
+            settingsModal: $('settingsModal'),
             familyModal: $('familyModal')
         };
 
@@ -62,6 +61,9 @@ class FunDaApp {
 
         // Favorite meta (bid timeline, notes, etc.)
         this.favoriteMeta = {};
+
+        // Firebase Auth current user
+        this.currentUser = null;
 
         // Browse view state
         this.browseOpen = false;
@@ -83,10 +85,9 @@ class FunDaApp {
         // Backward compatibility getters
         this.cardStack = this.elements.cardStack;
         this.emptyState = this.elements.emptyState;
-        this.filterModal = this.elements.filterModal;
         this.favoritesModal = this.elements.favoritesModal;
         this.detailModal = this.elements.detailModal;
-        this.fundaModal = this.elements.fundaModal;
+        this.settingsModal = this.elements.settingsModal;
         this.familyModal = this.elements.familyModal;
         this.mapModal = document.getElementById('mapModal');
 
@@ -121,9 +122,9 @@ class FunDaApp {
 
         // Setup event listeners
         this.setupEventListeners();
-        
-        // Restore filter UI from saved state
-        this.restoreFilterUI();
+
+        // Initialize Firebase Auth
+        this.initFirebaseAuth();
 
         // Don't render old cards yet - wait for fresh data
         // Only update stats and family UI
@@ -195,12 +196,6 @@ class FunDaApp {
 
     async autoLoadNewListings() {
         console.log('🚀 Auto-loading nieuwe woningen van vandaag...');
-        
-        // Set the URL in the input field
-        const urlInput = document.getElementById('fundaUrl');
-        if (urlInput) {
-            urlInput.value = this.defaultFundaUrl;
-        }
         
         try {
             this.updateSplashStatus('Verbinden met Funda...');
@@ -436,12 +431,6 @@ class FunDaApp {
                 }
             }
             
-            // Load saved filters
-            const savedFilters = localStorage.getItem('funda-filters');
-            if (savedFilters) {
-                this.filters = JSON.parse(savedFilters);
-            }
-
             // Load saved favorite meta
             const savedMeta = localStorage.getItem('funda-favorite-meta');
             if (savedMeta) {
@@ -455,33 +444,12 @@ class FunDaApp {
         }
     }
     
-    restoreFilterUI() {
-        // Restore filter UI from saved state
-        if (this.filters.minPrice) {
-            document.getElementById('minPrice').value = this.filters.minPrice;
-        }
-        if (this.filters.maxPrice) {
-            document.getElementById('maxPrice').value = this.filters.maxPrice;
-        }
-        if (this.filters.neighborhood) {
-            document.getElementById('neighborhood').value = this.filters.neighborhood;
-        }
-        if (this.filters.minBedrooms) {
-            document.querySelectorAll('.btn-option').forEach(btn => {
-                if (parseInt(btn.dataset.value, 10) === this.filters.minBedrooms) {
-                    btn.classList.add('active');
-                }
-            });
-        }
-    }
-
     saveToStorage() {
         try {
             localStorage.setItem('funda-favorites', JSON.stringify(this.favorites));
             localStorage.setItem('funda-viewed', this.viewed.toString());
             localStorage.setItem('funda-index', this.currentIndex.toString());
             localStorage.setItem('funda-houses', JSON.stringify(this.houses));
-            localStorage.setItem('funda-filters', JSON.stringify(this.filters));
             localStorage.setItem('funda-favorite-meta', JSON.stringify(this.favoriteMeta));
             localStorage.setItem('funda-days-back', this.daysBack.toString());
         } catch (e) {
@@ -497,55 +465,36 @@ class FunDaApp {
         document.getElementById('resetBtn').addEventListener('click', () => this.reset());
 
         // Header buttons
-        document.getElementById('filterBtn').addEventListener('click', () => this.openModal(this.filterModal));
+        document.getElementById('settingsBtn').addEventListener('click', () => this.openSettingsModal());
         document.getElementById('favoritesBtn').addEventListener('click', () => this.openFavorites());
-        document.getElementById('fundaImportBtn').addEventListener('click', () => {
-            const sel = document.getElementById('importDaysBack');
-            if (sel) sel.value = String(this.daysBack);
-            this.openModal(this.fundaModal);
-        });
         document.getElementById('familyBtn').addEventListener('click', () => this.openFamilyModal());
 
         // Modal close buttons
-        document.getElementById('closeFilterModal').addEventListener('click', () => this.closeModal(this.filterModal));
+        document.getElementById('closeSettingsModal').addEventListener('click', () => this.closeSettingsModal());
         document.getElementById('closeFavModal').addEventListener('click', () => this.closeModal(this.favoritesModal));
         document.getElementById('closeDetailModal').addEventListener('click', () => this.closeModal(this.detailModal));
-        document.getElementById('closeFundaModal').addEventListener('click', () => this.closeModal(this.fundaModal));
         document.getElementById('closeFamilyModal').addEventListener('click', () => this.closeModal(this.familyModal));
 
-        // Filter options
-        document.querySelectorAll('.btn-option').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const group = e.target.parentElement;
-                group.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-            });
-        });
-
-        // Apply filters
-        document.getElementById('applyFilters').addEventListener('click', () => this.applyFilters());
-
-        // Funda import
-        document.getElementById('importFundaBtn').addEventListener('click', () => this.importFromFunda());
-        document.getElementById('importDaysBack').addEventListener('change', (e) => {
+        // Settings: daysBack
+        document.getElementById('settingsDaysBack').addEventListener('change', (e) => {
             this.daysBack = parseInt(e.target.value, 10);
             localStorage.setItem('funda-days-back', this.daysBack.toString());
+            this.saveSettingsToFirebase();
         });
-        
-        // Clear data button
+
+        // Settings: clear data
         document.getElementById('clearDataBtn').addEventListener('click', () => this.clearAllData());
-        document.querySelectorAll('.quick-link').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.getElementById('fundaUrl').value = e.target.dataset.url;
-            });
-        });
+
+        // Settings: Google login / logout
+        document.getElementById('googleLoginBtn').addEventListener('click', () => this.loginWithGoogle());
+        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
 
         // Family controls
         document.getElementById('createFamilyBtn').addEventListener('click', () => this.createFamily());
         document.getElementById('joinFamilyBtn').addEventListener('click', () => this.joinFamily());
         document.getElementById('leaveFamilyBtn').addEventListener('click', () => this.leaveFamily());
         document.getElementById('copyFamilyCode').addEventListener('click', () => this.copyFamilyCode());
-        document.getElementById('showQRCode').addEventListener('click', () => this.showQRCode());
+        document.getElementById('showQRCode')?.addEventListener('click', () => this.showQRCode());
         document.getElementById('scanQRBtn').addEventListener('click', () => this.startQRScanner());
         document.getElementById('closeQRModal').addEventListener('click', () => this.closeModal(document.getElementById('qrModal')));
         document.getElementById('closeQRScannerModal').addEventListener('click', () => this.stopQRScanner());
@@ -555,7 +504,7 @@ class FunDaApp {
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
 
         // Close modals on backdrop click
-        [this.filterModal, this.favoritesModal, this.detailModal, this.fundaModal, this.familyModal].forEach(modal => {
+        [this.settingsModal, this.favoritesModal, this.detailModal, this.familyModal].forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) this.closeModal(modal);
             });
@@ -605,6 +554,7 @@ class FunDaApp {
                 case 'openMapModal':
                     this.openMapModal();
                     break;
+                case 'addViewingToCalendar': this.addViewingToCalendar(id); break;
             }
         });
 
@@ -657,103 +607,150 @@ class FunDaApp {
             this.renderCards();
             this.updateStats();
             
-            this.showToast('🗑️ Alle data gewist! Importeer nieuwe woningen van Funda.');
+            this.showToast('🗑️ Alle data gewist!');
         }
     }
 
-    async importFromFunda() {
-        const urlInput = document.getElementById('fundaUrl');
-        const url = urlInput.value.trim();
+    // ==========================================
+    // SETTINGS MODAL
+    // ==========================================
 
-        if (!url || !url.includes('funda.nl')) {
-            this.showToast('❌ Voer een geldige Funda URL in');
-            return;
-        }
+    openSettingsModal() {
+        const sel = document.getElementById('settingsDaysBack');
+        if (sel) sel.value = String(this.daysBack);
+        this.openModal(this.settingsModal);
+    }
 
-        const btnText = document.getElementById('importBtnText');
-        const spinner = document.getElementById('importSpinner');
-        const status = document.getElementById('importStatus');
-        const statusText = document.getElementById('importStatusText');
-        const progressBar = document.getElementById('importProgressBar');
+    closeSettingsModal() {
+        this.closeModal(this.settingsModal);
+    }
 
-        // Show loading state
-        btnText.textContent = 'Bezig...';
-        spinner.classList.remove('hidden');
-        status.classList.remove('hidden');
-        progressBar.style.width = '20%';
-        statusText.textContent = '🔍 Verbinden met meerdere bronnen...';
+    // ==========================================
+    // FIREBASE AUTH
+    // ==========================================
 
+    initFirebaseAuth() {
         try {
-            progressBar.style.width = '30%';
-            statusText.textContent = '📡 Data ophalen van Funda, Jaap.nl, overheid...';
+            if (typeof firebase === 'undefined' || !firebase.auth) return;
+            firebase.auth().onAuthStateChanged((user) => this.onAuthStateChanged(user));
+        } catch (e) {
+            console.error('Firebase Auth init error:', e);
+        }
+    }
 
-            // Use the new multi-source parallel scraper
-            const days = parseInt(document.getElementById('importDaysBack')?.value || this.daysBack, 10);
-            const houses = await this.scraper.scrapeAllSources({ area: 'amsterdam', days: String(days) });
+    onAuthStateChanged(user) {
+        this.currentUser = user;
+        const loggedOutEl = document.getElementById('settingsLoggedOut');
+        const loggedInEl = document.getElementById('settingsLoggedIn');
+        if (!loggedOutEl || !loggedInEl) return;
 
-            progressBar.style.width = '70%';
-            statusText.textContent = '🏛️ Verrijken met overheidsdata...';
-
-            await new Promise(r => setTimeout(r, 300));
-
-            progressBar.style.width = '85%';
-            statusText.textContent = '🏠 Woningen verwerken...';
-
-            if (houses.length > 0) {
-                // Add import timestamp
-                houses.forEach(h => {
-                    h.importedAt = Date.now();
-                });
-
-                // REPLACE all houses with imported ones
-                this.houses = houses;
-                this.currentIndex = 0;
-                this.viewed = 0;
-                
-                this.saveToStorage();
-                this.renderCards();
-                this.updateStats();
-
-                progressBar.style.width = '100%';
-                
-                // Show which sources contributed
-                const sources = [...new Set(houses.map(h => h.source).filter(Boolean))];
-                const sourceText = sources.length > 0 ? ` (${sources.join(', ')})` : '';
-                statusText.textContent = `✅ ${houses.length} woningen geïmporteerd${sourceText}!`;
-                
-                this.showToast(`🏠 ${houses.length} woningen geladen!`);
-                this.triggerConfetti();
-
-                setTimeout(() => {
-                    this.closeModal(this.fundaModal);
-                }, 1500);
-            } else {
-                statusText.textContent = '⚠️ Geen woningen gevonden. Alle bronnen geblokkeerd.';
-                this.showToast('⚠️ Geen woningen gevonden');
+        if (user) {
+            loggedOutEl.classList.add('hidden');
+            loggedInEl.classList.remove('hidden');
+            const photo = document.getElementById('settingsUserPhoto');
+            if (photo) {
+                photo.src = user.photoURL || '';
+                photo.style.display = user.photoURL ? '' : 'none';
             }
-        } catch (error) {
-            console.error('Import error:', error);
-            const fundaSearchUrl = this.scraper.generateFundaUrl(url);
-            // Build error message safely without innerHTML injection
-            statusText.textContent = `❌ ${error.message}`;
-            const link = document.createElement('a');
-            link.href = fundaSearchUrl;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.className = 'funda-direct-link';
-            link.textContent = '🔗 Open Funda.nl direct →';
-            statusText.appendChild(document.createElement('br'));
-            statusText.appendChild(document.createElement('br'));
-            statusText.appendChild(link);
-            this.showToast('⚠️ Open Funda handmatig via de link');
-        } finally {
-            btnText.textContent = '🔍 Importeer woningen';
-            spinner.classList.add('hidden');
-            
-            setTimeout(() => {
-                status.classList.add('hidden');
-                progressBar.style.width = '0%';
-            }, 3000);
+            const nameEl = document.getElementById('settingsUserName');
+            const emailEl = document.getElementById('settingsUserEmail');
+            if (nameEl) nameEl.textContent = user.displayName || 'Gebruiker';
+            if (emailEl) emailEl.textContent = user.email || '';
+            // Load settings from Firebase for this user
+            this.loadSettingsFromFirebase();
+        } else {
+            loggedOutEl.classList.remove('hidden');
+            loggedInEl.classList.add('hidden');
+        }
+    }
+
+    async loginWithGoogle() {
+        try {
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                this.showToast('❌ Firebase Auth niet beschikbaar');
+                return;
+            }
+            const provider = new firebase.auth.GoogleAuthProvider();
+            await firebase.auth().signInWithPopup(provider);
+            this.showToast('✅ Ingelogd!');
+        } catch (e) {
+            console.error('Google login error:', e);
+            this.showToast('❌ Inloggen mislukt: ' + (e.message || 'onbekende fout'));
+        }
+    }
+
+    async logout() {
+        try {
+            if (typeof firebase !== 'undefined' && firebase.auth) {
+                await firebase.auth().signOut();
+            }
+            this.showToast('👋 Uitgelogd');
+        } catch (e) {
+            console.error('Logout error:', e);
+        }
+    }
+
+    async saveSettingsToFirebase() {
+        if (!this.currentUser) return;
+        try {
+            const db = firebase.database();
+            const uid = this.currentUser.uid;
+            await db.ref(`users/${uid}/settings`).set({
+                daysBack: this.daysBack,
+                browseFilters: this.browseFilters
+            });
+        } catch (e) {
+            console.error('Save settings error:', e);
+        }
+    }
+
+    async loadSettingsFromFirebase() {
+        if (!this.currentUser) return;
+        try {
+            const db = firebase.database();
+            const uid = this.currentUser.uid;
+            const snap = await db.ref(`users/${uid}/settings`).get();
+            if (!snap.exists()) return;
+            const data = snap.val();
+            if (data.daysBack) {
+                this.daysBack = data.daysBack;
+                localStorage.setItem('funda-days-back', this.daysBack.toString());
+                const sel = document.getElementById('settingsDaysBack');
+                if (sel) sel.value = String(this.daysBack);
+            }
+            if (data.browseFilters) {
+                this.browseFilters = { ...this.browseFilters, ...data.browseFilters };
+                this.restoreBrowseFilterUI();
+            }
+        } catch (e) {
+            console.error('Load settings error:', e);
+        }
+    }
+
+    restoreBrowseFilterUI() {
+        const f = this.browseFilters;
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+        setVal('bfMinPrice', f.minPrice || '');
+        setVal('bfMaxPrice', f.maxPrice || '');
+        setVal('bfMinSize',  f.minSize  || '');
+        setVal('bfMaxSize',  f.maxSize  || '');
+        setVal('bfMinYear',  f.minYear  || '');
+        setVal('bfMinDaysOnMarket', f.minDaysOnMarket || '');
+        setVal('bfNeighborhood', f.neighborhood || '');
+        const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+        setChk('bfHasTuin', f.hasTuin);
+        setChk('bfHasBalcony', f.hasBalcony);
+        setChk('bfHasParking', f.hasParking);
+        setChk('bfHasSolar', f.hasSolar);
+        if (f.minBedrooms) {
+            document.querySelectorAll('#bfBedroomsGroup .btn-option').forEach(b => {
+                b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minBedrooms);
+            });
+        }
+        if (f.minEnergyLabel) {
+            document.querySelectorAll('#bfEnergyGroup .btn-option').forEach(b => {
+                b.classList.toggle('active', b.dataset.value === f.minEnergyLabel);
+            });
         }
     }
 
@@ -979,6 +976,13 @@ class FunDaApp {
 
             // Show family code
             codeDisplay.textContent = this.familySync.getFamilyCode();
+
+            // Render QR code inline so family members can scan directly
+            const inlineQR = document.getElementById('inlineQRContainer');
+            if (inlineQR) {
+                const qrData = encodeURIComponent(`funda-family:${this.familySync.getFamilyCode()}`);
+                inlineQR.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrData}" class="inline-qr-img" width="180" height="180" alt="QR Code" loading="lazy">`;
+            }
 
             // Show members
             const members = this.familySync.getMembersList();
@@ -1439,6 +1443,21 @@ class FunDaApp {
         this.showToast('✅ Notities opgeslagen');
     }
 
+    addViewingToCalendar(houseId) {
+        const house = this.favorites.find(h => String(h.id) === String(houseId)) || this.findHouseById(houseId);
+        const viewingDate = document.getElementById('metaViewingDate')?.value || this.favoriteMeta[String(houseId)]?.viewingDate;
+        if (!viewingDate) { this.showToast('Vul eerst een bezichtigingsdatum in'); return; }
+        const addr = cleanAddress(house?.address || '');
+        const dateStr = viewingDate.replace(/-/g, '');
+        const locationStr = `${house?.address || ''}, ${house?.postalCode || ''} Amsterdam`;
+        const calUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+            '&text=' + encodeURIComponent('Bezichtiging ' + addr) +
+            '&dates=' + dateStr + '/' + dateStr +
+            '&details=' + encodeURIComponent(locationStr + (house?.url ? '\n' + house.url : '')) +
+            '&location=' + encodeURIComponent(locationStr);
+        window.open(calUrl, '_blank', 'noopener,noreferrer');
+    }
+
     removeFromFavorites(houseId) {
         console.log('🗑️ Removing favorite:', houseId);
         const beforeCount = this.favorites.length;
@@ -1494,13 +1513,14 @@ class FunDaApp {
 
     handleKeydown(e) {
         // Don't handle if modal is open
-        const modals = [this.filterModal, this.favoritesModal, this.detailModal, this.fundaModal, this.familyModal, this.mapModal];
+        const modals = [this.settingsModal, this.favoritesModal, this.detailModal, this.familyModal, this.mapModal];
         const anyModalOpen = modals.some(m => !m.classList.contains('hidden'));
         
         if (anyModalOpen) {
             if (e.key === 'Escape') {
                 modals.forEach(m => {
                     if (m === this.mapModal) this.closeMapModal();
+                    else if (m === this.settingsModal) this.closeSettingsModal();
                     else this.closeModal(m);
                 });
             }
@@ -1520,28 +1540,6 @@ class FunDaApp {
                 this.showDetail();
                 break;
         }
-    }
-
-    applyFilters() {
-        const minPrice = document.getElementById('minPrice').value;
-        const maxPrice = document.getElementById('maxPrice').value;
-        const neighborhood = document.getElementById('neighborhood').value;
-        const activeBedroomBtn = document.querySelector('.btn-option.active');
-
-        this.filters = {
-            minPrice: minPrice ? parseInt(minPrice, 10) : null,
-            maxPrice: maxPrice ? parseInt(maxPrice, 10) : null,
-            neighborhood: neighborhood || null,
-            minBedrooms: activeBedroomBtn ? parseInt(activeBedroomBtn.dataset.value, 10) : null
-        };
-
-        this.currentIndex = 0;
-        this.renderCards();
-        this.updateStats();
-        this.closeModal(this.filterModal);
-
-        const filtered = this.getFilteredHouses();
-        this.showToast(`🔍 ${filtered.length} woningen gevonden`);
     }
 
     showDetail(houseArg = null) {
@@ -1609,6 +1607,15 @@ class FunDaApp {
             <button data-action="openMapModal" class="btn-secondary" style="display:block;width:100%;text-align:center;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;cursor:pointer;">
                 🗺️ Bekijk op Maps
             </button>` : '';
+
+        // Broker contact
+        const brokerHtml = (house.brokerName || house.brokerPhone) ? `
+            <div class="detail-section">
+                <h3>🏢 Makelaar</h3>
+                ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
+                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary" style="display:inline-block;margin-right:0.5rem;margin-bottom:0.25rem;padding:0.4rem 0.8rem;font-size:0.85rem;">📞 Bel</a>` : ''}
+                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">✉️ Mail</a>` : ''}
+            </div>` : '';
 
         // Floorplan (first one, if available)
         const floorplanHtml = house.floorplanUrls?.length > 0 ? `
@@ -1689,6 +1696,7 @@ class FunDaApp {
 
             ${descHtml}
             ${floorplanHtml}
+            ${brokerHtml}
             ${mapsLinkHtml}
             </div>
             </div>
@@ -1727,15 +1735,16 @@ class FunDaApp {
                 const meta = this.favoriteMeta[String(house.id)] || {};
                 const statusLabels = { interested: '👀 Interessant', viewing: '📅 Bezichtiging', bid: '💰 Bod uitgebracht', accepted: '✅ Geaccepteerd', rejected: '❌ Afgewezen' };
                 const statusBadge = meta.status ? `<span class="fav-meta-badge">${escapeHtml(statusLabels[meta.status] || meta.status)}</span>` : '';
-                const bidBadge = meta.bidAmount ? `<span class="fav-meta-badge fav-meta-bid">Bod: €${escapeHtml(String(meta.bidAmount))}</span>` : '';
+                const deadlineBadge = meta.bidDeadline ? `<span class="fav-meta-badge fav-meta-bid">⏰ ${escapeHtml(meta.bidDeadline.split('T')[0])}</span>` : '';
+                const daysStr = house.daysOnMarket != null ? (house.daysOnMarket === 0 ? ' · 🆕' : ` · ${house.daysOnMarket}d`) : '';
                 return `
                 <div class="favorite-item" data-action="showFavoriteDetail" data-id="${escapedId}">
                     <img class="favorite-image" src="${safeImage}" alt="${safeAddress}">
                     <div class="favorite-info">
-                        <div class="favorite-price">${formatPrice(house.price)}</div>
+                        <div class="favorite-price">${formatPrice(house.price)}<span class="fav-days">${daysStr}</span></div>
                         <div class="favorite-address">${safeAddress}</div>
                         <div class="favorite-features">${safeFeatures}</div>
-                        ${statusBadge || bidBadge ? `<div class="fav-meta-badges">${statusBadge}${bidBadge}</div>` : ''}
+                        ${statusBadge || deadlineBadge ? `<div class="fav-meta-badges">${statusBadge}${deadlineBadge}</div>` : ''}
                     </div>
                     <button class="favorite-remove" data-action="removeFavorite" data-id="${escapedId}">
                         ✕
@@ -1788,6 +1797,15 @@ class FunDaApp {
             <button data-action="openMapModal" class="btn-secondary btn-full" style="display:block;width:100%;text-align:center;margin-bottom:0.5rem;cursor:pointer;">
                 🗺️ Bekijk op Maps
             </button>` : '';
+
+        // Broker contact
+        const brokerHtml = (house.brokerName || house.brokerPhone) ? `
+            <div class="detail-section">
+                <h3>🏢 Makelaar</h3>
+                ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
+                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary btn-full" style="display:block;text-align:center;margin-bottom:0.25rem;">📞 ${escapeHtml(house.brokerPhone)}</a>` : ''}
+                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary btn-full" style="display:block;text-align:center;">✉️ Stuur e-mail</a>` : ''}
+            </div>` : '';
 
         // Photo gallery
         const hasMultiplePhotos = this.detailGalleryImages.length > 1;
@@ -1873,17 +1891,14 @@ class FunDaApp {
                     </div>
                     <div class="bid-row">
                         <div class="bid-field">
-                            <label class="bid-label" for="metaViewingDate">Bezichtiging</label>
+                            <label class="bid-label" for="metaViewingDate">Bezichtigingsdatum</label>
                             <input type="date" class="bid-input" id="metaViewingDate" value="${escapeHtml(meta.viewingDate || '')}">
+                            <button class="btn-secondary btn-full" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}" style="margin-top:0.3rem;font-size:0.75rem;padding:0.3rem;cursor:pointer;">📅 Agenda</button>
                         </div>
                         <div class="bid-field">
-                            <label class="bid-label" for="metaBidDeadline">Uiterste biedatum (makelaar)</label>
+                            <label class="bid-label" for="metaBidDeadline">Bieddeadline makelaar</label>
                             <input type="datetime-local" class="bid-input" id="metaBidDeadline" value="${escapeHtml(meta.bidDeadline || '')}">
                         </div>
-                    </div>
-                    <div class="bid-field">
-                        <label class="bid-label" for="metaBidAmount">Bieding (€)</label>
-                        <input type="number" class="bid-input" id="metaBidAmount" placeholder="bijv. 450000" value="${escapeHtml(String(meta.bidAmount || ''))}">
                     </div>
                     <div class="bid-field">
                         <label class="bid-label" for="metaNotes">Notities</label>
@@ -1893,6 +1908,7 @@ class FunDaApp {
                 <button class="btn-primary btn-full" id="saveBidMetaBtn" style="margin-top:0.75rem;">💾 Notities opslaan</button>
             </div>
 
+            ${brokerHtml}
             ${mapsLinkHtml}
 
             <button class="btn-primary btn-full" style="background: var(--danger); margin-top: 0.5rem;" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
@@ -1925,7 +1941,6 @@ class FunDaApp {
                 status: selectedStatus || null,
                 viewingDate: document.getElementById('metaViewingDate').value || null,
                 bidDeadline: document.getElementById('metaBidDeadline').value || null,
-                bidAmount: document.getElementById('metaBidAmount').value ? parseInt(document.getElementById('metaBidAmount').value, 10) : null,
                 notes: document.getElementById('metaNotes').value.trim() || null,
             };
             this.saveFavoriteMeta(houseId, newMeta);
@@ -2220,6 +2235,7 @@ class FunDaApp {
 
         this.closeBrowseSidebarPanel();
         this.renderBrowseGrid();
+        this.saveSettingsToFirebase();
     }
 
     resetBrowseFilters() {

@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-elem 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-elem 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; frame-src https://www.google.com https://maps.google.com https://fun-da-cf8d6.firebaseapp.com; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Fun-da - De leukste manier om een huis te vinden in Amsterdam!">
     <meta name="theme-color" content="#FF6B35">
@@ -44,11 +44,10 @@
         <header class="header">
             <h1 class="logo"><span class="logo-fun">Fun</span><span class="logo-da">da</span></h1>
             <div class="header-actions">
-                <button class="btn-icon" id="fundaImportBtn" aria-label="Funda Import" title="Importeer van Funda">
+                <button class="btn-icon" id="settingsBtn" aria-label="Instellingen" title="Instellingen">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
                 </button>
                 <button class="btn-icon" id="familyBtn" aria-label="Familie" title="Familie Matches">
@@ -59,11 +58,6 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
                     <span class="badge family-badge" id="familyMatchCount">0</span>
-                </button>
-                <button class="btn-icon" id="filterBtn" aria-label="Filters">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
-                    </svg>
                 </button>
                 <button class="btn-icon" id="favoritesBtn" aria-label="Favorieten">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -274,51 +268,6 @@
         </div>
     </div>
 
-    <!-- Filter Modal -->
-    <div id="filterModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Filters</h2>
-                <button class="btn-close" id="closeFilterModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="filter-group">
-                    <label>Prijsrange</label>
-                    <div class="range-inputs">
-                        <input type="number" id="minPrice" placeholder="Min €" step="50000">
-                        <span>-</span>
-                        <input type="number" id="maxPrice" placeholder="Max €" step="50000">
-                    </div>
-                </div>
-                <div class="filter-group">
-                    <label>Minimum slaapkamers</label>
-                    <div class="btn-group">
-                        <button class="btn-option" data-value="1">1+</button>
-                        <button class="btn-option" data-value="2">2+</button>
-                        <button class="btn-option" data-value="3">3+</button>
-                        <button class="btn-option" data-value="4">4+</button>
-                    </div>
-                </div>
-                <div class="filter-group">
-                    <label for="neighborhood">Buurt</label>
-                    <select id="neighborhood" title="Kies een buurt">
-                        <option value="">Alle buurten</option>
-                        <option value="Centrum">Centrum</option>
-                        <option value="De Pijp">De Pijp</option>
-                        <option value="Jordaan">Jordaan</option>
-                        <option value="Oud-West">Oud-West</option>
-                        <option value="Oost">Oost</option>
-                        <option value="Noord">Noord</option>
-                        <option value="Zuid">Zuid</option>
-                        <option value="West">West</option>
-                        <option value="IJburg">IJburg</option>
-                    </select>
-                </div>
-                <button class="btn-primary btn-full" id="applyFilters">Filters toepassen</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Favorites Modal -->
     <div id="favoritesModal" class="modal hidden">
         <div class="modal-content modal-large">
@@ -351,19 +300,46 @@
         </div>
     </div>
 
-    <!-- Funda Import Modal -->
-    <div id="fundaModal" class="modal hidden">
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>🏠 Importeer van Funda</h2>
-                <button class="btn-close" id="closeFundaModal">&times;</button>
+                <h2>⚙️ Instellingen</h2>
+                <button class="btn-close" id="closeSettingsModal">&times;</button>
             </div>
             <div class="modal-body">
-                <p class="modal-description">Plak een Funda zoek-URL om echte woningen te importeren!</p>
-                
+                <!-- Account section -->
+                <h3 class="settings-section-title">Account</h3>
+                <div id="settingsLoggedOut">
+                    <p class="modal-description">Log in om je instellingen op te slaan en op elk apparaat te gebruiken.</p>
+                    <button class="btn-primary settings-google-btn" id="googleLoginBtn">
+                        <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                        </svg>
+                        Inloggen met Google
+                    </button>
+                </div>
+                <div id="settingsLoggedIn" class="hidden">
+                    <div class="settings-user-info">
+                        <img id="settingsUserPhoto" class="settings-avatar" src="" alt="Profielfoto">
+                        <div class="settings-user-text">
+                            <strong id="settingsUserName">-</strong>
+                            <small id="settingsUserEmail">-</small>
+                        </div>
+                    </div>
+                    <button class="btn-secondary settings-logout-btn" id="logoutBtn">Uitloggen</button>
+                </div>
+
+                <hr class="settings-divider">
+
+                <!-- Search settings -->
+                <h3 class="settings-section-title">Zoekinstellingen</h3>
                 <div class="filter-group">
-                    <label>Zoekperiode (ook bij automatisch laden)</label>
-                    <select id="importDaysBack" class="input-full">
+                    <label for="settingsDaysBack">Zoekperiode (ook bij automatisch laden)</label>
+                    <select id="settingsDaysBack" class="input-full">
                         <option value="1">🆕 Vandaag</option>
                         <option value="3" selected>📅 Laatste 3 dagen</option>
                         <option value="7">📅 Laatste week</option>
@@ -372,46 +348,12 @@
                     </select>
                 </div>
 
-                <div class="filter-group">
-                    <label>Funda URL</label>
-                    <input type="url" id="fundaUrl" value="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22" placeholder="https://www.funda.nl/zoeken/koop?selected_area=[&quot;amsterdam&quot;]" class="input-full">
-                </div>
-                
-                <div class="quick-links">
-                    <p>Of kies een snelle zoekopdracht:</p>
-                    <div class="quick-link-grid">
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22">🆕 Nieuw vandaag</button>
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%223%22">📅 Laatste 3 dagen</button>
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%225%22">📅 Laatste 5 dagen</button>
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%2210%22">📆 Laatste 10 dagen</button>
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%2230%22">🗓️ Laatste maand</button>
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22&price=%22200000-500000%22">💰 Nieuw €200k-500k</button>
-                        <button class="quick-link" data-url="https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22&rooms=%223%2B%22">🛏️ Nieuw 3+ kamers</button>
-                    </div>
-                </div>
+                <hr class="settings-divider">
 
-                <button class="btn-primary btn-full" id="importFundaBtn">
-                    <span id="importBtnText">🔍 Importeer woningen</span>
-                    <span id="importSpinner" class="spinner hidden"></span>
-                </button>
-
-                <div id="importStatus" class="import-status hidden">
-                    <div class="import-progress">
-                        <div class="import-progress-bar" id="importProgressBar"></div>
-                    </div>
-                    <p id="importStatusText">Bezig met importeren...</p>
-                </div>
-
-                <div class="import-note">
-                    <div class="clear-data-wrapper">
-                        <button id="clearDataBtn" class="btn-clear-data">🗑️ Wis alle data (start opnieuw)</button>
-                    </div>
-                    
-                    <p>💡 <strong>Tip:</strong> Funda blokkeert vaak automatische toegang. 
-                    Als het niet werkt, open <a href="https://www.funda.nl/zoeken/koop?selected_area=%5B%22amsterdam%22%5D&publication_date=%221%22" target="_blank" rel="noopener">Funda direct</a> 
-                    en swipe daar!</p>
-                    
-                    <p>🔄 <strong>Probeer het opnieuw</strong> - soms werkt het na een paar pogingen.</p>
+                <!-- Data management -->
+                <h3 class="settings-section-title">Data</h3>
+                <div class="clear-data-wrapper">
+                    <button id="clearDataBtn" class="btn-clear-data">🗑️ Wis alle data (start opnieuw)</button>
                 </div>
             </div>
         </div>
@@ -462,8 +404,8 @@
                         <div class="family-code" id="displayFamilyCode">---</div>
                         <div class="family-btn-group">
                             <button class="btn-small" id="copyFamilyCode">Kopieer</button>
-                            <button class="btn-small" id="showQRCode">QR Code</button>
                         </div>
+                        <div id="inlineQRContainer" class="inline-qr-container"></div>
                     </div>
 
                     <div class="family-members">
@@ -540,6 +482,7 @@
     <!-- Scripts - Firebase loaded first, then app code -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="js/data.js"></script>
     <script src="js/scraper.js"></script>
     <script src="js/firebase-sync.js"></script>

@@ -71,6 +71,28 @@
           ".validate": false
         }
       }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid",
+        "settings": {
+          "daysBack": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 90"
+          },
+          "browseFilters": {
+            "$field": {
+              ".validate": "newData.isString() || newData.isNumber() || newData.isBoolean() || newData.hasChildren() || !newData.exists()"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

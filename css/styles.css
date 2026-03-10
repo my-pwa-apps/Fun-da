@@ -3046,6 +3046,23 @@ body {
     border-color: var(--primary);
 }
 
+.fav-days {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-left: 0.2rem;
+    font-weight: 400;
+}
+
+.inline-qr-container {
+    text-align: center;
+    padding: 0.75rem 0 0.25rem;
+}
+
+.inline-qr-img {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
 /* ==========================================
    BID PANEL (favorite detail modal)
    ========================================== */
@@ -3138,5 +3155,71 @@ textarea.bid-input {
     border-color: var(--primary);
     color: var(--primary);
     background: #fff5f1;
+}
+
+/* ==========================================
+   SETTINGS MODAL
+   ========================================== */
+
+.settings-section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0 0 0.75rem;
+}
+
+.settings-divider {
+    border: none;
+    border-top: 1px solid var(--gray-lighter);
+    margin: 1.25rem 0;
+}
+
+.settings-google-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-content: center;
+}
+
+.settings-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--light);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.settings-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.settings-user-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.875rem;
+}
+
+.settings-user-text strong {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.settings-user-text small {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.settings-logout-btn {
+    font-size: 0.85rem;
+    padding: 0.45rem 1rem;
 }
 

@@ -140,7 +140,10 @@ class FundaScraper {
                 propertyType: { house: 'Woning', apartment: 'Appartement', parking_space: 'Parkeerplaats', building_plot: 'Bouwgrond' }[source.object_type] || source.object_type || '',
                 constructionType: source.construction_type || '',
                 publicationDate: source.publish_date || '',
+                daysOnMarket: (() => { const d = source.publish_date ? new Date(source.publish_date) : null; return d && !isNaN(d) ? Math.floor((Date.now() - d) / 86400000) : null; })(),
                 brokerName: source.agent?.[0]?.name || '',
+                brokerPhone: source.agent?.[0]?.phone_number || source.agent?.[0]?.phone || '',
+                brokerEmail: source.agent?.[0]?.email || '',
                 image: this.getPlaceholderImage(),
                 images: [],
                 url: detailPath ? `https://www.funda.nl${detailPath}` : '#',
@@ -290,6 +293,12 @@ class FundaScraper {
             // Popularity stats
             views: data.ObjectInsights?.Views ?? null,
             saves: data.ObjectInsights?.Saves ?? null,
+            // Days on market (computed from PublicationDate)
+            daysOnMarket: (() => { const d = data.PublicationDate ? new Date(data.PublicationDate) : null; return d && !isNaN(d) ? Math.floor((Date.now() - d) / 86400000) : null; })(),
+            // Broker contact
+            brokerName: data.SellingAgent?.Name || data.SellingAgent?.name || '',
+            brokerPhone: data.SellingAgent?.PhoneNumber || data.SellingAgent?.phone_number || data.SellingAgent?.Phone || '',
+            brokerEmail: data.SellingAgent?.Email || data.SellingAgent?.email || '',
             // Source flag
             enrichedFromMobileAPI: true,
         };
