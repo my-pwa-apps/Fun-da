@@ -1465,7 +1465,7 @@ class FunDaApp {
         const mapsLinkHtml = safeMapsUrl !== '#' ? `
             <a href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
                 🗺️ Bekijk op Maps
-            </a>` : '');
+            </a>` : '';
 
         // Floorplan (first one, if available)
         const floorplanHtml = house.floorplanUrls?.length > 0 ? `

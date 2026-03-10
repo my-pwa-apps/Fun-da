@@ -358,7 +358,7 @@ class FamilySync {
     isInFamily() {
         return !!this.familyCode;
     }
-                isCurrentUser: data.userId === this.userId || (data.name || name) === this.userName
+
     getFamilyCode() {
         return this.familyCode;
     }
@@ -374,7 +374,7 @@ class FamilySync {
                 name: data.name || name,
                 favoriteCount: (data.favorites || []).length,
                 lastSeen: data.lastSeen,
-                isCurrentUser: (data.name || name) === this.userName
+                isCurrentUser: data.userId === this.userId || (data.name || name) === this.userName
             });
         }
         return list.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0));
