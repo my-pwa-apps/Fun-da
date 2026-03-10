@@ -574,12 +574,16 @@ class FunDaApp {
                 case 'showBrowseDetail':        this.showHouseDetail(id); break;
                 case 'browseAddFavorite':       e.stopPropagation(); this.browseToggleFavorite(id, target); break;
                 case 'switchDetailPhoto': {
-                    const mainImg = document.getElementById('detailMainImg');
-                    if (mainImg && target.dataset.src) mainImg.src = target.dataset.src;
-                    document.querySelectorAll('#detailContent .detail-thumb').forEach(t => t.classList.remove('active'));
-                    target.classList.add('active');
+                    const idx = parseInt(target.dataset.index, 10);
+                    if (!isNaN(idx)) this._switchDetailPhotoByIndex(idx);
                     break;
                 }
+                case 'detailNavPrev':
+                    this._switchDetailPhotoByIndex(this.detailGalleryIndex - 1);
+                    break;
+                case 'detailNavNext':
+                    this._switchDetailPhotoByIndex(this.detailGalleryIndex + 1);
+                    break;
             }
         });
 
@@ -1508,6 +1512,9 @@ class FunDaApp {
         })();
         if (!house) return;
 
+        this.detailGalleryImages = house.images?.length > 0 ? house.images : (house.image ? [house.image] : []);
+        this.detailGalleryIndex = 0;
+
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
         
         // Build extra details section
@@ -1576,24 +1583,31 @@ class FunDaApp {
             </div>` : '';
 
         // Build photo gallery thumbnails
-        const galleryThumbsHtml = (house.images?.length > 1) ? `
+        const hasMultiplePhotos = this.detailGalleryImages.length > 1;
+        const galleryThumbsHtml = hasMultiplePhotos ? `
             <div class="detail-thumbs">
                 ${house.images.slice(0, 8).map((img, i) => `
                     <img class="detail-thumb${i === 0 ? ' active' : ''}"
                          src="${escapeHtml(safeImageUrl(img))}"
                          data-action="switchDetailPhoto"
                          data-src="${escapeHtml(safeImageUrl(img))}"
+                         data-index="${i}"
                          loading="lazy" alt="Foto ${i + 1}">
                 `).join('')}
             </div>` : '';
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <div class="detail-gallery">
-                <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
-                ${galleryThumbsHtml}
+            <div class="detail-layout">
+            <div class="detail-gallery-col">
+                <div class="detail-gallery">
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="Vorige foto">&#8249;</button>` : ''}
+                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="Volgende foto">&#8250;</button>` : ''}
+                    ${galleryThumbsHtml}
+                </div>
             </div>
-            
+            <div class="detail-info-col">
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
                 ${house.pricePerM2 ? `<div style="font-size:0.8rem;color:var(--text-muted);">${safePricePerM2} per m²</div>` : ''}
@@ -1634,8 +1648,11 @@ class FunDaApp {
             ${descHtml}
             ${floorplanHtml}
             ${mapsLinkHtml}
+            </div>
+            </div>
         `;
 
+        this._bindDetailGallerySwipe();
         this.openModal(this.detailModal);
     }
 
@@ -1692,6 +1709,9 @@ class FunDaApp {
         const house = this.favorites.find(h => String(h.id) === String(houseId));
         if (!house) return;
 
+        this.detailGalleryImages = house.images?.length > 0 ? house.images : (house.image ? [house.image] : []);
+        this.detailGalleryIndex = 0;
+
         this.closeModal(this.favoritesModal);
 
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
@@ -1724,13 +1744,15 @@ class FunDaApp {
             </a>` : '';
 
         // Photo gallery
-        const galleryThumbsHtml = (house.images?.length > 1) ? `
+        const hasMultiplePhotos = this.detailGalleryImages.length > 1;
+        const galleryThumbsHtml = hasMultiplePhotos ? `
             <div class="detail-thumbs">
                 ${house.images.slice(0, 8).map((img, i) => `
                     <img class="detail-thumb${i === 0 ? ' active' : ''}"
                          src="${escapeHtml(safeImageUrl(img))}"
                          data-action="switchDetailPhoto"
                          data-src="${escapeHtml(safeImageUrl(img))}"
+                         data-index="${i}"
                          loading="lazy" alt="Foto ${i + 1}">
                 `).join('')}
             </div>` : '';
@@ -1746,11 +1768,16 @@ class FunDaApp {
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <div class="detail-gallery">
-                <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
-                ${galleryThumbsHtml}
+            <div class="detail-layout">
+            <div class="detail-gallery-col">
+                <div class="detail-gallery">
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="Vorige foto">&#8249;</button>` : ''}
+                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="Volgende foto">&#8250;</button>` : ''}
+                    ${galleryThumbsHtml}
+                </div>
             </div>
-
+            <div class="detail-info-col">
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
                 <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${safeLocation}</div>
@@ -1825,6 +1852,8 @@ class FunDaApp {
             <button class="btn-primary btn-full" style="background: var(--danger); margin-top: 0.5rem;" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
                 🗑️ Verwijderen uit favorieten
             </button>
+            </div>
+            </div>
         `;
 
         // Wire up the bid panel interactions after inserting HTML
@@ -1856,17 +1885,54 @@ class FunDaApp {
             this.saveFavoriteMeta(houseId, newMeta);
         });
 
+        this._bindDetailGallerySwipe();
         setTimeout(() => this.openModal(this.detailModal), 300);
+    }
+
+    _switchDetailPhotoByIndex(idx) {
+        const imgs = this.detailGalleryImages;
+        if (!imgs || imgs.length === 0) return;
+        this.detailGalleryIndex = ((idx % imgs.length) + imgs.length) % imgs.length;
+        const mainImg = document.getElementById('detailMainImg');
+        if (mainImg) mainImg.src = safeImageUrl(imgs[this.detailGalleryIndex]);
+        document.querySelectorAll('#detailContent .detail-thumb').forEach((t, i) => {
+            t.classList.toggle('active', i === this.detailGalleryIndex);
+        });
+    }
+
+    _bindDetailGallerySwipe() {
+        const gallery = document.querySelector('#detailContent .detail-gallery');
+        if (!gallery) return;
+        let startX = 0;
+        gallery.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        gallery.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 40) {
+                if (dx < 0) this._switchDetailPhotoByIndex(this.detailGalleryIndex + 1);
+                else        this._switchDetailPhotoByIndex(this.detailGalleryIndex - 1);
+            }
+        });
     }
 
     openModal(modal) {
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        if (modal === this.detailModal) {
+            this._detailKeyHandler = (e) => {
+                if (e.key === 'ArrowLeft')  this._switchDetailPhotoByIndex(this.detailGalleryIndex - 1);
+                else if (e.key === 'ArrowRight') this._switchDetailPhotoByIndex(this.detailGalleryIndex + 1);
+            };
+            document.addEventListener('keydown', this._detailKeyHandler);
+        }
     }
 
     closeModal(modal) {
         modal.classList.add('hidden');
         document.body.style.overflow = '';
+        if (this._detailKeyHandler) {
+            document.removeEventListener('keydown', this._detailKeyHandler);
+            this._detailKeyHandler = null;
+        }
     }
 
     reset() {

@@ -2924,6 +2924,81 @@ body {
     outline-color: var(--primary);
 }
 
+/* Gallery prev/next nav buttons */
+.detail-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius);
+    z-index: 3;
+    transition: background 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.detail-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.detail-nav-prev { left: 0.4rem; }
+.detail-nav-next { right: 0.4rem; }
+
+/* Responsive detail modal */
+@media (min-width: 720px) {
+    .modal-detail {
+        max-width: 680px;
+    }
+}
+
+@media (min-width: 960px) {
+    .modal-detail {
+        max-width: 960px;
+        height: 85vh;
+        max-height: 85vh;
+    }
+
+    .modal-detail .modal-body {
+        overflow: hidden;
+        padding: 0;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .detail-layout {
+        display: flex;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .detail-gallery-col {
+        width: 46%;
+        flex-shrink: 0;
+        overflow-y: auto;
+        background: #111;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-gallery-col .detail-gallery {
+        border-radius: 0;
+        flex: 0 0 auto;
+    }
+
+    .detail-info-col {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem 1.25rem;
+        min-width: 0;
+    }
+}
+
 /* ==========================================
    FAVORITE META BADGES
    ========================================== */
