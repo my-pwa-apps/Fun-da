@@ -5,31 +5,50 @@
     "families": {
       "$familyCode": {
         ".read": true,
-        ".write": true,
+        "metadata": {
+          ".read": true,
+          ".write": "!data.exists()",
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "createdBy": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
+          },
+          "createdByUserId": {
+            ".validate": "newData.isString() && newData.val().matches(/^user-[a-f0-9]{16}$/)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "members": {
           "$userId": {
+            ".read": true,
+            ".write": "$userId.matches(/^user-[a-f0-9]{16}$/)",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
             },
-            "favoriteCount": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+            "userId": {
+              ".validate": "newData.isString() && newData.val().matches(/^user-[a-f0-9]{16}$/)"
             },
-            "isOnline": {
-              ".validate": "newData.isBoolean()"
-            },
-            "lastSeen": {
-              ".validate": "newData.isNumber()"
-            }
-          }
-        },
-        "favorites": {
-          "$userId": {
             "favorites": {
               "$item": {
                 ".validate": "newData.isString() && newData.val().length <= 200"
               }
+            },
+            "joinedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "lastSeen": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
             }
           }
+        },
+        "$other": {
+          ".validate": false
         }
       }
     }

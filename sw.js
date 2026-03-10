@@ -1,4 +1,5 @@
-const CACHE_NAME = 'fun-da-v69';
+const CACHE_NAME = 'fun-da-v71';
+const swDebug = () => {};
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -15,15 +16,15 @@ const ASSETS_TO_CACHE = [
 
 // Install event - cache assets
 self.addEventListener('install', (event) => {
-    console.log('🏠 Fun-da: Installing service worker...');
+    swDebug('🏠 Fun-da: Installing service worker...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
-                console.log('🏠 Fun-da: Caching assets...');
+                swDebug('🏠 Fun-da: Caching assets...');
                 return cache.addAll(ASSETS_TO_CACHE);
             })
             .then(() => {
-                console.log('🎉 Fun-da: Assets cached successfully!');
+                swDebug('🎉 Fun-da: Assets cached successfully!');
                 // Don't skip waiting automatically - let user decide
             })
             .catch((error) => {
@@ -35,7 +36,7 @@ self.addEventListener('install', (event) => {
 // Listen for skip waiting message from the app
 self.addEventListener('message', (event) => {
     if (event.data?.type === 'SKIP_WAITING') {
-        console.log('🔄 Fun-da: Skip waiting requested, activating new version...');
+        swDebug('🔄 Fun-da: Skip waiting requested, activating new version...');
         self.skipWaiting();
     }
 });
@@ -49,13 +50,13 @@ self.addEventListener('activate', (event) => {
                     cacheNames
                         .filter((name) => name !== CACHE_NAME)
                         .map((name) => {
-                            console.log('🧹 Fun-da: Deleting old cache:', name);
+                            swDebug('🧹 Fun-da: Deleting old cache:', name);
                             return caches.delete(name);
                         })
                 );
             })
             .then(() => {
-                console.log('✅ Fun-da: Service Worker activated!');
+                swDebug('✅ Fun-da: Service Worker activated!');
                 return self.clients.claim();
             })
     );

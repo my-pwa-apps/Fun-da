@@ -16,6 +16,20 @@ const PLACEHOLDER_IMAGE = `data:image/svg+xml,${encodeURIComponent(
     '</svg>'
 )}`;
 
+const APP_DEBUG = false;
+
+if (!APP_DEBUG && !window.__FUNDA_CONSOLE_PATCHED__) {
+    window.__FUNDA_CONSOLE_PATCHED__ = true;
+    window.__FUNDA_ORIGINAL_CONSOLE__ = {
+        log: console.log.bind(console),
+        warn: console.warn.bind(console),
+        debug: console.debug.bind(console),
+    };
+    console.log = () => {};
+    console.warn = () => {};
+    console.debug = () => {};
+}
+
 // Fun facts about Amsterdam neighborhoods
 const NEIGHBORHOOD_FACTS = {
     "Centrum": "🏛️ Het historische hart van Amsterdam met de beroemde grachten!",
@@ -66,6 +80,45 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;');
+}
+
+function sanitizeUrl(url, options = {}) {
+    const {
+        fallback = '#',
+        allowData = false,
+        allowBlob = false,
+    } = options;
+
+    if (!url) return fallback;
+
+    const trimmed = String(url).trim();
+    if (!trimmed) return fallback;
+
+    if (allowData && trimmed.startsWith('data:image/')) {
+        return trimmed;
+    }
+
+    try {
+        const parsed = new URL(trimmed, window.location.origin);
+        const allowedProtocols = ['http:', 'https:'];
+        if (allowBlob) allowedProtocols.push('blob:');
+        if (allowData) allowedProtocols.push('data:');
+        return allowedProtocols.includes(parsed.protocol) ? parsed.href : fallback;
+    } catch {
+        return fallback;
+    }
+}
+
+function safeExternalUrl(url) {
+    return sanitizeUrl(url, { fallback: '#' });
+}
+
+function safeImageUrl(url) {
+    return sanitizeUrl(url, {
+        fallback: PLACEHOLDER_IMAGE,
+        allowData: true,
+        allowBlob: true,
+    });
 }
 
 // Helper function to shuffle array

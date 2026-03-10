@@ -497,6 +497,15 @@ class FunDaApp {
             this.showToast('🎉 Fun-da - Huizenjacht was nog nooit zo leuk!');
         });
 
+        // Replace inline img.onerror handlers so image fallback still works under CSP.
+        document.addEventListener('error', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLImageElement)) return;
+            if (target.dataset.fallbackApplied === 'true') return;
+            target.dataset.fallbackApplied = 'true';
+            target.src = PLACEHOLDER_IMAGE;
+        }, true);
+
         // Delegated click handler for dynamic elements.
         // Replaces inline onclick attributes, which are blocked by a strict CSP.
         document.body.addEventListener('click', (e) => {
@@ -653,6 +662,10 @@ class FunDaApp {
 
         try {
             const code = await this.familySync.createFamily(name);
+            if (!code) {
+                this.showToast('❌ Familie aanmaken mislukt. Probeer het opnieuw.');
+                return;
+            }
             this.showToast(`🎉 Familie aangemaakt! Code: ${code}`);
             this.updateFamilyUI();
         } catch (e) {
@@ -678,7 +691,11 @@ class FunDaApp {
         }
 
         try {
-            await this.familySync.joinFamily(code, name);
+            const joined = await this.familySync.joinFamily(code, name);
+            if (!joined) {
+                this.showToast('❌ Familie niet gevonden. Controleer de code.');
+                return;
+            }
             this.showToast(`👨‍👩‍👧‍👦 Je bent nu lid van familie ${code}!`);
             this.updateFamilyUI();
         } catch (e) {
@@ -735,7 +752,7 @@ class FunDaApp {
             qrDisplay.appendChild(img);
         };
         img.onerror = () => {
-            qrDisplay.innerHTML = `<p>QR code kon niet laden.<br><strong>${code}</strong></p>`;
+            qrDisplay.innerHTML = `<p>QR code kon niet laden.<br><strong>${escapeHtml(code)}</strong></p>`;
         };
     }
     
@@ -860,12 +877,14 @@ class FunDaApp {
                 for (const [houseId, memberNames] of this.familyMatches) {
                     const house = this.findHouseById(houseId);
                     if (house) {
+                        const safeMatchImage = escapeHtml(safeImageUrl(house.image));
+                        const safeMatchAddress = escapeHtml(cleanAddress(house.address));
                         matchHtml.push(`
                             <div class="match-item" data-action="showMatchDetail" data-id="${escapeHtml(String(houseId))}">
-                                <img class="match-image" src="${house.image}" alt="${house.address}">
+                                <img class="match-image" src="${safeMatchImage}" alt="${safeMatchAddress}">
                                 <div class="match-info">
                                     <div class="match-price">${formatPrice(house.price)}</div>
-                                    <div class="match-address">${house.address}</div>
+                                    <div class="match-address">${safeMatchAddress}</div>
                                     <div class="match-members">
                                         ${memberNames.map(n => `<span class="match-member-badge">${escapeHtml(n)}</span>`).join('')}
                                     </div>
@@ -948,6 +967,10 @@ class FunDaApp {
         this.closeModal(this.familyModal);
         
         const memberNames = this.familyMatches.get(houseId) || this.familyMatches.get(parseInt(houseId));
+        const safeAddress = escapeHtml(cleanAddress(house.address));
+        const safeLocation = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || ''}`);
+        const safeImage = escapeHtml(safeImageUrl(house.image));
+        const safeFundaUrl = safeExternalUrl(house.url);
         
         document.getElementById('detailTitle').textContent = '🎉 Familie Match!';
         document.getElementById('detailContent').innerHTML = `
@@ -959,11 +982,11 @@ class FunDaApp {
                 </div>
             </div>
             
-            <img class="detail-image" src="${house.image}" alt="${house.address}">
+            <img class="detail-image" src="${safeImage}" alt="${safeAddress}">
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">${safeLocation}</div>
             </div>
 
             <div class="detail-section">
@@ -980,8 +1003,8 @@ class FunDaApp {
                 </div>
             </div>
 
-            ${house.url && house.url !== '#' ? `
-                <a href="${house.url}" target="_blank" class="btn-primary btn-full" style="display: block; text-align: center; text-decoration: none;">
+            ${safeFundaUrl !== '#' ? `
+                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-full" style="display: block; text-align: center; text-decoration: none;">
                     🔗 Bekijk op Funda
                 </a>
             ` : ''}
@@ -1043,6 +1066,9 @@ class FunDaApp {
         const priceLabel = getPriceLabel(house.price);
         const isFamilyMatch = this.familyMatches.has(house.id) || this.familyMatches.has(house.id?.toString());
         const matchMembers = this.familyMatches.get(house.id) || this.familyMatches.get(house.id?.toString());
+        const safeAddress = escapeHtml(cleanAddress(house.address));
+        const safeNeighborhood = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}`);
+        const safeEnergyLabel = escapeHtml(house.energyLabel || '');
 
         // Build image gallery HTML
         // Helper to normalize Funda image URLs (remove size params to compare)
@@ -1081,36 +1107,31 @@ class FunDaApp {
         let imageGalleryHtml;
         if (images.length >= 4) {
             // Show 4 images in a 2x2 grid
-            const img1 = images[0] || mainImage;
-            const img2 = images[1] || mainImage;
-            const img3 = images[2] || mainImage;
-            const img4 = images[3] || mainImage;
+            const img1 = safeImageUrl(images[0] || mainImage);
+            const img2 = safeImageUrl(images[1] || mainImage);
+            const img3 = safeImageUrl(images[2] || mainImage);
+            const img4 = safeImageUrl(images[3] || mainImage);
             
             imageGalleryHtml = `
                 <div class="card-image-gallery">
                     <div>
-                            <img class="gallery-thumb" src="${img1}" alt="${house.address}" loading="lazy" 
-                                onerror="this.src=PLACEHOLDER_IMAGE">
+                            <img class="gallery-thumb" src="${escapeHtml(img1)}" alt="${safeAddress}" loading="lazy">
                     </div>
                     <div>
-                            <img class="gallery-thumb" src="${img2}" alt="${house.address}" loading="lazy"
-                                onerror="this.src=PLACEHOLDER_IMAGE">
+                            <img class="gallery-thumb" src="${escapeHtml(img2)}" alt="${safeAddress}" loading="lazy">
                     </div>
                     <div>
-                            <img class="gallery-thumb" src="${img3}" alt="${house.address}" loading="lazy"
-                                onerror="this.src=PLACEHOLDER_IMAGE">
+                            <img class="gallery-thumb" src="${escapeHtml(img3)}" alt="${safeAddress}" loading="lazy">
                     </div>
                     <div>
-                            <img class="gallery-thumb" src="${img4}" alt="${house.address}" loading="lazy"
-                                onerror="this.src=PLACEHOLDER_IMAGE">
+                            <img class="gallery-thumb" src="${escapeHtml(img4)}" alt="${safeAddress}" loading="lazy">
                     </div>
                 </div>
             `;
         } else {
             // Fallback to single image
             imageGalleryHtml = `
-                 <img class="card-image" src="${mainImage}" alt="${house.address}" loading="lazy" 
-                     onerror="this.src=PLACEHOLDER_IMAGE">
+                 <img class="card-image" src="${escapeHtml(safeImageUrl(mainImage))}" alt="${safeAddress}" loading="lazy">
             `;
         }
 
@@ -1126,13 +1147,13 @@ class FunDaApp {
             <div class="swipe-indicator nope">✕ Nee</div>
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
-                <div class="card-address">${cleanAddress(house.address)}</div>
-                <div class="card-neighborhood">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}</div>
+                <div class="card-address">${safeAddress}</div>
+                <div class="card-neighborhood">${safeNeighborhood}</div>
                 <div class="card-features">
                     <span class="feature">${house.size || '?'}m²</span>
                     <span class="feature">${house.bedrooms || '?'} slpk</span>
                     ${house.yearBuilt ? `<span class="feature">${house.yearBuilt}</span>` : ''}
-                    ${house.energyLabel ? `<span class="feature feature-energy" data-label="${house.energyLabel}">${house.energyLabel}</span>` : ''}
+                    ${house.energyLabel ? `<span class="feature feature-energy" data-label="${safeEnergyLabel}">${safeEnergyLabel}</span>` : ''}
                 </div>
                 ${(house.hasGarden || house.hasBalcony || house.hasSolarPanels || house.hasHeatPump || house.hasRoofTerrace || house.hasParking) ? `
                 <div class="card-icons">
@@ -1390,8 +1411,8 @@ class FunDaApp {
         
         // Build extra details section
         const extraDetails = [];
-        if (house.houseType) extraDetails.push(`<span>🏠 ${house.houseType}</span>`);
-        else if (house.propertyType) extraDetails.push(`<span>🏠 ${house.propertyType}</span>`);
+        if (house.houseType) extraDetails.push(`<span>🏠 ${escapeHtml(house.houseType)}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>🏠 ${escapeHtml(house.propertyType)}</span>`);
         if (house.plotArea) extraDetails.push(`<span>🌳 Perceel: ${house.plotArea}m²</span>`);
         if (house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotSize}m²</span>`);
         if (house.hasGarden) extraDetails.push(`<span>🌿 ${house.gardenType || 'Tuin'}</span>`);
@@ -1403,10 +1424,10 @@ class FunDaApp {
         if (house.isMonument) extraDetails.push(`<span>🏛️ Monument</span>`);
         if (house.isFixerUpper) extraDetails.push(`<span>🔧 Kluswoning</span>`);
         if (house.isAuction) extraDetails.push(`<span>🔨 Veiling</span>`);
-        if (house.parking) extraDetails.push(`<span>🚗 ${house.parking}</span>`);
+        if (house.parking) extraDetails.push(`<span>🚗 ${escapeHtml(house.parking)}</span>`);
         if (house.vveCosts) extraDetails.push(`<span>🏢 VvE: €${house.vveCosts}/mnd</span>`);
-        if (house.status) extraDetails.push(`<span>📋 ${house.status}</span>`);
-        if (house.acceptance) extraDetails.push(`<span>📅 ${house.acceptance}</span>`);
+        if (house.status) extraDetails.push(`<span>📋 ${escapeHtml(house.status)}</span>`);
+        if (house.acceptance) extraDetails.push(`<span>📅 ${escapeHtml(house.acceptance)}</span>`);
         
         // Build data source badge
         const sourceBadges = [];
@@ -1423,12 +1444,20 @@ class FunDaApp {
                 ${house.saves != null ? `<span>❤️ ${house.saves} keer opgeslagen</span>` : ''}
             </div>` : '';
 
+        const safeAddress = escapeHtml(cleanAddress(house.address));
+        const safeImage = escapeHtml(safeImageUrl(house.image));
+        const safeLocation = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || ''}`);
+        const safeMunicipality = escapeHtml(house.municipality || '');
+        const safePricePerM2 = escapeHtml(house.pricePerM2 || '');
+        const safeFact = escapeHtml(fact);
+        const safeFundaUrl = safeExternalUrl(house.url);
+        const safeMapsUrl = house.googleMapsUrl
+            ? safeExternalUrl(house.googleMapsUrl)
+            : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
+
         // Map link
-        const mapsLinkHtml = house.googleMapsUrl ? `
-            <a href="${house.googleMapsUrl}" target="_blank" rel="noopener" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
-                🗺️ Bekijk op Maps
-            </a>` : (house.latitude && house.longitude ? `
-            <a href="https://www.google.com/maps?q=${house.latitude},${house.longitude}" target="_blank" rel="noopener" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
+        const mapsLinkHtml = safeMapsUrl !== '#' ? `
+            <a href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
                 🗺️ Bekijk op Maps
             </a>` : '');
 
@@ -1436,25 +1465,25 @@ class FunDaApp {
         const floorplanHtml = house.floorplanUrls?.length > 0 ? `
             <div class="detail-section">
                 <h3>Plattegrond</h3>
-                <img src="${house.floorplanUrls[0]}" alt="Plattegrond" style="width:100%;border-radius:8px;" loading="lazy">
+                <img src="${escapeHtml(safeImageUrl(house.floorplanUrls[0]))}" alt="Plattegrond" style="width:100%;border-radius:8px;" loading="lazy">
             </div>` : '';
 
         // Description
         const descHtml = house.description ? `
             <div class="detail-section">
                 <h3>Omschrijving</h3>
-                <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${house.description.substring(0, 500)}${house.description.length > 500 ? '…' : ''}</p>
+                <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
             </div>` : '';
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <img class="detail-image" src="${house.image}" alt="${cleanAddress(house.address)}">
+            <img class="detail-image" src="${safeImage}" alt="${safeAddress}">
             
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
-                ${house.pricePerM2 ? `<div style="font-size:0.8rem;color:var(--text-muted);">${house.pricePerM2} per m²</div>` : ''}
-                <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
-                ${house.municipality ? `<div style="font-size:0.8rem;color:var(--text-muted);">Gemeente ${house.municipality}</div>` : ''}
+                ${house.pricePerM2 ? `<div style="font-size:0.8rem;color:var(--text-muted);">${safePricePerM2} per m²</div>` : ''}
+                <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${safeLocation}</div>
+                ${house.municipality ? `<div style="font-size:0.8rem;color:var(--text-muted);">Gemeente ${safeMunicipality}</div>` : ''}
                 ${popularityHtml}
                 ${sourceBadges.length > 0 ? `<div style="margin-top:0.4rem;">${sourceBadges.join('')}</div>` : ''}
             </div>
@@ -1480,18 +1509,18 @@ class FunDaApp {
                     </div>
                     <div class="detail-item">
                         <div class="detail-item-label">Energie</div>
-                        <div class="detail-item-value">${house.energyLabel || '?'}</div>
+                        <div class="detail-item-value">${escapeHtml(house.energyLabel || '?')}</div>
                     </div>
                 </div>
                 ${extraDetails.length > 0 ? `<div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">${extraDetails.join('')}</div>` : ''}
-                ${fact ? `<p style="margin-top:0.75rem;font-style:italic;font-size:0.85rem;color:var(--secondary);">${fact}</p>` : ''}
+                ${fact ? `<p style="margin-top:0.75rem;font-style:italic;font-size:0.85rem;color:var(--secondary);">${safeFact}</p>` : ''}
             </div>
 
             ${descHtml}
             ${floorplanHtml}
 
-            ${house.url && house.url !== '#' ? `
-                <a href="${house.url}" target="_blank" rel="noopener" class="btn-secondary" style="display: block; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; margin-top: 0.75rem;">
+            ${safeFundaUrl !== '#' ? `
+                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display: block; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; margin-top: 0.75rem;">
                     🔗 Bekijk op Funda
                 </a>
             ` : ''}
@@ -1524,13 +1553,16 @@ class FunDaApp {
 
             list.innerHTML = this.favorites.map(house => {
                 const escapedId = escapeHtml(String(house.id));
+                const safeImage = escapeHtml(safeImageUrl(house.image));
+                const safeAddress = escapeHtml(cleanAddress(house.address));
+                const safeFeatures = escapeHtml(`${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city || ''}`);
                 return `
                 <div class="favorite-item" data-action="showFavoriteDetail" data-id="${escapedId}">
-                    <img class="favorite-image" src="${house.image}" alt="${cleanAddress(house.address)}">
+                    <img class="favorite-image" src="${safeImage}" alt="${safeAddress}">
                     <div class="favorite-info">
                         <div class="favorite-price">${formatPrice(house.price)}</div>
-                        <div class="favorite-address">${cleanAddress(house.address)}</div>
-                        <div class="favorite-features">${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city}</div>
+                        <div class="favorite-address">${safeAddress}</div>
+                        <div class="favorite-features">${safeFeatures}</div>
                     </div>
                     <button class="favorite-remove" data-action="removeFavorite" data-id="${escapedId}">
                         ✕
@@ -1552,8 +1584,8 @@ class FunDaApp {
 
         // Extra features
         const extraDetails = [];
-        if (house.houseType) extraDetails.push(`<span>🏠 ${house.houseType}</span>`);
-        else if (house.propertyType) extraDetails.push(`<span>🏠 ${house.propertyType}</span>`);
+        if (house.houseType) extraDetails.push(`<span>🏠 ${escapeHtml(house.houseType)}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>🏠 ${escapeHtml(house.propertyType)}</span>`);
         if (house.plotArea || house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotArea || house.plotSize}m²</span>`);
         if (house.hasGarden) extraDetails.push(`<span>🌿 Tuin</span>`);
         if (house.hasBalcony) extraDetails.push(`<span>🌅 Balkon</span>`);
@@ -1563,19 +1595,26 @@ class FunDaApp {
         if (house.hasParking) extraDetails.push(`<span>🚗 Parkeren</span>`);
         if (house.isMonument) extraDetails.push(`<span>🏛️ Monument</span>`);
 
-        const mapsLinkHtml = house.googleMapsUrl ? `
-            <a href="${house.googleMapsUrl}" target="_blank" rel="noopener" class="btn-secondary btn-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
+        const safeAddress = escapeHtml(cleanAddress(house.address));
+        const safeImage = escapeHtml(safeImageUrl(house.image));
+        const safeLocation = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || ''}`);
+        const safeFact = escapeHtml(fact);
+        const safeMapsUrl = house.googleMapsUrl ? safeExternalUrl(house.googleMapsUrl) : '#';
+        const safeFundaUrl = safeExternalUrl(house.url);
+
+        const mapsLinkHtml = safeMapsUrl !== '#' ? `
+            <a href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
                 🗺️ Bekijk op Maps
             </a>` : '';
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
-            <img class="detail-image" src="${house.image}" alt="${cleanAddress(house.address)}">
+            <img class="detail-image" src="${safeImage}" alt="${safeAddress}">
             
             <div class="detail-section">
                 <div class="card-price" style="font-size: 2rem;">${formatPrice(house.price)}</div>
-                <div class="card-neighborhood" style="margin-top: 0.5rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
-                ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${fact}</p>` : ''}
+                <div class="card-neighborhood" style="margin-top: 0.5rem;">${safeLocation}</div>
+                ${fact ? `<p style="margin-top: 0.5rem; font-style: italic; color: var(--secondary);">${safeFact}</p>` : ''}
             </div>
 
             <div class="detail-section">
@@ -1595,7 +1634,7 @@ class FunDaApp {
                     </div>
                     <div class="detail-item">
                         <div class="detail-item-label">Energie</div>
-                        <div class="detail-item-value">${house.energyLabel || '?'}</div>
+                        <div class="detail-item-value">${escapeHtml(house.energyLabel || '?')}</div>
                     </div>
                 </div>
                 ${extraDetails.length > 0 ? `<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;font-size:0.85rem;color:var(--text-muted);">${extraDetails.join('')}</div>` : ''}
@@ -1604,12 +1643,12 @@ class FunDaApp {
             ${house.description ? `
                 <div class="detail-section">
                     <h3>Beschrijving</h3>
-                    <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${house.description.substring(0, 500)}${house.description.length > 500 ? '…' : ''}</p>
+                    <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
                 </div>
             ` : ''}
 
-            ${house.url && house.url !== '#' ? `
-                <a href="${house.url}" target="_blank" rel="noopener" class="btn-secondary btn-full" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">
+            ${safeFundaUrl !== '#' ? `
+                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-full" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">
                     🔗 Bekijk op Funda
                 </a>
             ` : ''}
