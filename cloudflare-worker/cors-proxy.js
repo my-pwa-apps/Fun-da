@@ -70,37 +70,61 @@ export default {
         }
 
         try {
-            // Randomize User-Agent to avoid fingerprinting
-            const userAgents = [
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
-            ];
-            const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
-            
-            // Fetch the target URL with browser-like headers
-            const response = await fetch(targetUrl, {
-                method: request.method,
-                headers: {
-                    'User-Agent': randomUA,
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Cache-Control': 'max-age=0',
-                    'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-                    'Sec-Ch-Ua-Mobile': '?0',
-                    'Sec-Ch-Ua-Platform': '"Windows"',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Upgrade-Insecure-Requests': '1',
-                    // Add referer to look like a real navigation
-                    'Referer': 'https://www.google.nl/',
-                },
-                redirect: 'follow',
-            });
+            // Detect Funda's internal mobile API (*.funda.io) - use mobile app headers
+            const isFundaAPI = /\.funda\.io\//.test(targetUrl);
+
+            let fetchConfig;
+            if (isFundaAPI) {
+                // Use Funda Android app headers for the mobile API
+                fetchConfig = {
+                    method: request.method,
+                    headers: {
+                        'user-agent': 'Dart/3.9 (dart:io)',
+                        'x-funda-app-platform': 'android',
+                        'content-type': 'application/json',
+                        'accept': 'application/json',
+                        'accept-encoding': 'gzip',
+                        'referer': 'https://www.funda.nl/',
+                    },
+                    redirect: 'follow',
+                };
+                // Forward the request body for POST (search API uses POST with NDJSON)
+                if (request.method === 'POST') {
+                    fetchConfig.body = request.body;
+                }
+            } else {
+                // Randomize User-Agent to avoid fingerprinting for regular HTML scraping
+                const userAgents = [
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+                ];
+                const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+                fetchConfig = {
+                    method: request.method,
+                    headers: {
+                        'User-Agent': randomUA,
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        'Accept-Language': 'nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Cache-Control': 'max-age=0',
+                        'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+                        'Sec-Ch-Ua-Mobile': '?0',
+                        'Sec-Ch-Ua-Platform': '"Windows"',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'none',
+                        'Sec-Fetch-User': '?1',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Referer': 'https://www.google.nl/',
+                    },
+                    redirect: 'follow',
+                };
+            }
+
+            // Fetch the target URL
+            const response = await fetch(targetUrl, fetchConfig);
 
             // Get the response body
             const body = await response.text();
@@ -141,7 +165,7 @@ function getCORSHeaders(request) {
     
     return {
         'Access-Control-Allow-Origin': '*', // Use '*' for easy testing, restrict in production
-        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Accept',
         'Access-Control-Max-Age': '86400',
     };

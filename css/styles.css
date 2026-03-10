@@ -497,6 +497,7 @@ body {
     margin-top: auto;
     padding-top: 0.75rem;
     border-top: 1px solid var(--gray-lighter);
+    flex-wrap: wrap;
 }
 
 .feature {
@@ -506,6 +507,32 @@ body {
     font-size: 0.9rem;
     color: var(--text-primary);
     font-weight: 500;
+}
+
+/* Energy label badge */
+.feature-energy {
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #fff;
+    background: #888;
+}
+.feature-energy[data-label="A+++"], .feature-energy[data-label="A++"], .feature-energy[data-label="A+"] { background: #00a651; }
+.feature-energy[data-label="A"]   { background: #4caf50; }
+.feature-energy[data-label="B"]   { background: #8bc34a; }
+.feature-energy[data-label="C"]   { background: #cddc39; color: #333; }
+.feature-energy[data-label="D"]   { background: #ffeb3b; color: #333; }
+.feature-energy[data-label="E"]   { background: #ff9800; }
+.feature-energy[data-label="F"]   { background: #f44336; }
+.feature-energy[data-label="G"]   { background: #b71c1c; }
+
+/* Feature icons row on card */
+.card-icons {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+    font-size: 1rem;
 }
 
 .feature svg {

@@ -42,8 +42,273 @@ class FundaScraper {
         this.maxRequestsPerSession = 20;
     }
 
+    // ==========================================
+    // FUNDA MOBILE API (primary source)
+    // Uses Funda's internal *.funda.io API reverse-engineered from the Android app.
+    // Much more reliable and data-rich than HTML scraping.
+    // Requires the Cloudflare Worker proxy to forward mobile headers + POST body.
+    // ==========================================
+
+    get FUNDA_API_SEARCH() {
+        return 'https://listing-search-wonen.funda.io/_msearch/template';
+    }
+
+    get FUNDA_API_DETAIL_BASE() {
+        return 'https://listing-detail-page.funda.io/api/v4/listing/object/nl';
+    }
+
+    // POST request through the CF worker proxy (only CF worker supports body forwarding)
+    async fetchViaProxyPost(targetUrl, ndjsonBody) {
+        const cfProxy = this.corsProxies[0]; // Our CF worker – the only proxy that forwards POST body
+        const proxyUrl = cfProxy.url + encodeURIComponent(targetUrl);
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: ndjsonBody,
+        });
+        if (!response.ok) throw new Error(`Mobile API POST failed: ${response.status}`);
+        return response.json();
+    }
+
+    async searchFundaMobileAPI(params = {}) {
+        const area = params.area || 'amsterdam';
+        const searchParams = {
+            availability: ['available', 'negotiations'],
+            type: ['single'],
+            zoning: ['residential'],
+            object_type: ['house', 'apartment'],
+            publication_date: { no_preference: true },
+            offering_type: 'buy',
+            selected_area: [area],
+            sort: { field: 'publish_date_utc', order: 'desc' },
+            page: { from: 0 },
+        };
+
+        // Add price filter
+        if (params.minPrice || params.maxPrice) {
+            const priceFilter = {};
+            if (params.minPrice) priceFilter.from = params.minPrice;
+            if (params.maxPrice) priceFilter.to = params.maxPrice;
+            searchParams.price = { selling_price: priceFilter };
+        }
+
+        const indexLine = JSON.stringify({ index: 'listings-wonen-searcher-alias-prod' });
+        const queryLine = JSON.stringify({ id: 'search_result_20250805', params: searchParams });
+        const ndjson = `${indexLine}\n${queryLine}\n`;
+
+        console.log('📱 Fetching from Funda mobile API...');
+        const data = await this.fetchViaProxyPost(this.FUNDA_API_SEARCH, ndjson);
+        return this.parseMobileSearchResults(data);
+    }
+
+    parseMobileSearchResults(data) {
+        const houses = [];
+        const hits = data?.responses?.[0]?.hits?.hits || [];
+        console.log(`📱 Mobile API returned ${hits.length} search results`);
+
+        for (const hit of hits) {
+            const source = hit._source || {};
+            const address = source.address || {};
+            const price = source.price?.selling_price?.[0] || source.price?.rent_price?.[0] || null;
+            const detailPath = source.object_detail_page_relative_url;
+
+            const postalCode = address.postal_code || '';
+            const streetName = address.street_name || '';
+            const houseNumber = address.house_number || '';
+            const houseNumberSuffix = address.house_number_suffix || '';
+            const fullAddress = [streetName, houseNumber, houseNumberSuffix].filter(Boolean).join(' ');
+
+            houses.push({
+                id: `funda-api-${hit._id}`,
+                globalId: hit._id,
+                price: typeof price === 'number' ? price : null,
+                address: fullAddress || 'Adres onbekend',
+                houseNumber: houseNumber,
+                postalCode: postalCode,
+                city: address.city || 'Amsterdam',
+                neighborhood: address.neighbourhood || this.getNeighborhoodFromPostcode(postalCode),
+                bedrooms: source.number_of_bedrooms || 0,
+                rooms: source.number_of_rooms || 0,
+                size: source.floor_area?.[0] || 0,
+                plotArea: source.plot_area_range?.gte || 0,
+                energyLabel: source.energy_label || '',
+                yearBuilt: null,           // Not in search results – fetched from detail
+                propertyType: source.object_type || '',
+                constructionType: source.construction_type || '',
+                publicationDate: source.publish_date || '',
+                brokerName: source.agent?.[0]?.name || '',
+                image: this.getPlaceholderImage(),
+                images: [],
+                url: detailPath ? `https://www.funda.nl${detailPath}` : '#',
+                description: '',
+                features: [],
+                isNew: false,
+                fromMobileAPI: true,
+            });
+        }
+        return houses;
+    }
+
+    // Extract tinyId from a Funda URL (…/12345678/)
+    extractTinyId(url) {
+        if (!url) return null;
+        const match = url.match(/\/(\d{7,9})\/?(?:\?|$|#)?/);
+        return match ? match[1] : null;
+    }
+
+    async fetchFundaMobileDetail(url) {
+        const tinyId = this.extractTinyId(url);
+        if (!tinyId) return null;
+
+        const detailUrl = `${this.FUNDA_API_DETAIL_BASE}/tinyId/${tinyId}`;
+        const cfProxy = this.corsProxies[0];
+        const proxyUrl = cfProxy.url + encodeURIComponent(detailUrl);
+
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) return null;
+            const data = await response.json();
+            return this.parseMobileDetail(data);
+        } catch (e) {
+            console.debug(`Mobile detail fetch failed for ${url}:`, e.message);
+            return null;
+        }
+    }
+
+    parseMobileDetail(data) {
+        if (!data) return null;
+
+        const identifiers = data.Identifiers || {};
+        const address = data.AddressDetails || {};
+        const priceData = data.Price || {};
+        const coords = data.Coordinates || {};
+        const media = data.Media || {};
+        const fastView = data.FastView || {};
+        const ads = data.Advertising?.TargetingOptions || {};
+
+        const parseArea = (val) => {
+            if (!val) return null;
+            if (typeof val === 'number') return Math.round(val);
+            const cleaned = String(val).replace(/[^0-9]/g, '');
+            const n = parseInt(cleaned);
+            return isNaN(n) ? null : n;
+        };
+
+        // Build photo URLs from CDN template
+        const photosData = media.Photos || {};
+        const photoBase = (photosData.MediaBaseUrl || '').replace('{id}', '{}');
+        const photoItems = photosData.Items || [];
+        const photoUrls = photoBase
+            ? photoItems.map(p => photoBase.replace('{}', p.Id)).filter(Boolean)
+            : [];
+
+        // Floorplan URLs
+        const floorplansData = media.LegacyFloorPlan || {};
+        const floorplanBase = (floorplansData.ThumbnailBaseUrl || '').replace('{id}', '{}');
+        const floorplanItems = floorplansData.Items || [];
+        const floorplanUrls = floorplanBase
+            ? floorplanItems.map(f => floorplanBase.replace('{}', f.ThumbnailId)).filter(Boolean)
+            : [];
+
+        const tinyId = identifiers.TinyId;
+        const citySlug = (address.City || '').toLowerCase().replace(/ /g, '-');
+        const titleSlug = (address.Title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const offering = data.OfferingType === 'Sale' ? 'koop' : 'huur';
+        const url = tinyId ? `https://www.funda.nl/detail/${offering}/${citySlug}/${titleSlug}/${tinyId}/` : '#';
+
+        // Characteristics dictionary (KenmerkSections)
+        const characteristics = {};
+        for (const section of data.KenmerkSections || []) {
+            for (const item of section.KenmerkenList || []) {
+                if (item.Label && item.Value) characteristics[item.Label] = item.Value;
+            }
+        }
+
+        return {
+            globalId: identifiers.GlobalId,
+            tinyId: tinyId,
+            price: priceData.NumericSellingPrice || priceData.NumericRentalPrice || null,
+            priceFormatted: priceData.SellingPrice || priceData.RentalPrice || null,
+            pricePerM2: characteristics['Vraagprijs per m²'] || null,
+            address: address.Title || '',
+            houseNumber: address.HouseNumber || '',
+            houseNumberExt: address.HouseNumberExtension || '',
+            postalCode: address.PostCode || '',
+            city: address.City || 'Amsterdam',
+            neighborhood: address.NeighborhoodName || '',
+            municipality: ads.gemeente || '',
+            bedrooms: fastView.NumberOfBedrooms || null,
+            rooms: ads.aantalkamers ? parseInt(ads.aantalkamers) || null : null,
+            size: ads.woonoppervlakte ? parseArea(ads.woonoppervlakte) : parseArea(fastView.LivingArea),
+            plotArea: ads.perceeloppervlakte ? parseArea(ads.perceeloppervlakte) : parseArea(fastView.PlotArea),
+            energyLabel: fastView.EnergyLabel || '',
+            yearBuilt: ads.bouwjaar && /^\d{4}$/.test(ads.bouwjaar) ? parseInt(ads.bouwjaar) : null,
+            constructionType: data.ConstructionType || '',
+            propertyType: data.ObjectType || '',
+            houseType: ads.soortwoning || '',
+            description: data.ListingDescription?.Description || '',
+            publicationDate: data.PublicationDate || '',
+            offeredSince: characteristics['Aangeboden sinds'] || null,
+            acceptance: characteristics['Aanvaarding'] || null,
+            url: url,
+            image: photoUrls[0] || this.getPlaceholderImage(),
+            images: photoUrls.slice(0, 10),
+            floorplanUrls: floorplanUrls,
+            latitude: coords.Latitude ? parseFloat(coords.Latitude) : null,
+            longitude: coords.Longitude ? parseFloat(coords.Longitude) : null,
+            googleMapsUrl: data.GoogleMapsObjectUrl || null,
+            // Boolean features from TargetingOptions
+            hasGarden: ads.tuin === 'true',
+            hasBalcony: ads.balkon === 'true',
+            hasSolarPanels: ads.zonnepanelen === 'true',
+            hasHeatPump: ads.warmtepomp === 'true',
+            hasRoofTerrace: ads.dakterras === 'true',
+            hasParking: ads.parkeergelegenheidopeigenterrein === 'true' || ads.parkeergelegenheidopafgeslotenterrein === 'true',
+            isMonument: ads.monumentalestatus === 'true',
+            isFixerUpper: ads.kluswoning === 'true',
+            isAuction: priceData.IsAuction === true,
+            isEnergyEfficient: ads.energiezuinig === 'true',
+            // Popularity stats
+            views: data.ObjectInsights?.Views ?? null,
+            saves: data.ObjectInsights?.Saves ?? null,
+            // Source flag
+            enrichedFromMobileAPI: true,
+        };
+    }
+
+    // Enrich a batch of houses with full mobile API detail data
+    async enrichWithMobileDetails(houses, onProgress = () => {}) {
+        const batchSize = 3;
+        const enriched = [];
+
+        for (let i = 0; i < houses.length; i += batchSize) {
+            const batch = houses.slice(i, i + batchSize);
+            const progressPercent = 50 + Math.round((enriched.length / houses.length) * 40);
+            onProgress(`Details ophalen (${enriched.length + 1}/${houses.length})...`, progressPercent);
+
+            const enrichedBatch = await Promise.all(
+                batch.map(async house => {
+                    if (house.url && house.url !== '#') {
+                        const detail = await this.fetchFundaMobileDetail(house.url);
+                        if (detail) {
+                            return { ...house, ...detail, id: house.id };
+                        }
+                    }
+                    return house;
+                })
+            );
+
+            enriched.push(...enrichedBatch);
+
+            if (i + batchSize < houses.length) {
+                await new Promise(r => setTimeout(r, 200));
+            }
+        }
+
+        return enriched;
+    }
+
     getNextProxy() {
-        // Gebruik sequentiële volgorde (eigen proxy eerst)
         const proxy = this.corsProxies[this.currentProxyIndex];
         this.currentProxyIndex = (this.currentProxyIndex + 1) % this.corsProxies.length;
         return proxy;
@@ -188,27 +453,47 @@ class FundaScraper {
         console.log('🚀 Starting scrape from available sources...');
         const startTime = Date.now();
         const onProgress = searchParams.onProgress || (() => {});
-        
-        // Only scrape enabled sources
+
+        // ── PRIMARY: Funda Mobile API ──────────────────────────────────────────
+        // This uses Funda's internal *.funda.io API (reverse-engineered from Android app).
+        // Returns rich JSON with 70+ fields – much better than HTML scraping.
+        // Requires the Cloudflare Worker proxy to be deployed and support POST + funda.io headers.
+        onProgress('Verbinden met Funda API...', 15);
+        try {
+            const mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam' });
+            if (mobileResults.length > 0) {
+                console.log(`📱 Mobile API: ${mobileResults.length} woningen via JSON API`);
+                onProgress(`${mobileResults.length} woningen gevonden, details ophalen...`, 50);
+                const enriched = await this.enrichWithMobileDetails(mobileResults, onProgress);
+
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`✅ Klaar in ${elapsed}s – ${enriched.length} woningen via Funda Mobile API`);
+                onProgress('Klaar!', 100);
+                return enriched;
+            }
+        } catch (error) {
+            console.warn('📱 Mobile API niet beschikbaar, val terug op HTML scraping:', error.message);
+        }
+
+        // ── FALLBACK: HTML scraping ────────────────────────────────────────────
+        console.log('🔄 Fallback: HTML scraping van Funda...');
         const scrapePromises = [];
         const sourceNames = [];
-        
+
         if (this.dataSources.funda.enabled) {
             onProgress('Verbinden met Funda...', 20);
             const fundaUrl = this.buildFundaUrl(searchParams);
             scrapePromises.push(this.scrapeFunda(fundaUrl));
             sourceNames.push('Funda');
         }
-        
+
         onProgress('Woningen zoeken...', 35);
-        
-        // Fetch from enabled sources in parallel
+
         const results = await Promise.allSettled(scrapePromises);
-        
-        // Collect successful results
+
         let allHouses = [];
         const sourceStats = {};
-        
+
         results.forEach((result, index) => {
             const sourceName = sourceNames[index];
             if (result.status === 'fulfilled' && result.value.length > 0) {
@@ -220,23 +505,21 @@ class FundaScraper {
                 sourceStats[sourceName] = 0;
             }
         });
-        
-        // Deduplicate by address
+
         const uniqueHouses = this.deduplicateHouses(allHouses);
         console.log(`📊 ${uniqueHouses.length} unieke woningen na deduplicatie`);
-        
+
         onProgress(`${uniqueHouses.length} woningen, details ophalen...`, 45);
-        
-        // Enrich with government BAG data AND Funda details
+
         console.log('🏛️ Verrijken met overheidsdata (BAG) en Funda details...');
         const enrichedHouses = await this.enrichWithBagData(uniqueHouses, onProgress);
-        
+
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(`✅ Klaar in ${elapsed}s - ${enrichedHouses.length} woningen van ${Object.keys(sourceStats).filter(k => sourceStats[k] > 0).join(', ')}`);
-        
+
         return enrichedHouses;
     }
-    
+
     buildFundaUrl(params = {}) {
         const area = params.area || 'amsterdam';
         const days = params.days || '1';

@@ -1110,7 +1110,17 @@ class FunDaApp {
                     <span class="feature">${house.size || '?'}m²</span>
                     <span class="feature">${house.bedrooms || '?'} slpk</span>
                     ${house.yearBuilt ? `<span class="feature">${house.yearBuilt}</span>` : ''}
+                    ${house.energyLabel ? `<span class="feature feature-energy" data-label="${house.energyLabel}">${house.energyLabel}</span>` : ''}
                 </div>
+                ${(house.hasGarden || house.hasBalcony || house.hasSolarPanels || house.hasHeatPump || house.hasRoofTerrace || house.hasParking) ? `
+                <div class="card-icons">
+                    ${house.hasGarden ? '<span title="Tuin">🌿</span>' : ''}
+                    ${house.hasBalcony ? '<span title="Balkon">🌅</span>' : ''}
+                    ${house.hasRoofTerrace ? '<span title="Dakterras">🏙️</span>' : ''}
+                    ${house.hasSolarPanels ? '<span title="Zonnepanelen">☀️</span>' : ''}
+                    ${house.hasHeatPump ? '<span title="Warmtepomp">♨️</span>' : ''}
+                    ${house.hasParking ? '<span title="Parkeren">🚗</span>' : ''}
+                </div>` : ''}
             </div>
         `;
 
@@ -1358,18 +1368,61 @@ class FunDaApp {
         
         // Build extra details section
         const extraDetails = [];
-        if (house.propertyType) extraDetails.push(`<span>🏠 ${house.propertyType}</span>`);
+        if (house.houseType) extraDetails.push(`<span>🏠 ${house.houseType}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>🏠 ${house.propertyType}</span>`);
+        if (house.plotArea) extraDetails.push(`<span>🌳 Perceel: ${house.plotArea}m²</span>`);
         if (house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotSize}m²</span>`);
         if (house.hasGarden) extraDetails.push(`<span>🌿 ${house.gardenType || 'Tuin'}</span>`);
         if (house.hasBalcony) extraDetails.push(`<span>🌅 Balkon</span>`);
+        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ Dakterras</span>`);
+        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ Zonnepanelen</span>`);
+        if (house.hasHeatPump) extraDetails.push(`<span>♨️ Warmtepomp</span>`);
+        if (house.hasParking) extraDetails.push(`<span>🚗 Parkeren</span>`);
+        if (house.isMonument) extraDetails.push(`<span>🏛️ Monument</span>`);
+        if (house.isFixerUpper) extraDetails.push(`<span>🔧 Kluswoning</span>`);
+        if (house.isAuction) extraDetails.push(`<span>🔨 Veiling</span>`);
         if (house.parking) extraDetails.push(`<span>🚗 ${house.parking}</span>`);
         if (house.vveCosts) extraDetails.push(`<span>🏢 VvE: €${house.vveCosts}/mnd</span>`);
         if (house.status) extraDetails.push(`<span>📋 ${house.status}</span>`);
+        if (house.acceptance) extraDetails.push(`<span>📅 ${house.acceptance}</span>`);
         
         // Build data source badge
         const sourceBadges = [];
-        if (house.enrichedFromBag) sourceBadges.push('<span class="source-badge source-bag">BAG ✓</span>');
-        if (house.enrichedFromFunda) sourceBadges.push('<span class="source-badge source-funda">Details ✓</span>');
+        if (house.enrichedFromMobileAPI) sourceBadges.push('<span class="source-badge source-funda">API ✓</span>');
+        else {
+            if (house.enrichedFromBag) sourceBadges.push('<span class="source-badge source-bag">BAG ✓</span>');
+            if (house.enrichedFromFunda) sourceBadges.push('<span class="source-badge source-funda">Details ✓</span>');
+        }
+
+        // Build popularity row
+        const popularityHtml = (house.views != null || house.saves != null) ? `
+            <div style="display:flex; gap:1rem; font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">
+                ${house.views != null ? `<span>👁️ ${house.views} keer bekeken</span>` : ''}
+                ${house.saves != null ? `<span>❤️ ${house.saves} keer opgeslagen</span>` : ''}
+            </div>` : '';
+
+        // Map link
+        const mapsLinkHtml = house.googleMapsUrl ? `
+            <a href="${house.googleMapsUrl}" target="_blank" rel="noopener" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
+                🗺️ Bekijk op Maps
+            </a>` : (house.latitude && house.longitude ? `
+            <a href="https://www.google.com/maps?q=${house.latitude},${house.longitude}" target="_blank" rel="noopener" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
+                🗺️ Bekijk op Maps
+            </a>` : '');
+
+        // Floorplan (first one, if available)
+        const floorplanHtml = house.floorplanUrls?.length > 0 ? `
+            <div class="detail-section">
+                <h3>Plattegrond</h3>
+                <img src="${house.floorplanUrls[0]}" alt="Plattegrond" style="width:100%;border-radius:8px;" loading="lazy">
+            </div>` : '';
+
+        // Description
+        const descHtml = house.description ? `
+            <div class="detail-section">
+                <h3>Omschrijving</h3>
+                <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${house.description.substring(0, 500)}${house.description.length > 500 ? '…' : ''}</p>
+            </div>` : '';
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
@@ -1377,7 +1430,11 @@ class FunDaApp {
             
             <div class="detail-section" style="margin-bottom: 0.75rem;">
                 <div class="card-price" style="font-size: 1.75rem;">${formatPrice(house.price)}</div>
+                ${house.pricePerM2 ? `<div style="font-size:0.8rem;color:var(--text-muted);">${house.pricePerM2} per m²</div>` : ''}
                 <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city}</div>
+                ${house.municipality ? `<div style="font-size:0.8rem;color:var(--text-muted);">Gemeente ${house.municipality}</div>` : ''}
+                ${popularityHtml}
+                ${sourceBadges.length > 0 ? `<div style="margin-top:0.4rem;">${sourceBadges.join('')}</div>` : ''}
             </div>
 
             <div class="detail-section">
@@ -1392,8 +1449,8 @@ class FunDaApp {
                         <div class="detail-item-value">${house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Badk.</div>
-                        <div class="detail-item-value">${house.bathrooms || '?'}</div>
+                        <div class="detail-item-label">Kamers</div>
+                        <div class="detail-item-value">${house.rooms || house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-item-label">Bouwjaar</div>
@@ -1405,13 +1462,18 @@ class FunDaApp {
                     </div>
                 </div>
                 ${extraDetails.length > 0 ? `<div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">${extraDetails.join('')}</div>` : ''}
+                ${fact ? `<p style="margin-top:0.75rem;font-style:italic;font-size:0.85rem;color:var(--secondary);">${fact}</p>` : ''}
             </div>
 
+            ${descHtml}
+            ${floorplanHtml}
+
             ${house.url && house.url !== '#' ? `
-                <a href="${house.url}" target="_blank" class="btn-secondary" style="display: block; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; margin-top: 0.75rem;">
+                <a href="${house.url}" target="_blank" rel="noopener" class="btn-secondary" style="display: block; text-align: center; text-decoration: none; padding: 0.75rem; font-size: 0.9rem; margin-top: 0.75rem;">
                     🔗 Bekijk op Funda
                 </a>
             ` : ''}
+            ${mapsLinkHtml}
         `;
 
         this.openModal(this.detailModal);
@@ -1466,6 +1528,26 @@ class FunDaApp {
 
         const fact = NEIGHBORHOOD_FACTS[house.neighborhood] || '';
 
+        // Extra features
+        const extraDetails = [];
+        if (house.houseType) extraDetails.push(`<span>🏠 ${house.houseType}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>🏠 ${house.propertyType}</span>`);
+        if (house.plotArea || house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotArea || house.plotSize}m²</span>`);
+        if (house.hasGarden) extraDetails.push(`<span>🌿 Tuin</span>`);
+        if (house.hasBalcony) extraDetails.push(`<span>🌅 Balkon</span>`);
+        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ Dakterras</span>`);
+        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ Zonnepanelen</span>`);
+        if (house.hasHeatPump) extraDetails.push(`<span>♨️ Warmtepomp</span>`);
+        if (house.hasParking) extraDetails.push(`<span>🚗 Parkeren</span>`);
+        if (house.isMonument) extraDetails.push(`<span>🏛️ Monument</span>`);
+
+        const mapsLinkHtml = house.googleMapsUrl ? `
+            <a href="${house.googleMapsUrl}" target="_blank" rel="noopener" class="btn-secondary btn-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
+                🗺️ Bekijk op Maps
+            </a>` : '';
+
+        const safeId = String(house.id).replace(/'/g, "\\'");
+
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
         document.getElementById('detailContent').innerHTML = `
             <img class="detail-image" src="${house.image}" alt="${cleanAddress(house.address)}">
@@ -1487,23 +1569,33 @@ class FunDaApp {
                         <div class="detail-item-label">Slaapkamers</div>
                         <div class="detail-item-value">${house.bedrooms || '?'}</div>
                     </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">Bouwjaar</div>
+                        <div class="detail-item-value">${house.yearBuilt || '?'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-item-label">Energie</div>
+                        <div class="detail-item-value">${house.energyLabel || '?'}</div>
+                    </div>
                 </div>
+                ${extraDetails.length > 0 ? `<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;font-size:0.85rem;color:var(--text-muted);">${extraDetails.join('')}</div>` : ''}
             </div>
 
             ${house.description ? `
                 <div class="detail-section">
                     <h3>Beschrijving</h3>
-                    <p class="detail-description">${house.description}</p>
+                    <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${house.description.substring(0, 500)}${house.description.length > 500 ? '…' : ''}</p>
                 </div>
             ` : ''}
 
             ${house.url && house.url !== '#' ? `
-                <a href="${house.url}" target="_blank" class="btn-secondary btn-full" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">
+                <a href="${house.url}" target="_blank" rel="noopener" class="btn-secondary btn-full" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">
                     🔗 Bekijk op Funda
                 </a>
             ` : ''}
+            ${mapsLinkHtml}
 
-            <button class="btn-primary btn-full" style="background: var(--danger);" onclick="app.removeFromFavorites('${String(house.id).replace(/'/g, "\\'")}'); app.closeModal(app.detailModal);">
+            <button class="btn-primary btn-full" style="background: var(--danger);" onclick="app.removeFromFavorites('${safeId}'); app.closeModal(app.detailModal);">
                 🗑️ Verwijderen uit favorieten
             </button>
         `;
