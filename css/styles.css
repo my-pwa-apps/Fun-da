@@ -329,15 +329,14 @@ body {
 }
 
 .card-container.hidden { display: none; }
-    position: relative;
-    min-height: 420px;
-    perspective: 1000px;
-}
+.stats-bar.hidden { display: none; }
 
 .card-stack {
     position: relative;
     width: 100%;
     height: 480px;
+    min-height: 420px;
+    perspective: 1000px;
 }
 
 /* House Card */
@@ -404,6 +403,7 @@ body {
 
 /* Fallback single image */
 .card-image {
+    display: block;
     width: 100%;
     height: 58%;
     object-fit: cover;
@@ -2012,6 +2012,25 @@ body {
 
 .modal-qr-scanner {
     max-width: 350px;
+}
+
+.modal-map {
+    max-width: 680px;
+    width: 95vw;
+}
+
+.map-modal-body {
+    padding: 0;
+    height: 65vh;
+    min-height: 320px;
+}
+
+.map-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 }
 
 .qr-modal-body {

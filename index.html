@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-elem 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-elem 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; frame-src https://www.google.com; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Fun-da - De leukste manier om een huis te vinden in Amsterdam!">
     <meta name="theme-color" content="#FF6B35">
@@ -74,7 +74,7 @@
         </header>
 
         <!-- Stats Bar -->
-        <div class="stats-bar">
+        <div class="stats-bar hidden">
             <div class="stat">
                 <span class="stat-value" id="housesViewed">0</span>
                 <span class="stat-label">Bekeken</span>
@@ -502,6 +502,19 @@
             <div class="modal-body qr-scanner-body">
                 <video id="qrVideo" class="qr-video"></video>
                 <p id="qrScanStatus" class="qr-scan-status">Camera starten...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Modal -->
+    <div id="mapModal" class="modal hidden">
+        <div class="modal-content modal-map">
+            <div class="modal-header">
+                <h2 id="mapModalTitle">Locatie</h2>
+                <button class="btn-close" id="closeMapModal">&times;</button>
+            </div>
+            <div class="modal-body map-modal-body">
+                <iframe id="mapFrame" class="map-frame" src="" allowfullscreen loading="lazy" title="Kaart"></iframe>
             </div>
         </div>
     </div>

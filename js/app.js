@@ -87,6 +87,7 @@ class FunDaApp {
         this.detailModal = this.elements.detailModal;
         this.fundaModal = this.elements.fundaModal;
         this.familyModal = this.elements.familyModal;
+        this.mapModal = document.getElementById('mapModal');
 
         // Bind drag handlers once to avoid re-creating on every card render
         this._onDragMove = (e) => this.onDragMove(e);
@@ -535,6 +536,7 @@ class FunDaApp {
         document.getElementById('scanQRBtn').addEventListener('click', () => this.startQRScanner());
         document.getElementById('closeQRModal').addEventListener('click', () => this.closeModal(document.getElementById('qrModal')));
         document.getElementById('closeQRScannerModal').addEventListener('click', () => this.stopQRScanner());
+        document.getElementById('closeMapModal').addEventListener('click', () => this.closeMapModal());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
@@ -544,6 +546,9 @@ class FunDaApp {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) this.closeModal(modal);
             });
+        });
+        this.mapModal.addEventListener('click', (e) => {
+            if (e.target === this.mapModal) this.closeMapModal();
         });
 
         // Logo click - easter egg
@@ -1576,13 +1581,14 @@ class FunDaApp {
             ? safeExternalUrl(house.googleMapsUrl)
             : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
 
-        // Map link
-        const mapsLinkHtml = safeMapsUrl !== '#' ? `
-            <a href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;">
+        // Map button (in-app popup)
+        this._mapHouse = { latitude: house.latitude, longitude: house.longitude, address: house.address, postalCode: house.postalCode };
+        const hasMapData = house.latitude && house.longitude;
+        const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
+        const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
+            <button onclick="app.openMapModal()" class="btn-secondary" style="display:block;width:100%;text-align:center;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;cursor:pointer;">
                 🗺️ Bekijk op Maps
-            </a>` : '';
-
-        // Floorplan (first one, if available)
+            </button>` : ''; (first one, if available)
         const floorplanHtml = house.floorplanUrls?.length > 0 ? `
             <div class="detail-section">
                 <h3>Plattegrond</h3>
@@ -1752,10 +1758,14 @@ class FunDaApp {
             ? safeExternalUrl(house.googleMapsUrl)
             : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
 
-        const mapsLinkHtml = safeMapsUrl !== '#' ? `
-            <a href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener noreferrer" class="btn-secondary btn-full" style="display:block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
+        // Map button (in-app popup)
+        this._mapHouse = { latitude: house.latitude, longitude: house.longitude, address: house.address, postalCode: house.postalCode };
+        const hasMapData = house.latitude && house.longitude;
+        const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
+        const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
+            <button onclick="app.openMapModal()" class="btn-secondary btn-full" style="display:block;width:100%;text-align:center;margin-bottom:0.5rem;cursor:pointer;">
                 🗺️ Bekijk op Maps
-            </a>` : '';
+            </button>` : '';
 
         // Photo gallery
         const hasMultiplePhotos = this.detailGalleryImages.length > 1;
@@ -2023,6 +2033,7 @@ class FunDaApp {
         document.getElementById('swipeView').classList.remove('hidden');
         document.getElementById('swipeActions').classList.remove('hidden');
         document.getElementById('browseView').classList.add('hidden');
+        document.querySelector('.stats-bar').classList.remove('hidden');
         this.elements.app.classList.remove('app--browse');
     }
 
@@ -2033,13 +2044,31 @@ class FunDaApp {
         document.getElementById('swipeView').classList.add('hidden');
         document.getElementById('swipeActions').classList.add('hidden');
         document.getElementById('browseView').classList.remove('hidden');
+        document.querySelector('.stats-bar').classList.add('hidden');
         this.elements.app.classList.add('app--browse');
         this._populateBrowseNeighborhoods();
         this.renderBrowseGrid();
     }
 
+    openMapModal() {
+        const h = this._mapHouse;
+        if (!h) return;
+        const query = h.latitude && h.longitude
+            ? `${h.latitude},${h.longitude}`
+            : encodeURIComponent(`${h.address || ''} ${h.postalCode || ''} Amsterdam`.trim());
+        const src = `https://maps.google.com/maps?q=${query}&output=embed&hl=nl`;
+        document.getElementById('mapFrame').src = src;
+        const title = h.address ? cleanAddress(h.address) : 'Locatie';
+        document.getElementById('mapModalTitle').textContent = title;
+        this.openModal(this.mapModal);
+    }
+
+    closeMapModal() {
+        document.getElementById('mapFrame').src = '';
+        this.closeModal(this.mapModal);
+    }
+
     openBrowseSidebarPanel() {
-        document.getElementById('browseSidebar').classList.add('open');
         document.getElementById('browseSidebarOverlay').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
