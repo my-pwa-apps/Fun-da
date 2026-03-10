@@ -589,6 +589,9 @@ class FunDaApp {
                 case 'detailNavNext':
                     this._switchDetailPhotoByIndex(this.detailGalleryIndex + 1);
                     break;
+                case 'openMapModal':
+                    this.openMapModal();
+                    break;
             }
         });
 
@@ -1477,12 +1480,15 @@ class FunDaApp {
 
     handleKeydown(e) {
         // Don't handle if modal is open
-        const modals = [this.filterModal, this.favoritesModal, this.detailModal, this.fundaModal, this.familyModal];
+        const modals = [this.filterModal, this.favoritesModal, this.detailModal, this.fundaModal, this.familyModal, this.mapModal];
         const anyModalOpen = modals.some(m => !m.classList.contains('hidden'));
         
         if (anyModalOpen) {
             if (e.key === 'Escape') {
-                modals.forEach(m => this.closeModal(m));
+                modals.forEach(m => {
+                    if (m === this.mapModal) this.closeMapModal();
+                    else this.closeModal(m);
+                });
             }
             return;
         }
@@ -1586,9 +1592,11 @@ class FunDaApp {
         const hasMapData = house.latitude && house.longitude;
         const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
-            <button onclick="app.openMapModal()" class="btn-secondary" style="display:block;width:100%;text-align:center;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;cursor:pointer;">
+            <button data-action="openMapModal" class="btn-secondary" style="display:block;width:100%;text-align:center;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;cursor:pointer;">
                 🗺️ Bekijk op Maps
-            </button>` : ''; (first one, if available)
+            </button>` : '';
+
+        // Floorplan (first one, if available)
         const floorplanHtml = house.floorplanUrls?.length > 0 ? `
             <div class="detail-section">
                 <h3>Plattegrond</h3>
@@ -1763,7 +1771,7 @@ class FunDaApp {
         const hasMapData = house.latitude && house.longitude;
         const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
-            <button onclick="app.openMapModal()" class="btn-secondary btn-full" style="display:block;width:100%;text-align:center;margin-bottom:0.5rem;cursor:pointer;">
+            <button data-action="openMapModal" class="btn-secondary btn-full" style="display:block;width:100%;text-align:center;margin-bottom:0.5rem;cursor:pointer;">
                 🗺️ Bekijk op Maps
             </button>` : '';
 
@@ -2069,6 +2077,7 @@ class FunDaApp {
     }
 
     openBrowseSidebarPanel() {
+        document.getElementById('browseSidebar').classList.add('open');
         document.getElementById('browseSidebarOverlay').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     }
@@ -2120,7 +2129,7 @@ class FunDaApp {
         const pill = document.createElement('span');
         pill.className = 'excl-neigh-pill';
         pill.dataset.name = name;
-        pill.innerHTML = `${this.escapeHtml(name)}<button type="button" aria-label="Verwijder ${this.escapeHtml(name)}">×</button>`;
+        pill.innerHTML = `${escapeHtml(name)}<button type="button" aria-label="Verwijder ${escapeHtml(name)}">×</button>`;
         pill.querySelector('button').addEventListener('click', () => {
             this.browseFilters.excludedNeighborhoods = this.browseFilters.excludedNeighborhoods.filter(n => n !== name);
             pill.remove();
