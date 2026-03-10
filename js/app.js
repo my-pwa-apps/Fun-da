@@ -1,6 +1,12 @@
 // Fun-da App - De leukste manier om een huis te vinden!
 // Features: Funda scraping, Familie sync, Swipe interface
 
+if (window.__FUNDA_SILENCE_LOGS__) {
+    console.log = () => {};
+    console.warn = () => {};
+    console.debug = () => {};
+}
+
 // Utility function
 const $ = (id) => document.getElementById(id);
 

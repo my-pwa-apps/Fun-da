@@ -20,6 +20,7 @@ const APP_DEBUG = false;
 
 if (!APP_DEBUG && !window.__FUNDA_CONSOLE_PATCHED__) {
     window.__FUNDA_CONSOLE_PATCHED__ = true;
+    window.__FUNDA_SILENCE_LOGS__ = true;
     window.__FUNDA_ORIGINAL_CONSOLE__ = {
         log: console.log.bind(console),
         warn: console.warn.bind(console),
