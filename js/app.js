@@ -234,7 +234,23 @@ class FunDaApp {
             return;
         }
 
-        console.log('🚀 Auto-loading nieuwe woningen van vandaag...');
+        // Determine if splash is still visible or this is a refetch
+        const isSplashVisible = !this.elements.splash.classList.contains('hidden');
+        const updateProgress = (message, progress) => {
+            if (isSplashVisible) {
+                this.stopProgressAnimation();
+                this.updateSplashStatus(message);
+                if (progress) this.updateSplashProgress(progress);
+            } else {
+                this.updateBrowseLoading(message, progress);
+            }
+        };
+
+        if (!isSplashVisible) {
+            this.showBrowseLoading('Verbinden met Funda...');
+        }
+
+        console.error('🚀 Auto-loading nieuwe woningen van vandaag...');
         
         try {
             this.updateSplashStatus('Verbinden met Funda...');
@@ -244,9 +260,7 @@ class FunDaApp {
                 area: this.searchArea,
                 days: String(this.daysBack),
                 onProgress: (message, progress) => {
-                    this.stopProgressAnimation(); // Stop auto-animation once we have real progress
-                    this.updateSplashStatus(message);
-                    if (progress) this.updateSplashProgress(progress);
+                    updateProgress(message, progress);
                 }
             });
             
@@ -260,12 +274,19 @@ class FunDaApp {
                 });
 
                 // Merge with Firebase houses (previously found, not yet discarded)
+                // Only merge houses that belong to the same search area
                 let allHouses = [...houses];
                 if (this.familySync.isInFamily()) {
                     try {
                         const firebaseHouses = await this.familySync.loadHousesFromDB();
                         const freshIds = new Set(houses.map(h => String(h.id)));
-                        const extraFromFirebase = firebaseHouses.filter(h => !freshIds.has(String(h.id)));
+                        const currentArea = (this.searchArea || '').toLowerCase();
+                        const extraFromFirebase = firebaseHouses.filter(h => {
+                            if (freshIds.has(String(h.id))) return false;
+                            // Only include houses from the same area
+                            const houseCity = (h.city || '').toLowerCase();
+                            return !currentArea || houseCity === currentArea || !houseCity;
+                        });
                         allHouses = [...houses, ...extraFromFirebase];
                     } catch (e) { /* ignore if Firebase unavailable */ }
                 }
@@ -320,6 +341,8 @@ class FunDaApp {
         
         // Hide splash screen now that we're done
         this.hideSplashScreen();
+        this.hideBrowseLoading();
+        if (this.browseOpen) this.renderBrowseGrid();
     }
 
     registerServiceWorker() {
@@ -804,6 +827,9 @@ class FunDaApp {
             }
             this.resetBrowseFilters();
         });
+
+        // Auto-apply on desktop (sidebar always visible)
+        this._setupDesktopAutoApply();
 
         // Area autocomplete
         this._setupAreaAutocomplete();
@@ -2899,6 +2925,57 @@ class FunDaApp {
             clearTimeout(timer);
             timer = setTimeout(() => fn(...args), ms);
         };
+    }
+
+    // Auto-apply filters on desktop where sidebar is always visible
+    _setupDesktopAutoApply() {
+        const sidebar = document.getElementById('browseSidebar');
+        if (!sidebar) return;
+        const isDesktop = () => window.matchMedia('(min-width: 768px)').matches;
+        const debouncedApply = this._debounce(() => {
+            if (isDesktop()) this.applyBrowseFilters();
+        }, 500);
+
+        sidebar.querySelectorAll('input[type=text]:not(#bfSearchArea), input[type=number]').forEach(el => {
+            el.addEventListener('input', debouncedApply);
+        });
+        sidebar.querySelectorAll('select').forEach(el => {
+            el.addEventListener('change', () => { if (isDesktop()) this.applyBrowseFilters(); });
+        });
+        sidebar.querySelectorAll('input[type=checkbox]').forEach(el => {
+            el.addEventListener('change', () => { if (isDesktop()) this.applyBrowseFilters(); });
+        });
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-option') && isDesktop()) {
+                setTimeout(() => this.applyBrowseFilters(), 50);
+            }
+        });
+    }
+
+    // Browse loading bar
+    showBrowseLoading(text) {
+        const el = document.getElementById('browseLoading');
+        const fill = document.getElementById('browseLoadingFill');
+        const textEl = document.getElementById('browseLoadingText');
+        const grid = document.getElementById('browseGrid');
+        const empty = document.getElementById('browseEmpty');
+        if (el) el.classList.remove('hidden');
+        if (fill) { fill.style.width = '0%'; fill.classList.add('indeterminate'); }
+        if (textEl) textEl.textContent = text || 'Woningen ophalen...';
+        if (grid) grid.classList.add('hidden');
+        if (empty) empty.classList.add('hidden');
+    }
+
+    updateBrowseLoading(text, pct) {
+        const fill = document.getElementById('browseLoadingFill');
+        const textEl = document.getElementById('browseLoadingText');
+        if (fill && pct != null) { fill.classList.remove('indeterminate'); fill.style.width = `${pct}%`; }
+        if (textEl && text) textEl.textContent = text;
+    }
+
+    hideBrowseLoading() {
+        const el = document.getElementById('browseLoading');
+        if (el) el.classList.add('hidden');
     }
 
     // ------------------------------------------

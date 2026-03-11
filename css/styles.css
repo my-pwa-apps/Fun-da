@@ -2341,6 +2341,12 @@ body {
     flex-shrink: 0;
 }
 
+@media (min-width: 768px) {
+    .browse-sidebar-actions .btn-primary {
+        display: none;
+    }
+}
+
 .browse-sidebar-actions .btn-primary {
     width: 100%;
 }
@@ -3088,6 +3094,55 @@ body {
 
 .browse-empty.hidden {
     display: none;
+}
+
+/* ==========================================
+   BROWSE LOADING BAR
+   ========================================== */
+
+.browse-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem 1.5rem;
+}
+
+.browse-loading.hidden {
+    display: none;
+}
+
+.browse-loading-bar {
+    width: 100%;
+    max-width: 320px;
+    height: 6px;
+    background: var(--gray-lighter);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.browse-loading-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.browse-loading-fill.indeterminate {
+    width: 30%;
+    animation: loadingSlide 1.2s ease-in-out infinite;
+}
+
+@keyframes loadingSlide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+}
+
+.browse-loading-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0;
 }
 
 .browse-empty .empty-emoji {
