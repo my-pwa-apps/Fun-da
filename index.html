@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-elem 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; frame-src https://www.google.com https://maps.google.com https://fun-da-cf8d6.firebaseapp.com https://accounts.google.com; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.gstatic.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-elem 'self' https://www.gstatic.com https://www.googleapis.com https://apis.google.com https://*.firebasedatabase.app; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; frame-src https://www.google.com https://maps.google.com https://fun-da-cf8d6.firebaseapp.com https://accounts.google.com; connect-src 'self' https://spring-night-8d4d.garfieldapp.workers.dev https://corsproxy.io https://api.allorigins.win https://api.pdok.nl https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://www.gstatic.com; manifest-src 'self'; media-src 'self' blob:; worker-src 'self'; base-uri 'self'; object-src 'none';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Fun-da - De leukste manier om een huis te vinden in Amsterdam!">
     <meta name="theme-color" content="#FF6B35">
@@ -88,24 +88,6 @@
             </div>
         </div>
 
-        <!-- View Mode Tabs -->
-        <div class="view-tabs">
-            <button class="view-tab" id="tabSwipe">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <rect x="2" y="3" width="20" height="18" rx="3"/>
-                    <path d="M8 12l3 3 5-6"/>
-                </svg>
-                <span data-i18n="nav.swipe">Swipen</span>
-            </button>
-            <button class="view-tab active" id="tabBrowse">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-                </svg>
-                <span data-i18n="nav.browse">Bladeren</span>
-            </button>
-        </div>
-
         <!-- Card Stack (Swipe View) -->
         <main class="card-container hidden" id="swipeView">
             <div id="cardStack" class="card-stack">
@@ -115,8 +97,8 @@
             <!-- Empty State -->
             <div id="emptyState" class="empty-state hidden">
                 <div class="empty-emoji">🏠</div>
-                <h2>Alle huizen bekeken!</h2>
-                <p>Je hebt alle beschikbare woningen gezien.</p>
+                <h2 id="emptyStateTitle">Alle huizen bekeken!</h2>
+                <p id="emptyStateText">Je hebt alle beschikbare woningen gezien.</p>
                 <button class="btn-primary" id="resetBtn">Opnieuw beginnen</button>
             </div>
         </main>
@@ -154,8 +136,11 @@
                 <div class="browse-sidebar-body">
                     <div class="bfs">
                         <h4 class="bfs-title">Zoekgebied</h4>
-                        <p class="bfs-hint">Stad of regio (bijv. amsterdam, rotterdam, utrecht)</p>
-                        <input type="text" id="bfSearchArea" class="input-full" placeholder="amsterdam" autocomplete="off" autocorrect="off" spellcheck="false">
+                        <p class="bfs-hint">Kies een Nederlandse stad of woonplaats</p>
+                        <div class="area-autocomplete" id="areaAutocomplete">
+                            <input type="text" id="bfSearchArea" class="input-full" placeholder="Typ een stad, bijv. Amsterdam" autocomplete="off" autocorrect="off" spellcheck="false">
+                            <ul class="area-suggestions hidden" id="areaSuggestions"></ul>
+                        </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Type woning</h4>
@@ -267,7 +252,6 @@
                     </div>
                 </div>
                 <div class="browse-sidebar-actions">
-                    <button class="btn-primary btn-full" id="applyBrowseFilters">Filters toepassen</button>
                     <button class="browse-reset-link" id="resetBrowseFilters">Wis alle filters</button>
                 </div>
             </aside>
@@ -320,7 +304,7 @@
 
                 <div id="browseEmpty" class="browse-empty hidden">
                     <div class="empty-emoji">🔍</div>
-                    <p>Geen woningen gevonden met deze filters.</p>
+                    <p id="browseEmptyText">Geen woningen gevonden met deze filters.</p>
                     <button class="btn-secondary" id="clearBrowseFiltersBtn">Wis filters</button>
                 </div>
             </div>
@@ -404,6 +388,26 @@
                         <button id="langNl" class="preset-btn active">🇳🇱 Nederlands</button>
                         <button id="langEn" class="preset-btn">🇬🇧 English</button>
                     </div>
+                </div>
+
+                <hr class="settings-divider">
+
+                <!-- View mode -->
+                <h3 class="settings-section-title">Startweergave</h3>
+                <div class="filter-group">
+                    <div class="preset-group settings-view-mode-group">
+                        <button id="settingsViewBrowse" class="preset-btn active">Bladeren</button>
+                        <button id="settingsViewSwipe" class="preset-btn">Swipen</button>
+                    </div>
+                </div>
+
+                <hr class="settings-divider">
+
+                <!-- Install app -->
+                <div id="installSection" class="settings-install-card hidden">
+                    <h3 class="settings-section-title">App installeren</h3>
+                    <p id="installStatus" class="modal-description">Controleer installatie-opties...</p>
+                    <button id="installAppBtn" class="btn-primary settings-install-btn">Installeer app</button>
                 </div>
 
                 <hr class="settings-divider">

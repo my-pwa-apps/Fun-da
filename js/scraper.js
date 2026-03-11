@@ -75,7 +75,8 @@ class FundaScraper {
     }
 
     async searchFundaMobileAPI(params = {}) {
-        const area = params.area || 'amsterdam';
+        const area = params.area || '';
+        if (!area) throw new Error('No search area specified');
         const searchParams = {
             availability: ['available', 'negotiations'],
             type: ['single'],
@@ -495,7 +496,8 @@ class FundaScraper {
             const days = parseInt(searchParams.days) || 3;
             const pageSize = 100;
             const maxResults = 600; // cap to avoid very long load times
-            const area = searchParams.area || 'amsterdam';
+            const area = searchParams.area || '';
+            if (!area) throw new Error('No search area specified');
 
             // Fetch first page and read the total from the API
             let mobileResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: 0 });
@@ -575,7 +577,8 @@ class FundaScraper {
     }
 
     buildFundaUrl(params = {}) {
-        const area = params.area || 'amsterdam';
+        const area = params.area || '';
+        if (!area) return '';
         const days = params.days || '1';
         return `https://www.funda.nl/zoeken/koop?selected_area=["${area}"]&publication_date="${days}"`;
     }

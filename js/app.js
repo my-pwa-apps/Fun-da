@@ -25,6 +25,7 @@ class FunDaApp {
         
         // PWA install prompt
         this.deferredInstallPrompt = null;
+            this.installPromptDismissedRecently = false;
 
         // Services
         this.scraper = new FundaScraper();
@@ -71,11 +72,12 @@ class FunDaApp {
 
         // Browse view state
         this.browseOpen = false;
+        this.currentView = localStorage.getItem('funda-view-mode') || 'browse';
         this.browseSort = 'default';
         this.browseLayout = 'list';
         this.daysBack = 3; // Configurable days back for auto-load
-        this.searchArea = 'amsterdam'; // Configurable search area
-        this._loadedArea = 'amsterdam'; // Track what was last fetched
+        this.searchArea = ''; // Configurable search area
+        this._loadedArea = null; // Track what was last fetched
         this._loadedDaysBack = 3;
         this.browseFilters = {
             minPrice: null, maxPrice: null,
@@ -112,9 +114,6 @@ class FunDaApp {
     }
 
     async init() {
-        // Default Funda URL - Nieuw vandaag Amsterdam
-        this.defaultFundaUrl = 'https://www.funda.nl/zoeken/koop?selected_area=[%22amsterdam%22]&publication_date=%221%22';
-        
         // Load saved houses (no mock data anymore)
         this.loadFromStorage();
         
@@ -156,13 +155,22 @@ class FunDaApp {
         // Apply saved language preference to static HTML
         this.applyTranslations();
         
-        // Start loading immediately, splash stays visible until done
-        setTimeout(() => {
-            this.autoLoadNewListings();
-        }, 300);
+        if (this.hasConfiguredSearchArea()) {
+            // Start loading immediately when an explicit area is already configured
+            setTimeout(() => {
+                this.autoLoadNewListings();
+            }, 300);
+        } else {
+            this.updateSplashStatus('Kies eerst een zoekgebied om woningen op te halen.');
+            this.hideSplashScreen();
+        }
 
         // Register service worker
         this.registerServiceWorker();
+    }
+
+    hasConfiguredSearchArea() {
+        return Boolean((this.searchArea || '').trim());
     }
     
     startProgressAnimation() {
@@ -207,11 +215,25 @@ class FunDaApp {
         setTimeout(() => {
             this.elements.splash.classList.add('hidden');
             this.elements.app.classList.remove('hidden');
+            if (!this.hasConfiguredSearchArea()) {
+                this.openBrowseView();
+                return;
+            }
+            if (this.currentView === 'swipe') {
+                this.openSwipeView();
+                return;
+            }
             this.openBrowseView();
         }, 200);
     }
 
     async autoLoadNewListings() {
+        if (!this.hasConfiguredSearchArea()) {
+            this.updateEmptyStates();
+            this.hideSplashScreen();
+            return;
+        }
+
         console.log('🚀 Auto-loading nieuwe woningen van vandaag...');
         
         try {
@@ -219,7 +241,7 @@ class FunDaApp {
             
             // Use the scraper directly for splash screen updates
             const houses = await this.scraper.scrapeAllSources({ 
-                area: this.searchArea || 'amsterdam', 
+                area: this.searchArea,
                 days: String(this.daysBack),
                 onProgress: (message, progress) => {
                     this.stopProgressAnimation(); // Stop auto-animation once we have real progress
@@ -252,7 +274,7 @@ class FunDaApp {
                 this.houses = allHouses;
                 this.currentIndex = 0;
                 this.viewed = 0;
-                this._loadedArea = this.searchArea || 'amsterdam';
+                this._loadedArea = this.searchArea;
                 this._loadedDaysBack = this.daysBack;
                 
                 this.saveToStorage();
@@ -373,9 +395,11 @@ class FunDaApp {
         
         // Check if user dismissed recently (expires after 7 days)
         const dismissedAt = localStorage.getItem('pwa-install-dismissed');
-        if (dismissedAt && (Date.now() - parseInt(dismissedAt, 10)) < 7 * 24 * 60 * 60 * 1000) {
+        this.installPromptDismissedRecently = Boolean(
+            dismissedAt && (Date.now() - parseInt(dismissedAt, 10)) < 7 * 24 * 60 * 60 * 1000
+        );
+        if (this.installPromptDismissedRecently) {
             console.log('📱 Install prompt recently dismissed');
-            return;
         }
         
         // Capture the install prompt
@@ -383,17 +407,83 @@ class FunDaApp {
             e.preventDefault();
             this.deferredInstallPrompt = e;
             console.log('📲 PWA install prompt captured');
+            this.updateInstallUi();
             
-            // Show install toast after splash screen
-            setTimeout(() => this.showInstallToast(), 2000);
+            if (!this.installPromptDismissedRecently) {
+                // Show install toast after splash screen
+                setTimeout(() => this.showInstallToast(), 2000);
+            }
         });
         
         // Track when app is installed
         window.addEventListener('appinstalled', () => {
             console.log('✅ PWA installed successfully!');
             this.deferredInstallPrompt = null;
+            this.installPromptDismissedRecently = false;
+            localStorage.removeItem('pwa-install-dismissed');
+            this.updateInstallUi();
             this.showToast('🎉 Fun-da is geïnstalleerd!');
         });
+
+        this.updateInstallUi();
+    }
+
+    getManualInstallInstructions() {
+        const userAgent = navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+        const isAndroid = /Android/.test(userAgent);
+        const isEdge = /Edg\//.test(userAgent);
+        const isChrome = /Chrome\//.test(userAgent) && !isEdge;
+
+        if (isIOS) {
+            return 'Gebruik Safari en kies Deel > Zet op beginscherm.';
+        }
+        if (isAndroid && (isChrome || isEdge)) {
+            return 'Open het browsermenu en kies Installeer app of Toevoegen aan startscherm.';
+        }
+        if (isChrome || isEdge) {
+            return 'Gebruik het install-icoon in de adresbalk of kies Installeer app in het browsermenu.';
+        }
+
+        return 'Gebruik de browseroptie Installeer app of Toevoegen aan startscherm.';
+    }
+
+    updateInstallUi() {
+        const section = document.getElementById('installSection');
+        const status = document.getElementById('installStatus');
+        const button = document.getElementById('installAppBtn');
+        if (!section || !status || !button) return;
+
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            window.navigator.standalone === true;
+
+        if (isStandalone) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        section.classList.remove('hidden');
+
+        if (this.deferredInstallPrompt) {
+            status.textContent = 'Fun-da kan op dit apparaat als app worden geïnstalleerd.';
+            button.textContent = 'Installeer app';
+        } else {
+            status.textContent = this.getManualInstallInstructions();
+            button.textContent = 'Installatie-hulp';
+        }
+    }
+
+    async promptInstall() {
+        if (this.deferredInstallPrompt) {
+            this.deferredInstallPrompt.prompt();
+            const { outcome } = await this.deferredInstallPrompt.userChoice;
+            console.log('Install prompt outcome:', outcome);
+            this.deferredInstallPrompt = null;
+            this.updateInstallUi();
+            return;
+        }
+
+        this.showToast(`📲 ${this.getManualInstallInstructions()}`);
     }
     
     showInstallToast() {
@@ -410,17 +500,13 @@ class FunDaApp {
         container.appendChild(toast);
         
         toast.querySelector('#installBtn').addEventListener('click', async () => {
-            if (this.deferredInstallPrompt) {
-                this.deferredInstallPrompt.prompt();
-                const { outcome } = await this.deferredInstallPrompt.userChoice;
-                console.log('Install prompt outcome:', outcome);
-                this.deferredInstallPrompt = null;
-            }
+            await this.promptInstall();
             toast.remove();
         });
         
         toast.querySelector('#installDismiss').addEventListener('click', () => {
             localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+            this.installPromptDismissedRecently = true;
             toast.remove();
         });
         
@@ -462,10 +548,15 @@ class FunDaApp {
 
             // Load saved search area
             const savedArea = localStorage.getItem('funda-search-area');
-            if (savedArea) {
+            if (savedArea !== null) {
                 this.searchArea = savedArea;
-                this._loadedArea = savedArea;
+                this._loadedArea = savedArea || null;
                 this._loadedDaysBack = this.daysBack;
+            }
+
+            const savedViewMode = localStorage.getItem('funda-view-mode');
+            if (savedViewMode === 'swipe' || savedViewMode === 'browse') {
+                this.currentView = savedViewMode;
             }
 
             // Load saved browse filters (for users not signed in)
@@ -486,6 +577,8 @@ class FunDaApp {
             localStorage.setItem('funda-houses', JSON.stringify(this.houses));
             localStorage.setItem('funda-favorite-meta', JSON.stringify(this.favoriteMeta));
             localStorage.setItem('funda-days-back', this.daysBack.toString());
+            localStorage.setItem('funda-search-area', this.searchArea || '');
+            localStorage.setItem('funda-view-mode', this.currentView);
         } catch (e) {
             console.error('Error saving to storage:', e);
         }
@@ -544,6 +637,15 @@ class FunDaApp {
 
         // Settings: clear data
         document.getElementById('clearDataBtn').addEventListener('click', () => this.clearAllData());
+        document.getElementById('installAppBtn')?.addEventListener('click', () => this.promptInstall());
+        document.getElementById('settingsViewBrowse')?.addEventListener('click', () => {
+            this.openBrowseView();
+            this.saveSettingsToFirebase();
+        });
+        document.getElementById('settingsViewSwipe')?.addEventListener('click', () => {
+            this.openSwipeView();
+            this.saveSettingsToFirebase();
+        });
 
         // Settings: Google login / logout
         document.getElementById('googleLoginBtn').addEventListener('click', () => this.loginWithGoogle());
@@ -665,10 +767,6 @@ class FunDaApp {
             }
         });
 
-        // View tab toggle
-        document.getElementById('tabSwipe').addEventListener('click', () => this.openSwipeView());
-        document.getElementById('tabBrowse').addEventListener('click', () => this.openBrowseView());
-
         // Browse view controls
         document.getElementById('browseFilterToggleBtn').addEventListener('click', () => this.openBrowseSidebarPanel());
         document.getElementById('closeBrowseSidebar').addEventListener('click', () => this.closeBrowseSidebarPanel());
@@ -694,9 +792,21 @@ class FunDaApp {
             this.renderBrowseGrid();
         });
 
-        document.getElementById('applyBrowseFilters').addEventListener('click', () => this.applyBrowseFilters());
+        document.getElementById('applyBrowseFilters')?.addEventListener('click', () => this.applyBrowseFilters());
         document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
-        document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => this.resetBrowseFilters());
+        document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => {
+            if (!this.hasConfiguredSearchArea()) {
+                this.openBrowseSidebarPanel();
+                return;
+            }
+            this.resetBrowseFilters();
+        });
+
+        // Auto-apply filters when any filter control changes
+        this._setupAutoApplyFilters();
+
+        // Area autocomplete
+        this._setupAreaAutocomplete();
         document.getElementById('neighMsTrigger').addEventListener('click', (e) => {
             e.stopPropagation();
             document.getElementById('neighMultiselect').classList.toggle('open');
@@ -847,7 +957,8 @@ class FunDaApp {
         // Always persist to localStorage so non-signed-in users keep their filters
         try {
             localStorage.setItem('funda-browse-filters', JSON.stringify(this.browseFilters));
-            localStorage.setItem('funda-search-area', this.searchArea || 'amsterdam');
+            localStorage.setItem('funda-search-area', this.searchArea || '');
+            localStorage.setItem('funda-view-mode', this.currentView);
         } catch (e) { /* storage full */ }
 
         if (!this.currentUser) return;
@@ -856,7 +967,8 @@ class FunDaApp {
             const uid = this.currentUser.uid;
             await db.ref(`users/${uid}/settings`).set({
                 daysBack: this.daysBack,
-                searchArea: this.searchArea || 'amsterdam',
+                searchArea: this.searchArea || '',
+                viewMode: this.currentView,
                 browseFilters: this.browseFilters
             });
         } catch (e) {
@@ -878,15 +990,24 @@ class FunDaApp {
                 const sel = document.getElementById('bfDaysBack');
                 if (sel) sel.value = String(this.daysBack);
             }
-            if (data.searchArea) {
+            if (typeof data.searchArea === 'string') {
                 this.searchArea = data.searchArea;
                 localStorage.setItem('funda-search-area', this.searchArea);
                 const inp = document.getElementById('bfSearchArea');
                 if (inp) inp.value = this.searchArea;
             }
+            if (data.viewMode === 'swipe' || data.viewMode === 'browse') {
+                this.currentView = data.viewMode;
+                localStorage.setItem('funda-view-mode', this.currentView);
+            }
             if (data.browseFilters) {
                 this.browseFilters = { ...this.browseFilters, ...data.browseFilters };
                 this.restoreBrowseFilterUI();
+            }
+            this.updateViewModeUi();
+            if (!this.elements.app.classList.contains('hidden')) {
+                if (this.currentView === 'swipe') this.openSwipeView();
+                else this.openBrowseView();
             }
         } catch (e) {
             console.error('Load settings error:', e);
@@ -896,7 +1017,7 @@ class FunDaApp {
     restoreBrowseFilterUI() {
         const f = this.browseFilters;
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
-        setVal('bfSearchArea', this.searchArea || 'amsterdam');
+        setVal('bfSearchArea', this.searchArea || '');
         setVal('bfDaysBack', this.daysBack || 3);
         setVal('bfMinPrice', f.minPrice || '');
         setVal('bfMaxPrice', f.maxPrice || '');
@@ -945,6 +1066,41 @@ class FunDaApp {
             });
         }
         this._restoreExcludeNeighCheckboxes();
+        this.updateViewModeUi();
+    }
+
+    updateViewModeUi() {
+        document.getElementById('settingsViewBrowse')?.classList.toggle('active', this.currentView === 'browse');
+        document.getElementById('settingsViewSwipe')?.classList.toggle('active', this.currentView === 'swipe');
+    }
+
+    updateEmptyStates() {
+        const noAreaSelected = !this.hasConfiguredSearchArea() && this.houses.length === 0;
+        const emptyTitle = document.getElementById('emptyStateTitle');
+        const emptyText = document.getElementById('emptyStateText');
+        const emptyButton = document.getElementById('resetBtn');
+        const browseText = document.getElementById('browseEmptyText');
+        const browseButton = document.getElementById('clearBrowseFiltersBtn');
+
+        if (emptyTitle) {
+            emptyTitle.textContent = noAreaSelected ? 'Kies eerst een zoekgebied' : 'Alle huizen bekeken!';
+        }
+        if (emptyText) {
+            emptyText.textContent = noAreaSelected
+                ? 'Open filters en kies een stad of regio voordat woningen worden opgehaald.'
+                : 'Je hebt alle beschikbare woningen gezien.';
+        }
+        if (emptyButton) {
+            emptyButton.textContent = noAreaSelected ? 'Open filters' : 'Opnieuw beginnen';
+        }
+        if (browseText) {
+            browseText.textContent = noAreaSelected
+                ? 'Kies eerst een zoekgebied in de filters voordat woningen worden opgehaald.'
+                : 'Geen woningen gevonden met deze filters.';
+        }
+        if (browseButton) {
+            browseButton.textContent = noAreaSelected ? 'Open filters' : 'Wis filters';
+        }
     }
 
     // ==========================================
@@ -1379,6 +1535,7 @@ class FunDaApp {
     renderCards() {
         const { cardStack, emptyState } = this.elements;
         cardStack.innerHTML = '';
+        this.updateEmptyStates();
         
         const houses = this.getFilteredHouses();
         const remaining = houses.slice(this.currentIndex);
@@ -2373,6 +2530,12 @@ class FunDaApp {
     }
 
     reset() {
+        if (!this.hasConfiguredSearchArea() && this.houses.length === 0) {
+            this.openBrowseView();
+            this.openBrowseSidebarPanel();
+            return;
+        }
+
         this.currentIndex = 0;
         this.viewed = 0;
 
@@ -2425,25 +2588,29 @@ class FunDaApp {
 
     openSwipeView() {
         this.browseOpen = false;
-        document.getElementById('tabSwipe').classList.add('active');
-        document.getElementById('tabBrowse').classList.remove('active');
+        this.currentView = 'swipe';
+        localStorage.setItem('funda-view-mode', this.currentView);
+        this.updateViewModeUi();
         document.getElementById('swipeView').classList.remove('hidden');
         document.getElementById('swipeActions').classList.remove('hidden');
         document.getElementById('browseView').classList.add('hidden');
         document.querySelector('.stats-bar').classList.remove('hidden');
         this.elements.app.classList.remove('app--browse');
+        this.updateEmptyStates();
     }
 
     openBrowseView() {
         this.browseOpen = true;
-        document.getElementById('tabBrowse').classList.add('active');
-        document.getElementById('tabSwipe').classList.remove('active');
+        this.currentView = 'browse';
+        localStorage.setItem('funda-view-mode', this.currentView);
+        this.updateViewModeUi();
         document.getElementById('swipeView').classList.add('hidden');
         document.getElementById('swipeActions').classList.add('hidden');
         document.getElementById('browseView').classList.remove('hidden');
         document.querySelector('.stats-bar').classList.add('hidden');
         this.elements.app.classList.add('app--browse');
         this._populateBrowseNeighborhoods();
+        this.updateEmptyStates();
         this.renderBrowseGrid();
     }
 
@@ -2599,12 +2766,18 @@ class FunDaApp {
     applyBrowseFilters() {
         const f = this.browseFilters;
 
-        // Search area + daysBack — may trigger a re-fetch
-        const newArea = (document.getElementById('bfSearchArea')?.value.trim().toLowerCase() || 'amsterdam');
+        // Search area — either set by autocomplete (this.searchArea) or read from input
+        const inputArea = document.getElementById('bfSearchArea')?.value.trim().toLowerCase() || '';
+        // If user typed and cleared, respect that; if autocomplete set searchArea, keep it
+        const newArea = inputArea || this.searchArea || '';
         const daysBackEl = document.getElementById('bfDaysBack');
         const newDaysBack = parseInt(daysBackEl?.value, 10) || 3;
 
-        const needsRefetch = newArea !== this._loadedArea || newDaysBack !== this._loadedDaysBack;
+        const needsRefetch = Boolean(newArea) && (
+            newArea !== this._loadedArea ||
+            newDaysBack !== this._loadedDaysBack ||
+            this.houses.length === 0
+        );
 
         this.searchArea = newArea;
         this.daysBack = newDaysBack;
@@ -2648,6 +2821,7 @@ class FunDaApp {
         this.closeBrowseSidebarPanel();
         this._syncTypePills(f.propertyType);
         this.saveSettingsToFirebase();
+        this.updateEmptyStates();
 
         if (needsRefetch) {
             // Area or period changed — fetch fresh listings
@@ -2656,8 +2830,18 @@ class FunDaApp {
             this.houses = [];
             this.currentIndex = 0;
             this.viewed = 0;
-            this.openSwipeView();
+            if (this.currentView === 'swipe') this.openSwipeView();
+            else this.openBrowseView();
             this.autoLoadNewListings();
+        } else if (!this.searchArea) {
+            this._loadedArea = null;
+            this.houses = [];
+            this.currentIndex = 0;
+            this.viewed = 0;
+            this.saveToStorage();
+            this.renderCards();
+            this.renderBrowseGrid();
+            this.updateStats();
         } else {
             this.renderBrowseGrid();
         }
@@ -2697,11 +2881,147 @@ class FunDaApp {
         });
     }
 
+    // ------------------------------------------
+    // Auto-apply filters on any control change
+    // ------------------------------------------
+
+    _setupAutoApplyFilters() {
+        const sidebar = document.getElementById('browseSidebar');
+        if (!sidebar) return;
+
+        const debouncedApply = this._debounce(() => this.applyBrowseFilters(), 400);
+
+        // Text/number inputs — debounced (skip search area, handled by autocomplete)
+        sidebar.querySelectorAll('input[type=text]:not(#bfSearchArea), input[type=number]').forEach(el => {
+            el.addEventListener('input', debouncedApply);
+        });
+
+        // Selects — immediate
+        sidebar.querySelectorAll('select').forEach(el => {
+            el.addEventListener('change', () => this.applyBrowseFilters());
+        });
+
+        // Checkboxes — immediate
+        sidebar.querySelectorAll('input[type=checkbox]').forEach(el => {
+            el.addEventListener('change', () => this.applyBrowseFilters());
+        });
+
+        // btn-option clicks inside sidebar — immediate (use MutationObserver-like approach)
+        sidebar.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-option')) {
+                // Small delay so the active class toggles first
+                setTimeout(() => this.applyBrowseFilters(), 50);
+            }
+        });
+    }
+
+    _debounce(fn, ms) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), ms);
+        };
+    }
+
+    // ------------------------------------------
+    // Area autocomplete (PDOK Locatieserver)
+    // ------------------------------------------
+
+    _setupAreaAutocomplete() {
+        const input = document.getElementById('bfSearchArea');
+        const list = document.getElementById('areaSuggestions');
+        if (!input || !list) return;
+
+        this._areaActiveIdx = -1;
+        const debouncedSearch = this._debounce((q) => this._fetchAreaSuggestions(q), 250);
+
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            if (q.length < 2) {
+                list.classList.add('hidden');
+                return;
+            }
+            debouncedSearch(q);
+        });
+
+        input.addEventListener('keydown', (e) => {
+            const items = list.querySelectorAll('.area-suggestion');
+            if (!items.length || list.classList.contains('hidden')) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this._areaActiveIdx = Math.min(this._areaActiveIdx + 1, items.length - 1);
+                items.forEach((li, i) => li.classList.toggle('active', i === this._areaActiveIdx));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this._areaActiveIdx = Math.max(this._areaActiveIdx - 1, 0);
+                items.forEach((li, i) => li.classList.toggle('active', i === this._areaActiveIdx));
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (this._areaActiveIdx >= 0 && items[this._areaActiveIdx]) {
+                    items[this._areaActiveIdx].click();
+                }
+            } else if (e.key === 'Escape') {
+                list.classList.add('hidden');
+            }
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#areaAutocomplete')) {
+                list.classList.add('hidden');
+            }
+        });
+    }
+
+    async _fetchAreaSuggestions(query) {
+        const list = document.getElementById('areaSuggestions');
+        if (!list) return;
+
+        try {
+            const url = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q=${encodeURIComponent(query)}&fq=type:(gemeente OR woonplaats)&rows=8`;
+            const resp = await fetch(url);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const docs = data?.response?.docs || [];
+
+            if (docs.length === 0) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            this._areaActiveIdx = -1;
+            list.innerHTML = docs.map((doc, i) => {
+                const name = doc.weergavenaam || doc.naam || '';
+                const type = doc.type === 'gemeente' ? 'Gemeente' : 'Woonplaats';
+                // Extract the city/gemeente name that Funda uses (lowercase, no extras)
+                const fundaName = (doc.naam || name.split(',')[0] || '').trim().toLowerCase();
+                return `<li class="area-suggestion" data-area="${escapeHtml(fundaName)}" data-display="${escapeHtml(name)}">${escapeHtml(name)} <span class="area-type">${type}</span></li>`;
+            }).join('');
+
+            list.classList.remove('hidden');
+
+            // Click handler on each suggestion
+            list.querySelectorAll('.area-suggestion').forEach(li => {
+                li.addEventListener('click', () => {
+                    const input = document.getElementById('bfSearchArea');
+                    input.value = li.dataset.display;
+                    this.searchArea = li.dataset.area;
+                    list.classList.add('hidden');
+                    this.applyBrowseFilters();
+                });
+            });
+        } catch (e) {
+            // Silently fail — user can still type manually
+        }
+    }
+
     renderBrowseGrid() {
         const houses = this.getBrowseHouses();
         const grid   = document.getElementById('browseGrid');
         const empty  = document.getElementById('browseEmpty');
         const count  = document.getElementById('browseCount');
+        this.updateEmptyStates();
 
         // Active filter badge
         const f = this.browseFilters;
