@@ -171,6 +171,7 @@ class FundaScraper {
         if (!tinyId) return null;
 
         const detailUrl = `${this.FUNDA_API_DETAIL_BASE}/tinyId/${tinyId}`;
+        const detailUrlEN = detailUrl.replace('/nl/', '/en/');
 
         // Try all proxies in order; CF Worker first, then public fallbacks.
         const proxiesToTry = this.corsProxies;
@@ -191,8 +192,20 @@ class FundaScraper {
                 if (!data) continue;
                 const parsed = typeof data === 'string' ? JSON.parse(data) : data;
                 const result = this.parseMobileDetail(parsed);
-                if (result && result.images?.length > 0) return result;
-                if (result) return result; // accept even if no images
+                if (result) {
+                    // Fetch English description in parallel (best-effort)
+                    try {
+                        const enProxyUrl = proxy.url + encodeURIComponent(detailUrlEN);
+                        const enResp = await fetch(enProxyUrl);
+                        if (enResp.ok) {
+                            const enRaw = await enResp.json();
+                            const enData = proxy.dataField ? enRaw[proxy.dataField] : enRaw;
+                            const enParsed = typeof enData === 'string' ? JSON.parse(enData) : enData;
+                            result.descriptionEN = enParsed?.ListingDescription?.Description || '';
+                        }
+                    } catch (e) { /* English description unavailable */ }
+                    return result;
+                }
             } catch (e) {
                 console.debug(`Detail proxy failed for ${tinyId}:`, e.message);
             }
@@ -227,13 +240,37 @@ class FundaScraper {
             ? photoItems.map(p => photoBase.replace('{}', p.Id)).filter(Boolean)
             : [];
 
-        // Floorplan URLs
+        // Floorplan URLs (thumbnail images)
         const floorplansData = media.LegacyFloorPlan || {};
         const floorplanBase = (floorplansData.ThumbnailBaseUrl || '').replace('{id}', '{}');
         const floorplanItems = floorplansData.Items || [];
         const floorplanUrls = floorplanBase
             ? floorplanItems.map(f => floorplanBase.replace('{}', f.ThumbnailId)).filter(Boolean)
             : [];
+
+        // Interactive floorplans (with embed URLs and names per floor)
+        const floorplanData = media.FloorPlan || {};
+        const interactiveFloorplans = (floorplanData.Items || []).map(fp => ({
+            name: fp.DisplayName || '',
+            embedUrl: fp.EmbedUrl || '',
+            thumbnailUrl: floorplanData.ThumbnailBaseUrl ? floorplanData.ThumbnailBaseUrl.replace('{id}', fp.Id) : '',
+        })).filter(fp => fp.embedUrl);
+
+        // Video URLs
+        const videosData = media.Videos || {};
+        const videoItems = (videosData.Items || []).map(v => ({
+            id: v.Id,
+            thumbnailUrl: videosData.ThumbnailBaseUrl ? videosData.ThumbnailBaseUrl.replace('{id}', v.Id) : '',
+            streamUrl: videosData.MediaBaseUrl ? videosData.MediaBaseUrl.replace('{id}', v.Id) : '',
+        })).filter(v => v.streamUrl || v.id);
+
+        // 360° photos
+        const photos360Data = media.Photos360 || {};
+        const photos360Items = (photos360Data.Items || []).map(p => ({
+            name: p.DisplayName || '',
+            embedUrl: p.EmbedUrl || '',
+            thumbnailUrl: photos360Data.ThumbnailBaseUrl ? photos360Data.ThumbnailBaseUrl.replace('{id}', p.Id) : '',
+        })).filter(p => p.embedUrl);
 
         const tinyId = identifiers.TinyId;
         const citySlug = (address.City || '').toLowerCase().replace(/ /g, '-');
@@ -272,6 +309,7 @@ class FundaScraper {
             propertyType: { Apartment: 'Appartement', House: 'Woning', 'Parking space': 'Parkeerplaats', 'Building plot': 'Bouwgrond' }[data.ObjectType] || data.ObjectType || '',
             houseType: ads.soortwoning || '',
             description: data.ListingDescription?.Description || '',
+            descriptionEN: '', // Populated separately via /en/ endpoint
             publicationDate: data.PublicationDate || '',
             offeredSince: characteristics['Aangeboden sinds'] || null,
             acceptance: characteristics['Aanvaarding'] || null,
@@ -279,6 +317,9 @@ class FundaScraper {
             image: photoUrls[0] || this.getPlaceholderImage(),
             images: photoUrls.slice(0, 30),
             floorplanUrls: floorplanUrls,
+            interactiveFloorplans: interactiveFloorplans,
+            videoItems: videoItems,
+            photos360: photos360Items,
             latitude: coords.Latitude ? parseFloat(coords.Latitude) : null,
             longitude: coords.Longitude ? parseFloat(coords.Longitude) : null,
             googleMapsUrl: data.GoogleMapsObjectUrl || null,

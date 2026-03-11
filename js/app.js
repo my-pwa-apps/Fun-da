@@ -394,7 +394,7 @@ class FunDaApp {
         const toast = document.createElement('div');
         toast.className = 'toast toast-action';
         toast.innerHTML = `
-            <span>🆕 Nieuwe versie beschikbaar!</span>
+            <span>Nieuwe versie beschikbaar!</span>
             <button class="toast-btn" id="updateNowBtn">Updaten</button>
         `;
         container.appendChild(toast);
@@ -448,7 +448,7 @@ class FunDaApp {
             this.installPromptDismissedRecently = false;
             localStorage.removeItem('pwa-install-dismissed');
             this.updateInstallUi();
-            this.showToast('🎉 Fun-da is geïnstalleerd!');
+            this.showToast('Fun-da is geïnstalleerd!');
         });
 
         this.updateInstallUi();
@@ -509,7 +509,7 @@ class FunDaApp {
             return;
         }
 
-        this.showToast(`📲 ${this.getManualInstallInstructions()}`);
+        this.showToast(`${this.getManualInstallInstructions()}`);
     }
     
     showInstallToast() {
@@ -519,7 +519,7 @@ class FunDaApp {
         const toast = document.createElement('div');
         toast.className = 'toast toast-action';
         toast.innerHTML = `
-            <span>📲 Installeer Fun-da</span>
+            <span>Installeer Fun-da</span>
             <button class="toast-btn" id="installBtn">Installeer</button>
             <button class="toast-dismiss" id="installDismiss">✕</button>
         `;
@@ -707,7 +707,7 @@ class FunDaApp {
 
         // Logo click - easter egg
         document.querySelector('.logo').addEventListener('click', () => {
-            this.showToast('🎉 Fun-da - Huizenjacht was nog nooit zo leuk!');
+            this.showToast('Fun-da - Huizenjacht was nog nooit zo leuk!');
         });
 
         // Online / offline indicator
@@ -716,7 +716,7 @@ class FunDaApp {
         });
         window.addEventListener('online', () => {
             document.getElementById('offlineBanner').classList.add('hidden');
-            this.showToast('📡 Internetverbinding hersteld');
+            this.showToast('Internetverbinding hersteld');
         });
         // Show banner immediately if already offline on load
         if (!navigator.onLine) {
@@ -804,20 +804,6 @@ class FunDaApp {
         document.getElementById('browseLayoutList').addEventListener('click', () => this.setBrowseLayout('list'));
         document.getElementById('browseLayoutGrid').addEventListener('click', () => this.setBrowseLayout('grid'));
 
-        // Type quick-filter pills in toolbar
-        document.getElementById('browseTypePills').addEventListener('click', (e) => {
-            const pill = e.target.closest('.browse-type-pill');
-            if (!pill) return;
-            const value = pill.dataset.value || null;
-            this.browseFilters.propertyType = value;
-            this._syncTypePills(value);
-            // Also sync sidebar btn-group
-            document.querySelectorAll('#bfPropertyTypeGroup .btn-option').forEach(b => {
-                b.classList.toggle('active', b.dataset.value === value);
-            });
-            this.renderBrowseGrid();
-        });
-
         document.getElementById('applyBrowseFilters')?.addEventListener('click', () => this.applyBrowseFilters());
         document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
         document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => {
@@ -853,14 +839,14 @@ class FunDaApp {
             this._clearDataPending = true;
             if (btn) {
                 btn.dataset.origText = btn.textContent;
-                btn.textContent = '⚠️ Klik nogmaals om te bevestigen';
+                btn.textContent = 'Klik nogmaals om te bevestigen';
                 btn.style.background = 'var(--danger)';
                 btn.style.color = '#fff';
             }
             setTimeout(() => {
                 this._clearDataPending = false;
                 if (btn) {
-                    btn.textContent = btn.dataset.origText || '🗑️ Alle data wissen';
+                    btn.textContent = btn.dataset.origText || 'Alle data wissen';
                     btn.style.background = '';
                     btn.style.color = '';
                     delete btn.dataset.origText;
@@ -870,7 +856,7 @@ class FunDaApp {
         }
         this._clearDataPending = false;
         if (btn) {
-            btn.textContent = btn.dataset.origText || '🗑️ Alle data wissen';
+            btn.textContent = btn.dataset.origText || 'Alle data wissen';
             btn.style.background = '';
             btn.style.color = '';
             delete btn.dataset.origText;
@@ -897,7 +883,7 @@ class FunDaApp {
             this.renderCards();
             this.updateStats();
             
-            this.showToast('🗑️ Alle data gewist!');
+            this.showToast('Alle data gewist!');
         }
     }
 
@@ -931,25 +917,26 @@ class FunDaApp {
         this.currentUser = user;
         const loggedOutEl = document.getElementById('settingsLoggedOut');
         const loggedInEl = document.getElementById('settingsLoggedIn');
-        if (!loggedOutEl || !loggedInEl) return;
+        const headerAvatar = document.getElementById('headerUserAvatar');
 
         if (user) {
-            loggedOutEl.classList.add('hidden');
-            loggedInEl.classList.remove('hidden');
-            const photo = document.getElementById('settingsUserPhoto');
-            if (photo) {
-                photo.src = user.photoURL || '';
-                photo.style.display = user.photoURL ? '' : 'none';
+            if (loggedOutEl) loggedOutEl.classList.add('hidden');
+            if (loggedInEl) loggedInEl.classList.remove('hidden');
+            // Show avatar in header
+            if (headerAvatar) {
+                if (user.photoURL) {
+                    headerAvatar.src = user.photoURL;
+                    headerAvatar.classList.remove('hidden');
+                } else {
+                    headerAvatar.classList.add('hidden');
+                }
             }
-            const nameEl = document.getElementById('settingsUserName');
-            const emailEl = document.getElementById('settingsUserEmail');
-            if (nameEl) nameEl.textContent = user.displayName || 'Gebruiker';
-            if (emailEl) emailEl.textContent = user.email || '';
             // Load settings from Firebase for this user
             this.loadSettingsFromFirebase();
         } else {
-            loggedOutEl.classList.remove('hidden');
-            loggedInEl.classList.add('hidden');
+            if (loggedOutEl) loggedOutEl.classList.remove('hidden');
+            if (loggedInEl) loggedInEl.classList.add('hidden');
+            if (headerAvatar) headerAvatar.classList.add('hidden');
         }
     }
 
@@ -973,7 +960,7 @@ class FunDaApp {
             if (typeof firebase !== 'undefined' && firebase.auth) {
                 await firebase.auth().signOut();
             }
-            this.showToast('👋 Uitgelogd');
+            this.showToast('Uitgelogd');
         } catch (e) {
             console.error('Logout error:', e);
         }
@@ -1148,7 +1135,7 @@ class FunDaApp {
                 this.showToast('❌ Familie aanmaken mislukt. Probeer het opnieuw.');
                 return;
             }
-            this.showToast(`🎉 Familie aangemaakt! Code: ${code}`);
+            this.showToast(`Familie aangemaakt! Code: ${code}`);
             this.updateFamilyUI();
         } catch (e) {
             console.error('createFamily error:', e);
@@ -1178,7 +1165,7 @@ class FunDaApp {
                 this.showToast('❌ Familie niet gevonden. Controleer de code.');
                 return;
             }
-            this.showToast(`👨‍👩‍👧‍👦 Je bent nu lid van familie ${code}!`);
+            this.showToast(`Je bent nu lid van familie ${code}!`);
             this.updateFamilyUI();
         } catch (e) {
             console.error('joinFamily error:', e);
@@ -1192,7 +1179,7 @@ class FunDaApp {
             this._leaveFamilyPending = true;
             if (btn) {
                 btn.dataset.origText = btn.textContent;
-                btn.textContent = '⚠️ Klik nogmaals om te bevestigen';
+                btn.textContent = 'Klik nogmaals om te bevestigen';
                 btn.style.background = 'var(--danger)';
                 btn.style.color = '#fff';
             }
@@ -1217,7 +1204,7 @@ class FunDaApp {
         {
             this.familySync.leaveFamily();
             this.familyMatches.clear();
-            this.showToast('👋 Je hebt de familie verlaten');
+            this.showToast('Je hebt de familie verlaten');
             this.updateFamilyUI();
         }
     }
@@ -1393,7 +1380,7 @@ class FunDaApp {
                     <div class="member-avatar">${this.getAvatarEmoji(m.name)}</div>
                     <div class="member-info">
                         <div class="member-name">${escapeHtml(m.name)} ${m.isCurrentUser ? '<span class="member-badge">Jij</span>' : ''}</div>
-                        <div class="member-stats">❤️ ${escapeHtml(String(m.favoriteCount))} favorieten</div>
+                        <div class="member-stats">${escapeHtml(String(m.favoriteCount))} favorieten</div>
                     </div>
                 </div>
             `).join('');
@@ -1465,7 +1452,7 @@ class FunDaApp {
         overlay.className = 'family-match-celebration';
         overlay.innerHTML = `
             <div class="celebration-content">
-                <div class="celebration-emoji">🎉👨‍👩‍👧‍👦🏠</div>
+                <div class="celebration-emoji">Familie Match!</div>
                 <div class="celebration-title">FAMILIE MATCH!</div>
                 <div class="celebration-subtitle">Jullie hebben dezelfde woning geliked!</div>
             </div>
@@ -1502,7 +1489,7 @@ class FunDaApp {
         const safeImage = escapeHtml(safeImageUrl(house.image));
         const safeFundaUrl = safeExternalUrl(house.url);
         
-        document.getElementById('detailTitle').textContent = '🎉 Familie Match!';
+        document.getElementById('detailTitle').textContent = 'Familie Match!';
         document.getElementById('detailContent').innerHTML = `
             <div style="background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(78, 205, 196, 0.2)); 
                         padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; text-align: center;">
@@ -1535,7 +1522,7 @@ class FunDaApp {
 
             ${safeFundaUrl !== '#' ? `
                 <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-full" style="display: block; text-align: center; text-decoration: none;">
-                    🔗 Bekijk op Funda
+                    Bekijk op Funda
                 </a>
             ` : ''}
         `;
@@ -1671,10 +1658,10 @@ class FunDaApp {
             <div class="card-overlay"></div>
             ${isFamilyMatch ? `
                 <div class="card-family-match">
-                    👨‍👩‍👧‍👦 ${matchMembers?.length || 0} matches
+                    ${matchMembers?.length || 0} matches
                 </div>
             ` : ''}
-            <div class="swipe-indicator like">❤️ Ja!</div>
+            <div class="swipe-indicator like">Ja!</div>
             <div class="swipe-indicator nope">✕ Nee</div>
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
@@ -1688,12 +1675,12 @@ class FunDaApp {
                 </div>
                 ${(house.hasGarden || house.hasBalcony || house.hasSolarPanels || house.hasHeatPump || house.hasRoofTerrace || house.hasParking) ? `
                 <div class="card-icons">
-                    ${house.hasGarden ? '<span title="Tuin">🌿</span>' : ''}
-                    ${house.hasBalcony ? '<span title="Balkon">🌅</span>' : ''}
-                    ${house.hasRoofTerrace ? '<span title="Dakterras">🏙️</span>' : ''}
-                    ${house.hasSolarPanels ? '<span title="Zonnepanelen">☀️</span>' : ''}
-                    ${house.hasHeatPump ? '<span title="Warmtepomp">♨️</span>' : ''}
-                    ${house.hasParking ? '<span title="Parkeren">🚗</span>' : ''}
+                    ${house.hasGarden ? '<span class="card-icon-tag" title="Tuin">Tuin</span>' : ''}
+                    ${house.hasBalcony ? '<span class="card-icon-tag" title="Balkon">Balkon</span>' : ''}
+                    ${house.hasRoofTerrace ? '<span class="card-icon-tag" title="Dakterras">Dakterras</span>' : ''}
+                    ${house.hasSolarPanels ? '<span class="card-icon-tag" title="Zonnepanelen">Zon</span>' : ''}
+                    ${house.hasHeatPump ? '<span class="card-icon-tag" title="Warmtepomp">WP</span>' : ''}
+                    ${house.hasParking ? '<span class="card-icon-tag" title="Parkeren">P</span>' : ''}
                 </div>` : ''}
             </div>
         `;
@@ -1849,7 +1836,7 @@ class FunDaApp {
         banner.className = 'family-match-banner';
         banner.innerHTML = `
             <div class="fmb-inner">
-                <span class="fmb-icon">💑</span>
+                <span class="fmb-icon"></span>
                 <div class="fmb-text">
                     <strong>Familie match!</strong>
                     <span>${escapeHtml(memberNames)} vond <em>${escapeHtml(addr)}</em> ook leuk!</span>
@@ -1973,9 +1960,9 @@ class FunDaApp {
         } else {
             try {
                 await navigator.clipboard.writeText(url);
-                this.showToast('🔗 Link gekopieerd!');
+                this.showToast('Link gekopieerd!');
             } catch {
-                this.showToast(`🔗 ${url}`);
+                this.showToast(`${url}`);
             }
         }
     }
@@ -2032,23 +2019,23 @@ class FunDaApp {
         
         // Build extra details section
         const extraDetails = [];
-        if (house.houseType) extraDetails.push(`<span>🏠 ${escapeHtml(house.houseType)}</span>`);
-        else if (house.propertyType) extraDetails.push(`<span>🏠 ${escapeHtml(house.propertyType)}</span>`);
-        if (house.plotArea) extraDetails.push(`<span>🌳 ${this.t('label.plot')}: ${house.plotArea}m²</span>`);
-        if (house.plotSize) extraDetails.push(`<span>🌳 ${this.t('label.plot')}: ${house.plotSize}m²</span>`);
-        if (house.hasGarden) extraDetails.push(`<span>🌿 ${house.gardenType || this.t('feat.garden')}</span>`);
-        if (house.hasBalcony) extraDetails.push(`<span>🌅 ${this.t('feat.balcony')}</span>`);
-        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ ${this.t('feat.roofterrace')}</span>`);
-        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ ${this.t('feat.solar')}</span>`);
-        if (house.hasHeatPump) extraDetails.push(`<span>♨️ ${this.t('feat.heatpump')}</span>`);
-        if (house.hasParking) extraDetails.push(`<span>🚗 ${this.t('feat.parking')}</span>`);
-        if (house.isMonument) extraDetails.push(`<span>🏛️ ${this.t('feat.monument')}</span>`);
-        if (house.isFixerUpper) extraDetails.push(`<span>🔧 ${this.t('feat.fixer')}</span>`);
-        if (house.isAuction) extraDetails.push(`<span>🔨 ${this.t('feat.auction')}</span>`);
-        if (house.parking) extraDetails.push(`<span>🚗 ${escapeHtml(house.parking)}</span>`);
-        if (house.vveCosts) extraDetails.push(`<span>🏢 VvE: €${house.vveCosts}/mnd</span>`);
-        if (house.status) extraDetails.push(`<span>📋 ${escapeHtml(house.status)}</span>`);
-        if (house.acceptance) extraDetails.push(`<span>📅 ${escapeHtml(house.acceptance)}</span>`);
+        if (house.houseType) extraDetails.push(`<span>${escapeHtml(house.houseType)}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>${escapeHtml(house.propertyType)}</span>`);
+        if (house.plotArea) extraDetails.push(`<span>${this.t('label.plot')}: ${house.plotArea}m²</span>`);
+        if (house.plotSize) extraDetails.push(`<span>${this.t('label.plot')}: ${house.plotSize}m²</span>`);
+        if (house.hasGarden) extraDetails.push(`<span>${house.gardenType || this.t('feat.garden')}</span>`);
+        if (house.hasBalcony) extraDetails.push(`<span>${this.t('feat.balcony')}</span>`);
+        if (house.hasRoofTerrace) extraDetails.push(`<span>${this.t('feat.roofterrace')}</span>`);
+        if (house.hasSolarPanels) extraDetails.push(`<span>${this.t('feat.solar')}</span>`);
+        if (house.hasHeatPump) extraDetails.push(`<span>${this.t('feat.heatpump')}</span>`);
+        if (house.hasParking) extraDetails.push(`<span>${this.t('feat.parking')}</span>`);
+        if (house.isMonument) extraDetails.push(`<span>${this.t('feat.monument')}</span>`);
+        if (house.isFixerUpper) extraDetails.push(`<span>${this.t('feat.fixer')}</span>`);
+        if (house.isAuction) extraDetails.push(`<span>${this.t('feat.auction')}</span>`);
+        if (house.parking) extraDetails.push(`<span>${escapeHtml(house.parking)}</span>`);
+        if (house.vveCosts) extraDetails.push(`<span>VvE: €${house.vveCosts}/mnd</span>`);
+        if (house.status) extraDetails.push(`<span>${escapeHtml(house.status)}</span>`);
+        if (house.acceptance) extraDetails.push(`<span>${escapeHtml(house.acceptance)}</span>`);
         
         // Build data source badge
         const sourceBadges = [];
@@ -2061,8 +2048,8 @@ class FunDaApp {
         // Build popularity row
         const popularityHtml = (house.views != null || house.saves != null) ? `
             <div style="display:flex; gap:1rem; font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">
-                ${house.views != null ? `<span>👁️ ${this.t('detail.viewed', house.views)}</span>` : ''}
-                ${house.saves != null ? `<span>❤️ ${this.t('detail.saved', house.saves)}</span>` : ''}
+                ${house.views != null ? `<span>${this.t('detail.viewed', house.views)}</span>` : ''}
+                ${house.saves != null ? `<span>${this.t('detail.saved', house.saves)}</span>` : ''}
             </div>` : '';
 
         const safeAddress = escapeHtml(cleanAddress(house.address));
@@ -2089,23 +2076,69 @@ class FunDaApp {
             <div class="detail-section">
                 <h3>${this.t('detail.broker_title')}</h3>
                 ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
-                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary" style="display:inline-block;margin-right:0.5rem;margin-bottom:0.25rem;padding:0.4rem 0.8rem;font-size:0.85rem;">📞 ${this.t('detail.call')}</a>` : ''}
-                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">✉️ ${this.t('detail.email')}</a>` : ''}
+                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary" style="display:inline-block;margin-right:0.5rem;margin-bottom:0.25rem;padding:0.4rem 0.8rem;font-size:0.85rem;">${this.t('detail.call')}</a>` : ''}
+                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">${this.t('detail.email')}</a>` : ''}
             </div>` : '';
 
-        // Floorplan (first one, if available)
-        const floorplanHtml = house.floorplanUrls?.length > 0 ? `
+        // Floorplans section — interactive floorplans first, then thumbnail fallback
+        let floorplanHtml = '';
+        if (house.interactiveFloorplans?.length > 0) {
+            const fpItems = house.interactiveFloorplans.map(fp =>
+                `<div class="media-card">
+                    <a href="${safeExternalUrl(fp.embedUrl)}" target="_blank" rel="noopener" class="media-card-link">
+                        ${fp.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(fp.thumbnailUrl))}" alt="${escapeHtml(fp.name)}" loading="lazy" class="media-card-img">` : ''}
+                        <span class="media-card-label">${escapeHtml(fp.name || 'Plattegrond')}</span>
+                    </a>
+                </div>`
+            ).join('');
+            floorplanHtml = `<div class="detail-section"><h3>${this.t('detail.floorplan')}</h3><div class="media-grid">${fpItems}</div></div>`;
+        } else if (house.floorplanUrls?.length > 0) {
+            floorplanHtml = `<div class="detail-section"><h3>${this.t('detail.floorplan')}</h3>
+                ${house.floorplanUrls.map(u => `<img src="${escapeHtml(safeImageUrl(u))}" alt="Plattegrond" style="width:100%;border-radius:8px;margin-bottom:0.5rem;" loading="lazy">`).join('')}
+            </div>`;
+        }
+
+        // Video section
+        const videoHtml = house.videoItems?.length > 0 ? `
             <div class="detail-section">
-                <h3>${this.t('detail.floorplan')}</h3>
-                <img src="${escapeHtml(safeImageUrl(house.floorplanUrls[0]))}" alt="Plattegrond" style="width:100%;border-radius:8px;" loading="lazy">
+                <h3>Video</h3>
+                <div class="media-grid">
+                    ${house.videoItems.map(v => `
+                        <div class="media-card">
+                            <a href="${safeExternalUrl(v.streamUrl)}" target="_blank" rel="noopener" class="media-card-link">
+                                ${v.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(v.thumbnailUrl))}" alt="Video" loading="lazy" class="media-card-img">` : '<div class="media-card-placeholder">Video</div>'}
+                                <span class="media-card-label">Video</span>
+                            </a>
+                        </div>
+                    `).join('')}
+                </div>
             </div>` : '';
 
-        // Description
-        const descHtml = house.description ? `
+        // 360° photos section
+        const photos360Html = house.photos360?.length > 0 ? `
+            <div class="detail-section">
+                <h3>360° Rondleiding</h3>
+                <div class="media-grid">
+                    ${house.photos360.map(p => `
+                        <div class="media-card">
+                            <a href="${safeExternalUrl(p.embedUrl)}" target="_blank" rel="noopener" class="media-card-link">
+                                ${p.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(p.thumbnailUrl))}" alt="${escapeHtml(p.name)}" loading="lazy" class="media-card-img">` : '<div class="media-card-placeholder">360°</div>'}
+                                <span class="media-card-label">${escapeHtml(p.name || '360°')}</span>
+                            </a>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>` : '';
+
+        // Description — show in selected language, fall back to the other if empty
+        const descNL = house.description || '';
+        const descEN = house.descriptionEN || '';
+        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : (descNL || descEN);
+        const descHtml = primaryDesc ? `
             <div class="detail-section">
                 <h3>${this.t('detail.desc')}</h3>
-                <p class="detail-description${house.description.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(house.description)}</p>
-                ${house.description.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ Meer lezen</button>` : ''}
+                <p class="detail-description${primaryDesc.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(primaryDesc)}</p>
+                ${primaryDesc.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ ${this.lang === 'en' ? 'Read more' : 'Meer lezen'}</button>` : ''}
             </div>` : '';
 
         // Build photo gallery thumbnails
@@ -2174,6 +2207,8 @@ class FunDaApp {
 
             ${descHtml}
             ${floorplanHtml}
+            ${videoHtml}
+            ${photos360Html}
             ${brokerHtml}
             ${mapsLinkHtml}
             </div>
@@ -2211,10 +2246,10 @@ class FunDaApp {
                 const safeAddress = escapeHtml(cleanAddress(house.address));
                 const safeFeatures = escapeHtml(`${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city || ''}`);
                 const meta = this.favoriteMeta[String(house.id)] || {};
-                const statusLabels = { interested: '👀 Interessant', viewing: '📅 Bezichtiging', bid: '💰 Bod uitgebracht', accepted: '✅ Geaccepteerd', rejected: '❌ Afgewezen' };
+                const statusLabels = { interested: 'Interessant', viewing: 'Bezichtiging', bid: 'Bod uitgebracht', accepted: 'Geaccepteerd', rejected: 'Afgewezen' };
                 const statusBadge = meta.status ? `<span class="fav-meta-badge">${escapeHtml(statusLabels[meta.status] || meta.status)}</span>` : '';
-                const deadlineBadge = meta.bidDeadline ? `<span class="fav-meta-badge fav-meta-bid">⏰ ${escapeHtml(meta.bidDeadline.split('T')[0])}</span>` : '';
-                const daysStr = house.daysOnMarket != null ? (house.daysOnMarket === 0 ? ' · 🆕' : ` · ${house.daysOnMarket}d`) : '';
+                const deadlineBadge = meta.bidDeadline ? `<span class="fav-meta-badge fav-meta-bid">${escapeHtml(meta.bidDeadline.split('T')[0])}</span>` : '';
+                const daysStr = house.daysOnMarket != null ? (house.daysOnMarket === 0 ? ' · Nieuw' : ` · ${house.daysOnMarket}d`) : '';
                 return `
                 <div class="favorite-item" data-action="showFavoriteDetail" data-id="${escapedId}">
                     <img class="favorite-image" src="${safeImage}" alt="${safeAddress}">
@@ -2248,18 +2283,18 @@ class FunDaApp {
 
         // Extra features
         const extraDetails = [];
-        if (house.houseType) extraDetails.push(`<span>🏠 ${escapeHtml(house.houseType)}</span>`);
-        else if (house.propertyType) extraDetails.push(`<span>🏠 ${escapeHtml(house.propertyType)}</span>`);
-        if (house.plotArea || house.plotSize) extraDetails.push(`<span>🌳 ${this.t('label.plot')}: ${house.plotArea || house.plotSize}m²</span>`);
-        if (house.hasGarden) extraDetails.push(`<span>🌿 ${this.t('feat.garden')}</span>`);
-        if (house.hasBalcony) extraDetails.push(`<span>🌅 ${this.t('feat.balcony')}</span>`);
-        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ ${this.t('feat.roofterrace')}</span>`);
-        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ ${this.t('feat.solar')}</span>`);
-        if (house.hasHeatPump) extraDetails.push(`<span>♨️ ${this.t('feat.heatpump')}</span>`);
-        if (house.hasParking) extraDetails.push(`<span>🚗 ${this.t('feat.parking')}</span>`);
-        if (house.isMonument) extraDetails.push(`<span>🏛️ ${this.t('feat.monument')}</span>`);
-        if (house.isFixerUpper) extraDetails.push(`<span>🔧 ${this.t('feat.fixer')}</span>`);
-        if (house.isAuction) extraDetails.push(`<span>🔨 ${this.t('feat.auction')}</span>`);
+        if (house.houseType) extraDetails.push(`<span>${escapeHtml(house.houseType)}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>${escapeHtml(house.propertyType)}</span>`);
+        if (house.plotArea || house.plotSize) extraDetails.push(`<span>${this.t('label.plot')}: ${house.plotArea || house.plotSize}m²</span>`);
+        if (house.hasGarden) extraDetails.push(`<span>${this.t('feat.garden')}</span>`);
+        if (house.hasBalcony) extraDetails.push(`<span>${this.t('feat.balcony')}</span>`);
+        if (house.hasRoofTerrace) extraDetails.push(`<span>${this.t('feat.roofterrace')}</span>`);
+        if (house.hasSolarPanels) extraDetails.push(`<span>${this.t('feat.solar')}</span>`);
+        if (house.hasHeatPump) extraDetails.push(`<span>${this.t('feat.heatpump')}</span>`);
+        if (house.hasParking) extraDetails.push(`<span>${this.t('feat.parking')}</span>`);
+        if (house.isMonument) extraDetails.push(`<span>${this.t('feat.monument')}</span>`);
+        if (house.isFixerUpper) extraDetails.push(`<span>${this.t('feat.fixer')}</span>`);
+        if (house.isAuction) extraDetails.push(`<span>${this.t('feat.auction')}</span>`);
 
         const safeAddress = escapeHtml(cleanAddress(house.address));
         const safeImage = escapeHtml(safeImageUrl(house.image));
@@ -2394,7 +2429,7 @@ class FunDaApp {
             ${mapsLinkHtml}
 
             <button class="btn-primary btn-full" style="background: var(--danger); margin-top: 0.5rem;" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
-                🗑️ Verwijderen uit favorieten
+                Verwijderen uit favorieten
             </button>
             </div>
             </div>
@@ -2913,10 +2948,8 @@ class FunDaApp {
         this.renderBrowseGrid();
     }
 
-    _syncTypePills(value) {
-        document.querySelectorAll('#browseTypePills .browse-type-pill').forEach(p => {
-            p.classList.toggle('active', (p.dataset.value || null) === (value || null));
-        });
+    _syncTypePills() {
+        // Type pills removed from toolbar; no-op
     }
 
     _debounce(fn, ms) {
@@ -3064,6 +3097,10 @@ class FunDaApp {
                     input.value = li.dataset.display;
                     this.searchArea = li.dataset.area;
                     list.classList.add('hidden');
+                    // On desktop, auto-apply immediately; on mobile, user presses the button
+                    if (window.matchMedia('(min-width: 768px)').matches) {
+                        this.applyBrowseFilters();
+                    }
                 });
             });
         } catch (e) {
@@ -3135,9 +3172,9 @@ class FunDaApp {
         if (house.status && /onderhandeling/i.test(house.status))
             badges.push(`<span class="bt-badge bt-badge-nego">${this.t('badge.nego')}</span>`);
         if (house.daysOnMarket >= 90)
-            badges.push('<span class="bt-badge bt-badge-stale bt-badge-stale-long" title="Al meer dan 90 dagen te koop – mogelijk ruimte voor een lager bod">🎯 90+ dagen</span>');
+            badges.push('<span class="bt-badge bt-badge-stale bt-badge-stale-long" title="Al meer dan 90 dagen te koop">90+ dagen</span>');
         else if (house.daysOnMarket >= 30)
-            badges.push(`<span class="bt-badge bt-badge-stale" title="Al ${house.daysOnMarket} dagen te koop – mogelijk ruimte voor een lager bod">🕐 ${house.daysOnMarket}d</span>`);
+            badges.push(`<span class="bt-badge bt-badge-stale" title="Al ${house.daysOnMarket} dagen te koop">${house.daysOnMarket}d</span>`);
 
         // Price per m²
         const ppm2 = (house.price && house.size)

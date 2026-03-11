@@ -19,7 +19,7 @@
     <link rel="shortcut icon" href="icons/icon-180.png">
     <link rel="apple-touch-icon" href="icons/icon-180.png">
     
-    <title>Fun-da 🏠</title>
+    <title>Fun-da</title>
     
     <!-- Preload critical resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,6 +69,7 @@
                     </svg>
                     <span class="badge" id="favCount">0</span>
                 </button>
+                <img id="headerUserAvatar" class="header-avatar hidden" src="" alt="" title="Ingelogd">
             </div>
         </header>
 
@@ -96,7 +97,7 @@
             
             <!-- Empty State -->
             <div id="emptyState" class="empty-state hidden">
-                <div class="empty-emoji">🏠</div>
+                <div class="empty-emoji"></div>
                 <h2 id="emptyStateTitle">Alle huizen bekeken!</h2>
                 <p id="emptyStateText">Je hebt alle beschikbare woningen gezien.</p>
                 <button class="btn-primary" id="resetBtn">Opnieuw beginnen</button>
@@ -145,19 +146,19 @@
                     <div class="bfs">
                         <h4 class="bfs-title">Type woning</h4>
                         <div class="btn-group" id="bfPropertyTypeGroup">
-                            <button class="btn-option" data-value="Woning">🏠 Woning</button>
-                            <button class="btn-option" data-value="Appartement">🏢 Appartement</button>
+                            <button class="btn-option" data-value="Woning">Woning</button>
+                            <button class="btn-option" data-value="Appartement">Appartement</button>
                         </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Zoekperiode</h4>
                         <p class="bfs-hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
                         <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren">
-                            <option value="1">🆕 Vandaag</option>
-                            <option value="3" selected>📅 Laatste 3 dagen</option>
-                            <option value="7">📅 Laatste week</option>
-                            <option value="14">📆 Laatste 2 weken</option>
-                            <option value="30">🗓️ Laatste maand</option>
+                            <option value="1">Vandaag</option>
+                            <option value="3" selected>Laatste 3 dagen</option>
+                            <option value="7">Laatste week</option>
+                            <option value="14">Laatste 2 weken</option>
+                            <option value="30">Laatste maand</option>
                         </select>
                     </div>
                     <div class="bfs">
@@ -215,7 +216,7 @@
                         <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full">
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Op de markt (min. dagen) 🎯</h4>
+                        <h4 class="bfs-title">Op de markt (min. dagen)</h4>
                         <p class="bfs-hint">Langer op de markt = meer ruimte voor een lager bod</p>
                         <div class="btn-group" id="bfDaysOnMarketGroup">
                             <button class="btn-option" data-value="14">14+</button>
@@ -241,13 +242,13 @@
                     <div class="bfs">
                         <h4 class="bfs-title">Kenmerken</h4>
                         <div class="feature-checks">
-                            <label class="check-label"><input type="checkbox" id="bfHasTuin"> 🌿 Tuin</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> 🌅 Balkon / dakterras</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasParking"> 🚗 Parkeren</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasSolar"> ☀️ Zonnepanelen</label>
-                            <label class="check-label"><input type="checkbox" id="bfIsMonument"> 🏛️ Monument</label>
-                            <label class="check-label"><input type="checkbox" id="bfIsAuction"> 🔨 Veiling</label>
-                            <label class="check-label"><input type="checkbox" id="bfIsFixer"> 🔧 Kluswoning</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasTuin"> Tuin</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> Balkon / dakterras</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasParking"> Parkeren</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasSolar"> Zonnepanelen</label>
+                            <label class="check-label"><input type="checkbox" id="bfIsMonument"> Monument</label>
+                            <label class="check-label"><input type="checkbox" id="bfIsAuction"> Veiling</label>
+                            <label class="check-label"><input type="checkbox" id="bfIsFixer"> Kluswoning</label>
                         </div>
                     </div>
                 </div>
@@ -270,11 +271,6 @@
                         Filters
                         <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
                     </button>
-                    <div class="browse-type-pills" id="browseTypePills">
-                        <button class="browse-type-pill active" data-value="">Alles</button>
-                        <button class="browse-type-pill" data-value="Woning">🏠 Woning</button>
-                        <button class="browse-type-pill" data-value="Appartement">🏢 App.</button>
-                    </div>
                     <span id="browseCount" class="browse-count">0 woningen</span>
                     <select id="browseSortBy" class="browse-sort" title="Sorteer op">
                         <option value="default">Volgorde</option>
@@ -309,7 +305,7 @@
                 <div id="browseGrid" class="browse-grid browse-layout-list"></div>
 
                 <div id="browseEmpty" class="browse-empty hidden">
-                    <div class="empty-emoji">🔍</div>
+                    <div class="empty-emoji"></div>
                     <p id="browseEmptyText">Geen woningen gevonden met deze filters.</p>
                     <button class="btn-secondary" id="clearBrowseFiltersBtn">Wis filters</button>
                 </div>
@@ -321,7 +317,7 @@
     <div id="favoritesModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>❤️ Mijn Favorieten</h2>
+                <h2>Mijn Favorieten</h2>
                 <button class="btn-close" id="closeFavModal">&times;</button>
             </div>
             <div class="modal-body">
@@ -330,7 +326,7 @@
                 </div>
                 <div id="noFavorites" class="no-favorites">
                     <p>Nog geen favorieten!</p>
-                    <p>Swipe naar rechts of druk op ❤️ om huizen toe te voegen.</p>
+                    <p>Swipe naar rechts of druk op het hartje om huizen toe te voegen.</p>
                 </div>
             </div>
         </div>
@@ -342,7 +338,7 @@
             <div class="modal-header">
                 <h2 id="detailTitle">Woning Details</h2>
                 <div class="modal-header-actions">
-                    <button class="btn-share" id="shareDetailBtn" data-action="shareHouse" aria-label="Delen" title="Delen">⬆︎</button>
+                    <button class="btn-share" id="shareDetailBtn" data-action="shareHouse" aria-label="Delen" title="Delen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
                     <button class="btn-close" id="closeDetailModal">&times;</button>
                 </div>
             </div>
@@ -356,7 +352,7 @@
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2 data-i18n="settings.title">⚙️ Instellingen</h2>
+                <h2 data-i18n="settings.title">Instellingen</h2>
                 <button class="btn-close" id="closeSettingsModal">&times;</button>
             </div>
             <div class="modal-body">
@@ -375,13 +371,6 @@
                     </button>
                 </div>
                 <div id="settingsLoggedIn" class="hidden">
-                    <div class="settings-user-info">
-                        <img id="settingsUserPhoto" class="settings-avatar" src="" alt="Profielfoto">
-                        <div class="settings-user-text">
-                            <strong id="settingsUserName">-</strong>
-                            <small id="settingsUserEmail">-</small>
-                        </div>
-                    </div>
                     <button class="btn-secondary settings-logout-btn" id="logoutBtn" data-i18n="settings.logout">Uitloggen</button>
                 </div>
 
@@ -391,8 +380,8 @@
                 <h3 class="settings-section-title" data-i18n="settings.language">Taal</h3>
                 <div class="filter-group">
                     <div class="preset-group">
-                        <button id="langNl" class="preset-btn active">🇳🇱 Nederlands</button>
-                        <button id="langEn" class="preset-btn">🇬🇧 English</button>
+                        <button id="langNl" class="preset-btn active">NL Nederlands</button>
+                        <button id="langEn" class="preset-btn">EN English</button>
                     </div>
                 </div>
 
@@ -414,14 +403,13 @@
                     <h3 class="settings-section-title">App installeren</h3>
                     <p id="installStatus" class="modal-description">Controleer installatie-opties...</p>
                     <button id="installAppBtn" class="btn-primary settings-install-btn">Installeer app</button>
+                    <hr class="settings-divider">
                 </div>
-
-                <hr class="settings-divider">
 
                 <!-- Data management -->
                 <h3 class="settings-section-title" data-i18n="settings.data">Data</h3>
                 <div class="clear-data-wrapper">
-                    <button id="clearDataBtn" class="btn-clear-data" data-i18n="settings.clear">🗑️ Wis alle data (start opnieuw)</button>
+                    <button id="clearDataBtn" class="btn-clear-data" data-i18n="settings.clear">Wis alle data (start opnieuw)</button>
                 </div>
             </div>
         </div>
@@ -542,7 +530,7 @@
     </div>
 
     <!-- Offline Banner -->
-    <div id="offlineBanner" class="offline-banner hidden" role="alert" aria-live="assertive">📡 Geen internetverbinding — opgeslagen woningen zijn beschikbaar</div>
+    <div id="offlineBanner" class="offline-banner hidden" role="alert" aria-live="assertive">Geen internetverbinding — opgeslagen woningen zijn beschikbaar</div>
 
     <!-- Confetti Container -->
     <div id="confetti" class="confetti-container" aria-hidden="true"></div>
