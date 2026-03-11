@@ -2105,7 +2105,7 @@ class FunDaApp {
                 <div class="media-grid">
                     ${house.videoItems.map(v => `
                         <div class="media-card">
-                            <a href="${safeExternalUrl(v.streamUrl)}" target="_blank" rel="noopener" class="media-card-link">
+                            <a href="${safeExternalUrl(v.watchUrl || v.streamUrl)}" target="_blank" rel="noopener" class="media-card-link">
                                 ${v.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(v.thumbnailUrl))}" alt="Video" loading="lazy" class="media-card-img">` : '<div class="media-card-placeholder">Video</div>'}
                                 <span class="media-card-label">Video</span>
                             </a>
@@ -2130,15 +2130,34 @@ class FunDaApp {
                 </div>
             </div>` : '';
 
-        // Description — show in selected language, fall back to the other if empty
+        // Description — show only the active language, fall back only when that language is empty
         const descNL = house.description || '';
         const descEN = house.descriptionEN || '';
-        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : (descNL || descEN);
+        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : descNL;
         const descHtml = primaryDesc ? `
             <div class="detail-section">
                 <h3>${this.t('detail.desc')}</h3>
                 <p class="detail-description${primaryDesc.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(primaryDesc)}</p>
                 ${primaryDesc.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ ${this.lang === 'en' ? 'Read more' : 'Meer lezen'}</button>` : ''}
+            </div>` : '';
+
+        // Kenmerken (characteristics) sections
+        const kenmerkHtml = house.kenmerkSections?.length > 0 ? `
+            <div class="detail-section">
+                <h3>${this.lang === 'en' ? 'Characteristics' : 'Kenmerken'}</h3>
+                ${house.kenmerkSections.map(section => `
+                    <div class="kenmerk-section">
+                        <h4 class="kenmerk-title">${escapeHtml(section.title)}</h4>
+                        <table class="kenmerk-table">
+                            ${section.items.map(item => `
+                                <tr>
+                                    <td class="kenmerk-label">${escapeHtml(item.label)}</td>
+                                    <td class="kenmerk-value">${escapeHtml(item.value)}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </div>
+                `).join('')}
             </div>` : '';
 
         // Build photo gallery thumbnails
@@ -2206,6 +2225,7 @@ class FunDaApp {
             </div>
 
             ${descHtml}
+            ${kenmerkHtml}
             ${floorplanHtml}
             ${videoHtml}
             ${photos360Html}
@@ -3162,7 +3182,7 @@ class FunDaApp {
         const safePostal = escapeHtml(house.postalCode || '');
         const safeType   = escapeHtml(house.houseType || house.propertyType || '');
         const isFav      = this.favorites.some(f => String(f.id) === String(house.id));
-        const favLabel   = isFav ? '❤️' : '🤍';
+        const favIcon    = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
         const favClass   = isFav ? 'bt-fav active' : 'bt-fav';
 
         // Badges
@@ -3232,7 +3252,7 @@ class FunDaApp {
                 ${badges.length ? `<div class="bt-badges">${badges.join('')}</div>` : ''}
                 ${photoCount ? `<div class="bt-photo-count-wrap">${photoCount}</div>` : ''}
                 <button class="${favClass}" data-action="browseAddFavorite" data-id="${escapedId}"
-                    title="${isFav ? 'Verwijder favoriet' : 'Voeg toe aan favorieten'}">${favLabel}</button>
+                    title="${isFav ? 'Verwijder favoriet' : 'Voeg toe aan favorieten'}">${favIcon}</button>
             </div>
             <div class="bt-info">
                 ${safeType ? `<div class="bt-type">${safeType}</div>` : ''}
@@ -3258,12 +3278,10 @@ class FunDaApp {
         const isFav = this.favorites.some(f => String(f.id) === String(houseId));
         if (isFav) {
             this.removeFromFavorites(houseId);
-            btn.textContent = '🤍';
             btn.classList.remove('active');
             btn.title = 'Voeg toe aan favorieten';
         } else {
             this.addToFavorites(house);
-            btn.textContent = '❤️';
             btn.classList.add('active');
             btn.title = 'Verwijder favoriet';
         }

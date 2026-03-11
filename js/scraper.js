@@ -262,7 +262,9 @@ class FundaScraper {
             id: v.Id,
             thumbnailUrl: videosData.ThumbnailBaseUrl ? videosData.ThumbnailBaseUrl.replace('{id}', v.Id) : '',
             streamUrl: videosData.MediaBaseUrl ? videosData.MediaBaseUrl.replace('{id}', v.Id) : '',
-        })).filter(v => v.streamUrl || v.id);
+            // Cloudflare Stream watch page (works in any browser)
+            watchUrl: v.Id ? `https://customer-vzk8jgcsaz84e8sb.cloudflarestream.com/${v.Id}/watch` : '',
+        })).filter(v => v.watchUrl || v.streamUrl || v.id);
 
         // 360° photos
         const photos360Data = media.Photos360 || {};
@@ -280,9 +282,17 @@ class FundaScraper {
 
         // Characteristics dictionary (KenmerkSections)
         const characteristics = {};
+        const kenmerkSections = [];
         for (const section of data.KenmerkSections || []) {
+            const items = [];
             for (const item of section.KenmerkenList || []) {
-                if (item.Label && item.Value) characteristics[item.Label] = item.Value;
+                if (item.Label && item.Value) {
+                    characteristics[item.Label] = item.Value;
+                    items.push({ label: item.Label, value: item.Value });
+                }
+            }
+            if (items.length > 0) {
+                kenmerkSections.push({ title: section.Title || '', items });
             }
         }
 
@@ -310,6 +320,7 @@ class FundaScraper {
             houseType: ads.soortwoning || '',
             description: data.ListingDescription?.Description || '',
             descriptionEN: '', // Populated separately via /en/ endpoint
+            kenmerkSections: kenmerkSections,
             publicationDate: data.PublicationDate || '',
             offeredSince: characteristics['Aangeboden sinds'] || null,
             acceptance: characteristics['Aanvaarding'] || null,
