@@ -984,6 +984,8 @@ class FunDaApp {
             localStorage.setItem('funda-browse-filters', JSON.stringify(this.browseFilters));
             localStorage.setItem('funda-search-area', this.searchArea || '');
             localStorage.setItem('funda-view-mode', this.currentView);
+            // Save filters per area
+            this._saveFiltersForArea(this.searchArea);
         } catch (e) { /* storage full */ }
 
         if (!this.currentUser) return;
@@ -2870,6 +2872,30 @@ class FunDaApp {
         this._updateExcludeNeighLabel();
     }
 
+    // Per-area filter persistence
+    _normalizeAreaKey(area) {
+        return (area || '').trim().toLowerCase();
+    }
+
+    _saveFiltersForArea(area) {
+        const key = this._normalizeAreaKey(area);
+        if (!key) return;
+        try {
+            const allAreaFilters = JSON.parse(localStorage.getItem('funda-area-filters') || '{}');
+            allAreaFilters[key] = { ...this.browseFilters };
+            localStorage.setItem('funda-area-filters', JSON.stringify(allAreaFilters));
+        } catch (e) { /* storage full */ }
+    }
+
+    _loadFiltersForArea(area) {
+        const key = this._normalizeAreaKey(area);
+        if (!key) return null;
+        try {
+            const allAreaFilters = JSON.parse(localStorage.getItem('funda-area-filters') || '{}');
+            return allAreaFilters[key] || null;
+        } catch (e) { return null; }
+    }
+
     // Energy label ranks: lower = better
     _energyRank(label) {
         const ranks = { 'A+++': 0, 'A++': 1, 'A+': 2, 'A': 3, 'B': 4, 'C': 5, 'D': 6, 'E': 7, 'F': 8, 'G': 9 };
@@ -2944,6 +2970,11 @@ class FunDaApp {
             this.houses.length === 0
         );
 
+        // Save current filters for the old area before switching
+        if (needsRefetch && this._loadedArea && this._loadedArea !== newArea) {
+            this._saveFiltersForArea(this._loadedArea);
+        }
+
         this.searchArea = newArea;
         this.daysBack = newDaysBack;
         console.error('🔍 applyBrowseFilters:', { newArea, newDaysBack, needsRefetch, loadedArea: this._loadedArea });
@@ -2990,6 +3021,12 @@ class FunDaApp {
         this.updateEmptyStates();
 
         if (needsRefetch) {
+            // Restore saved filters for the new area (if we've been there before)
+            const savedAreaFilters = this._loadFiltersForArea(newArea);
+            if (savedAreaFilters && this._loadedArea && this._loadedArea !== newArea) {
+                this.browseFilters = { ...this.browseFilters, ...savedAreaFilters };
+                this.restoreBrowseFilterUI();
+            }
             // Area or period changed — fetch fresh listings
             this._loadedArea = this.searchArea;
             this._loadedDaysBack = this.daysBack;
