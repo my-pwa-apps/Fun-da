@@ -3718,6 +3718,25 @@ textarea.bid-input {
 }
 .lb-close:hover { background: rgba(255, 255, 255, 0.3); }
 
+/* Media viewer overlay (video, 360°) */
+.media-viewer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.media-viewer-iframe {
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    border: none;
+}
+
 .lb-img-wrap {
     position: relative;
     width: 100vw;

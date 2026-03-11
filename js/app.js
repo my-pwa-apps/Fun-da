@@ -779,6 +779,18 @@ class FunDaApp {
                     this._lightboxNav(1); break;
                 case 'closeLightbox':
                     this.closeLightbox(); break;
+                case 'closeMediaViewer':
+                    this.closeMediaViewer(); break;
+                case 'openFloorplan': {
+                    const fpIdx = parseInt(target.dataset.index, 10);
+                    this.openFloorplanLightbox(isNaN(fpIdx) ? 0 : fpIdx);
+                    break;
+                }
+                case 'openMediaViewer': {
+                    const mediaUrl = target.dataset.url;
+                    if (mediaUrl) this.openMediaViewer(mediaUrl);
+                    break;
+                }
                 case 'openMapModal':
                     this.openMapModal();
                     break;
@@ -2080,51 +2092,60 @@ class FunDaApp {
                 ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">${this.t('detail.email')}</a>` : ''}
             </div>` : '';
 
-        // Floorplans section — interactive floorplans first, then thumbnail fallback
+        // Floorplans section — show as zoomable images in lightbox
         let floorplanHtml = '';
+        const allFloorplanImages = [];
         if (house.interactiveFloorplans?.length > 0) {
-            const fpItems = house.interactiveFloorplans.map(fp =>
-                `<div class="media-card">
-                    <a href="${safeExternalUrl(fp.embedUrl)}" target="_blank" rel="noopener" class="media-card-link">
-                        ${fp.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(fp.thumbnailUrl))}" alt="${escapeHtml(fp.name)}" loading="lazy" class="media-card-img">` : ''}
-                        <span class="media-card-label">${escapeHtml(fp.name || 'Plattegrond')}</span>
-                    </a>
-                </div>`
-            ).join('');
+            house.interactiveFloorplans.forEach(fp => {
+                if (fp.thumbnailUrl) allFloorplanImages.push(fp.thumbnailUrl);
+            });
+        }
+        if (house.floorplanUrls?.length > 0) {
+            house.floorplanUrls.forEach(u => {
+                if (!allFloorplanImages.includes(u)) allFloorplanImages.push(u);
+            });
+        }
+        if (allFloorplanImages.length > 0) {
+            const fpItems = allFloorplanImages.map((url, i) => {
+                const name = house.interactiveFloorplans?.[i]?.name || `Plattegrond ${i + 1}`;
+                return `<div class="media-card">
+                    <div class="media-card-link" data-action="openFloorplan" data-index="${i}" style="cursor:pointer">
+                        <img src="${escapeHtml(safeImageUrl(url))}" alt="${escapeHtml(name)}" loading="lazy" class="media-card-img">
+                        <span class="media-card-label">${escapeHtml(name)}</span>
+                    </div>
+                </div>`;
+            }).join('');
             floorplanHtml = `<div class="detail-section"><h3>${this.t('detail.floorplan')}</h3><div class="media-grid">${fpItems}</div></div>`;
-        } else if (house.floorplanUrls?.length > 0) {
-            floorplanHtml = `<div class="detail-section"><h3>${this.t('detail.floorplan')}</h3>
-                ${house.floorplanUrls.map(u => `<img src="${escapeHtml(safeImageUrl(u))}" alt="Plattegrond" style="width:100%;border-radius:8px;margin-bottom:0.5rem;" loading="lazy">`).join('')}
-            </div>`;
+            this._floorplanImages = allFloorplanImages;
         }
 
-        // Video section
+        // Video section — opens in-app iframe overlay
         const videoHtml = house.videoItems?.length > 0 ? `
             <div class="detail-section">
                 <h3>Video</h3>
                 <div class="media-grid">
-                    ${house.videoItems.map(v => `
+                    ${house.videoItems.map((v, i) => `
                         <div class="media-card">
-                            <a href="${safeExternalUrl(v.watchUrl || v.streamUrl)}" target="_blank" rel="noopener" class="media-card-link">
+                            <div class="media-card-link" data-action="openMediaViewer" data-url="${escapeHtml(v.watchUrl || v.streamUrl)}" data-type="video" style="cursor:pointer">
                                 ${v.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(v.thumbnailUrl))}" alt="Video" loading="lazy" class="media-card-img">` : '<div class="media-card-placeholder">Video</div>'}
                                 <span class="media-card-label">Video</span>
-                            </a>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
             </div>` : '';
 
-        // 360° photos section
+        // 360° photos section — opens in-app iframe overlay
         const photos360Html = house.photos360?.length > 0 ? `
             <div class="detail-section">
                 <h3>360° Rondleiding</h3>
                 <div class="media-grid">
                     ${house.photos360.map(p => `
                         <div class="media-card">
-                            <a href="${safeExternalUrl(p.embedUrl)}" target="_blank" rel="noopener" class="media-card-link">
+                            <div class="media-card-link" data-action="openMediaViewer" data-url="${escapeHtml(p.embedUrl)}" data-type="360" style="cursor:pointer">
                                 ${p.thumbnailUrl ? `<img src="${escapeHtml(safeImageUrl(p.thumbnailUrl))}" alt="${escapeHtml(p.name)}" loading="lazy" class="media-card-img">` : '<div class="media-card-placeholder">360°</div>'}
                                 <span class="media-card-label">${escapeHtml(p.name || '360°')}</span>
-                            </a>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
@@ -2590,6 +2611,54 @@ class FunDaApp {
         if (this._lightboxKeyHandler) {
             document.removeEventListener('keydown', this._lightboxKeyHandler);
             this._lightboxKeyHandler = null;
+        }
+    }
+
+    // Floorplan lightbox — reuses lightbox UI with floorplan images (pinch-zoomable)
+    openFloorplanLightbox(startIndex = 0) {
+        const imgs = this._floorplanImages;
+        if (!imgs || imgs.length === 0) return;
+        // Temporarily swap gallery images to floorplans
+        const origImages = this.detailGalleryImages;
+        this.detailGalleryImages = imgs;
+        this.openLightbox(startIndex);
+        // Restore original images when lightbox closes
+        const origClose = this.closeLightbox.bind(this);
+        this.closeLightbox = () => {
+            this.detailGalleryImages = origImages;
+            this.closeLightbox = origClose;
+            origClose();
+        };
+    }
+
+    // In-app media viewer for video and 360° content
+    openMediaViewer(url) {
+        document.getElementById('mediaViewerOverlay')?.remove();
+        const overlay = document.createElement('div');
+        overlay.id = 'mediaViewerOverlay';
+        overlay.className = 'media-viewer-overlay';
+        overlay.innerHTML = `
+            <button class="lb-close" data-action="closeMediaViewer" aria-label="Sluiten">✕</button>
+            <iframe class="media-viewer-iframe" src="${escapeHtml(url)}" allowfullscreen allow="autoplay; fullscreen; xr-spatial-tracking"></iframe>
+        `;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.closeMediaViewer();
+        });
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+
+        this._mediaViewerKeyHandler = (e) => {
+            if (e.key === 'Escape') this.closeMediaViewer();
+        };
+        document.addEventListener('keydown', this._mediaViewerKeyHandler);
+    }
+
+    closeMediaViewer() {
+        document.getElementById('mediaViewerOverlay')?.remove();
+        document.body.style.overflow = '';
+        if (this._mediaViewerKeyHandler) {
+            document.removeEventListener('keydown', this._mediaViewerKeyHandler);
+            this._mediaViewerKeyHandler = null;
         }
     }
 
@@ -3209,27 +3278,27 @@ class FunDaApp {
             ? `<span class="energy-label ${energyClass}">${escapeHtml(house.energyLabel)}</span>`
             : '';
 
-        // Spec icons (using Unicode + text — no external assets, CSP-safe)
+        // Spec icons (text-only, single-color)
         const specs = [];
-        if (house.size)      specs.push(`<span class="bt-spec">◻ ${house.size}\u00a0m²</span>`);
+        if (house.size)      specs.push(`<span class="bt-spec">${house.size}\u00a0m²</span>`);
         if (house.plotArea && house.plotArea > house.size)
-                             specs.push(`<span class="bt-spec">🌳 ${house.plotArea}\u00a0m²</span>`);
-        if (house.bedrooms)  specs.push(`<span class="bt-spec">🛏 ${house.bedrooms}</span>`);
+                             specs.push(`<span class="bt-spec">${house.plotArea}\u00a0m² perceel</span>`);
+        if (house.bedrooms)  specs.push(`<span class="bt-spec">${house.bedrooms} slpk</span>`);
         if (house.bathrooms && house.bathrooms > 0)
-                             specs.push(`<span class="bt-spec">🚿 ${house.bathrooms}</span>`);
-        if (house.yearBuilt) specs.push(`<span class="bt-spec">📅 ${house.yearBuilt}</span>`);
+                             specs.push(`<span class="bt-spec">${house.bathrooms} badk</span>`);
+        if (house.yearBuilt) specs.push(`<span class="bt-spec">${house.yearBuilt}</span>`);
 
-        // Feature pills
+        // Feature pills (text-only)
         const feats = [];
-        if (house.hasGarden)      feats.push(`🌿 ${this.t('feat.garden')}`);
-        if (house.hasBalcony)     feats.push(`🌅 ${this.t('feat.balcony')}`);
-        if (house.hasRoofTerrace) feats.push(`🏙️ ${this.t('feat.roofterrace')}`);
-        if (house.hasParking)     feats.push(`🚗 ${this.t('feat.parking')}`);
-        if (house.hasSolarPanels) feats.push(`☀️ ${this.t('feat.solar')}`);
-        if (house.hasHeatPump)    feats.push(`♨️ ${this.t('feat.heatpump')}`);
-        if (house.isMonument)     feats.push(`🏛️ ${this.t('feat.monument')}`);
-        if (house.isFixerUpper)   feats.push(`🔧 ${this.t('feat.fixer')}`);
-        if (house.isAuction)      feats.push(`🔨 ${this.t('feat.auction')}`);
+        if (house.hasGarden)      feats.push(this.t('feat.garden'));
+        if (house.hasBalcony)     feats.push(this.t('feat.balcony'));
+        if (house.hasRoofTerrace) feats.push(this.t('feat.roofterrace'));
+        if (house.hasParking)     feats.push(this.t('feat.parking'));
+        if (house.hasSolarPanels) feats.push(this.t('feat.solar'));
+        if (house.hasHeatPump)    feats.push(this.t('feat.heatpump'));
+        if (house.isMonument)     feats.push(this.t('feat.monument'));
+        if (house.isFixerUpper)   feats.push(this.t('feat.fixer'));
+        if (house.isAuction)      feats.push(this.t('feat.auction'));
 
         // Days on market
         const daysHtml = (house.daysOnMarket != null && house.daysOnMarket > 0)
@@ -3238,7 +3307,7 @@ class FunDaApp {
 
         // Photo count
         const photoCount = house.images?.length > 1
-            ? `<span class="bt-photo-count">📷\u00a0${house.images.length}</span>`
+            ? `<span class="bt-photo-count">${house.images.length}</span>`
             : '';
 
         // Location line
