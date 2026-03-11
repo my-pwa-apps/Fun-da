@@ -324,20 +324,23 @@ class FunDaApp {
 
     registerServiceWorker() {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
+            navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
                 .then((registration) => {
-                    console.log('🏠 Fun-da SW registered:', registration.scope);
+                    console.error('🏠 Fun-da SW registered:', registration.scope);
+                    
+                    // Force update check on every page load
+                    registration.update().catch(() => {});
                     
                     // Check for updates
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
-                        console.log('🔄 New service worker installing...');
+                        console.error('🔄 New service worker installing...');
                         
                         newWorker.addEventListener('statechange', () => {
                             // Only show update toast if there's an existing controller
                             // This means it's an update, not a first install
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                console.log('🆕 New version available!');
+                                console.error('🆕 New version available!');
                                 this.showUpdateToast(registration);
                             }
                         });
@@ -354,7 +357,7 @@ class FunDaApp {
                 
             // Listen for controller change (new SW activated)
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('🔄 New service worker activated, reloading...');
+                console.error('🔄 New service worker activated, reloading...');
                 window.location.reload();
             });
         }
