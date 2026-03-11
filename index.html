@@ -7,7 +7,10 @@
     <meta name="description" content="Fun-da - De leukste manier om een huis te vinden in Amsterdam!">
     <meta name="theme-color" content="#FF6B35">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Fun-da">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="application-name" content="Fun-da">
     
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -92,14 +95,14 @@
                     <rect x="2" y="3" width="20" height="18" rx="3"/>
                     <path d="M8 12l3 3 5-6"/>
                 </svg>
-                Swipen
+                <span data-i18n="nav.swipe">Swipen</span>
             </button>
             <button class="view-tab active" id="tabBrowse">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                     <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                     <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
                 </svg>
-                Bladeren
+                <span data-i18n="nav.browse">Bladeren</span>
             </button>
         </div>
 
@@ -201,8 +204,35 @@
                         <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full">
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Op de markt (min. dagen)</h4>
-                        <input type="number" id="bfMinDaysOnMarket" placeholder="bijv. 30" min="0" step="1" class="input-full">
+                        <h4 class="bfs-title">Op de markt (min. dagen) 🎯</h4>
+                        <p class="bfs-hint">Langer op de markt = meer ruimte voor een lager bod</p>
+                        <div class="btn-group" id="bfDaysOnMarketGroup">
+                            <button class="btn-option" data-value="14">14+</button>
+                            <button class="btn-option" data-value="30">30+</button>
+                            <button class="btn-option" data-value="60">60+</button>
+                            <button class="btn-option" data-value="90">90+</button>
+                        </div>
+                        <input type="number" id="bfMinDaysOnMarket" placeholder="of typ eigen getal" min="0" step="1" class="input-full" style="margin-top:0.4rem">
+                    </div>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Op de markt (max. dagen)</h4>
+                        <input type="number" id="bfMaxDaysOnMarket" placeholder="bijv. 14" min="0" step="1" class="input-full">
+                    </div>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Type woning</h4>
+                        <div class="btn-group" id="bfPropertyTypeGroup">
+                            <button class="btn-option" data-value="Woning">🏠 Woning</button>
+                            <button class="btn-option" data-value="Appartement">🏢 App.</button>
+                        </div>
+                    </div>
+                    <div class="bfs">
+                        <h4 class="bfs-title">Kamers (min.)</h4>
+                        <div class="btn-group" id="bfRoomsGroup">
+                            <button class="btn-option" data-value="2">2+</button>
+                            <button class="btn-option" data-value="3">3+</button>
+                            <button class="btn-option" data-value="4">4+</button>
+                            <button class="btn-option" data-value="5">5+</button>
+                        </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Kenmerken</h4>
@@ -211,6 +241,9 @@
                             <label class="check-label"><input type="checkbox" id="bfHasBalcony"> 🌅 Balkon / dakterras</label>
                             <label class="check-label"><input type="checkbox" id="bfHasParking"> 🚗 Parkeren</label>
                             <label class="check-label"><input type="checkbox" id="bfHasSolar"> ☀️ Zonnepanelen</label>
+                            <label class="check-label"><input type="checkbox" id="bfIsMonument"> 🏛️ Monument</label>
+                            <label class="check-label"><input type="checkbox" id="bfIsAuction"> 🔨 Veiling</label>
+                            <label class="check-label"><input type="checkbox" id="bfIsFixer"> 🔧 Kluswoning</label>
                         </div>
                     </div>
                 </div>
@@ -241,6 +274,7 @@
                         <option value="size-desc">Grootste eerst</option>
                         <option value="bedrooms-desc">Meeste kamers</option>
                         <option value="newest">Nieuwste eerst</option>
+                        <option value="oldest">Langst op markt</option>
                     </select>
                     <div class="browse-layout-toggle">
                         <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst">
@@ -305,12 +339,12 @@
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>⚙️ Instellingen</h2>
+                <h2 data-i18n="settings.title">⚙️ Instellingen</h2>
                 <button class="btn-close" id="closeSettingsModal">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Account section -->
-                <h3 class="settings-section-title">Account</h3>
+                <h3 class="settings-section-title" data-i18n="settings.account">Account</h3>
                 <div id="settingsLoggedOut">
                     <p class="modal-description">Log in om je instellingen op te slaan en op elk apparaat te gebruiken.</p>
                     <button class="btn-primary settings-google-btn" id="googleLoginBtn">
@@ -320,7 +354,7 @@
                             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                         </svg>
-                        Inloggen met Google
+                        <span data-i18n="settings.login">Inloggen met Google</span>
                     </button>
                 </div>
                 <div id="settingsLoggedIn" class="hidden">
@@ -331,15 +365,15 @@
                             <small id="settingsUserEmail">-</small>
                         </div>
                     </div>
-                    <button class="btn-secondary settings-logout-btn" id="logoutBtn">Uitloggen</button>
+                    <button class="btn-secondary settings-logout-btn" id="logoutBtn" data-i18n="settings.logout">Uitloggen</button>
                 </div>
 
                 <hr class="settings-divider">
 
                 <!-- Search settings -->
-                <h3 class="settings-section-title">Zoekinstellingen</h3>
+                <h3 class="settings-section-title" data-i18n="settings.search">Zoekinstellingen</h3>
                 <div class="filter-group">
-                    <label for="settingsDaysBack">Zoekperiode (ook bij automatisch laden)</label>
+                    <label for="settingsDaysBack" data-i18n="settings.period_label">Zoekperiode (ook bij automatisch laden)</label>
                     <select id="settingsDaysBack" class="input-full">
                         <option value="1">🆕 Vandaag</option>
                         <option value="3" selected>📅 Laatste 3 dagen</option>
@@ -351,10 +385,21 @@
 
                 <hr class="settings-divider">
 
+                <!-- Language -->
+                <h3 class="settings-section-title" data-i18n="settings.language">Taal</h3>
+                <div class="filter-group">
+                    <div class="preset-group">
+                        <button id="langNl" class="preset-btn active">🇳🇱 Nederlands</button>
+                        <button id="langEn" class="preset-btn">🇬🇧 English</button>
+                    </div>
+                </div>
+
+                <hr class="settings-divider">
+
                 <!-- Data management -->
-                <h3 class="settings-section-title">Data</h3>
+                <h3 class="settings-section-title" data-i18n="settings.data">Data</h3>
                 <div class="clear-data-wrapper">
-                    <button id="clearDataBtn" class="btn-clear-data">🗑️ Wis alle data (start opnieuw)</button>
+                    <button id="clearDataBtn" class="btn-clear-data" data-i18n="settings.clear">🗑️ Wis alle data (start opnieuw)</button>
                 </div>
             </div>
         </div>

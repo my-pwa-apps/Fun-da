@@ -85,7 +85,7 @@ class FundaScraper {
             offering_type: 'buy',
             selected_area: [area],
             sort: { field: 'publish_date_utc', order: 'desc' },
-            page: { from: 0, size: params.size || 40 },
+            page: { from: params.from || 0, size: params.size || 100 },
         };
 
         // Add price filter
@@ -266,7 +266,7 @@ class FundaScraper {
             energyLabel: fastView.EnergyLabel || '',
             yearBuilt: ads.bouwjaar && /^\d{4}$/.test(ads.bouwjaar) ? parseInt(ads.bouwjaar) : null,
             constructionType: data.ConstructionType || '',
-            propertyType: data.ObjectType || '',
+            propertyType: { Apartment: 'Appartement', House: 'Woning', 'Parking space': 'Parkeerplaats', 'Building plot': 'Bouwgrond' }[data.ObjectType] || data.ObjectType || '',
             houseType: ads.soortwoning || '',
             description: data.ListingDescription?.Description || '',
             publicationDate: data.PublicationDate || '',
@@ -490,7 +490,19 @@ class FundaScraper {
         // Requires the Cloudflare Worker proxy to be deployed and support POST + funda.io headers.
         onProgress('Verbinden met Funda API...', 15);
         try {
-            const mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days });
+            const days = parseInt(searchParams.days) || 3;
+            // For longer time windows, fetch two pages of 100 to get more results
+            const pageSize = 100;
+            let mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: 0 });
+            if (days > 7 && mobileResults.length >= pageSize) {
+                onProgress(`Pagina 2 ophalen...`, 30);
+                try {
+                    const page2 = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: pageSize });
+                    const existingIds = new Set(mobileResults.map(h => h.id));
+                    const newOnes = page2.filter(h => !existingIds.has(h.id));
+                    mobileResults = [...mobileResults, ...newOnes];
+                } catch (e) { /* page 2 optional */ }
+            }
             if (mobileResults.length > 0) {
                 console.log(`📱 Mobile API: ${mobileResults.length} woningen via JSON API`);
                 onProgress(`${mobileResults.length} woningen gevonden, details ophalen...`, 50);

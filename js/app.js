@@ -65,6 +65,9 @@ class FunDaApp {
         // Firebase Auth current user
         this.currentUser = null;
 
+        // Language (nl / en)
+        this.lang = localStorage.getItem('funda-lang') || 'nl';
+
         // Browse view state
         this.browseOpen = false;
         this.browseSort = 'default';
@@ -78,8 +81,12 @@ class FunDaApp {
             neighborhood: '',
             minYear: null,
             hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false,
+            isMonument: false, isAuction: false, isFixer: false,
             excludedNeighborhoods: [],
-            minDaysOnMarket: null
+            minDaysOnMarket: null,
+            maxDaysOnMarket: null,
+            propertyType: null,
+            minRooms: null,
         };
         
         // Backward compatibility getters
@@ -138,6 +145,9 @@ class FunDaApp {
 
         // Start progress animation immediately
         this.startProgressAnimation();
+
+        // Apply saved language preference to static HTML
+        this.applyTranslations();
         
         // Start loading immediately, splash stays visible until done
         setTimeout(() => {
@@ -458,9 +468,41 @@ class FunDaApp {
         }
     }
 
+    // ==========================================
+    // I18N
+    // ==========================================
+
+    /** Look up a translation key for the current language. Supports function values. */
+    t(key, ...args) {
+        const dict = TRANSLATIONS[this.lang] || TRANSLATIONS.nl;
+        const val = dict[key] ?? TRANSLATIONS.nl[key] ?? key;
+        if (typeof val === 'function') return val(...args);
+        return val;
+    }
+
+    setLang(lang) {
+        if (lang !== 'nl' && lang !== 'en') return;
+        this.lang = lang;
+        localStorage.setItem('funda-lang', lang);
+        document.documentElement.lang = lang;
+        this.applyTranslations();
+        if (this.browseOpen) this.renderBrowseGrid();
+        this.renderCards();
+    }
+
+    applyTranslations() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            const text = this.t(key);
+            if (text && text !== key) el.textContent = text;
+        });
+        const langNl = document.getElementById('langNl');
+        const langEn = document.getElementById('langEn');
+        if (langNl) langNl.classList.toggle('active', this.lang === 'nl');
+        if (langEn) langEn.classList.toggle('active', this.lang === 'en');
+    }
+
     setupEventListeners() {
-        // Action buttons
-        document.getElementById('nopeBtn').addEventListener('click', () => this.swipe('left'));
         document.getElementById('likeBtn').addEventListener('click', () => this.swipe('right'));
         document.getElementById('infoBtn').addEventListener('click', () => this.showDetail());
         document.getElementById('resetBtn').addEventListener('click', () => this.reset());
@@ -489,6 +531,10 @@ class FunDaApp {
         // Settings: Google login / logout
         document.getElementById('googleLoginBtn').addEventListener('click', () => this.loginWithGoogle());
         document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+
+        // Settings: language toggle
+        document.getElementById('langNl')?.addEventListener('click', () => this.setLang('nl'));
+        document.getElementById('langEn')?.addEventListener('click', () => this.setLang('en'));
 
         // Family controls
         document.getElementById('createFamilyBtn').addEventListener('click', () => this.createFamily());
@@ -531,6 +577,18 @@ class FunDaApp {
         // Delegated click handler for dynamic elements.
         // Replaces inline onclick attributes, which are blocked by a strict CSP.
         document.body.addEventListener('click', (e) => {
+            // Toggle btn-option within its parent btn-group (single-select toggle)
+            const optBtn = e.target.closest('.btn-option');
+            if (optBtn) {
+                const group = optBtn.closest('.btn-group');
+                if (group) {
+                    const wasActive = optBtn.classList.contains('active');
+                    group.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
+                    if (!wasActive) optBtn.classList.add('active');
+                    return;
+                }
+            }
+
             const target = e.target.closest('[data-action]');
             if (!target) return;
             const { action, id } = target.dataset;
@@ -552,6 +610,17 @@ class FunDaApp {
                 case 'detailNavNext':
                     this._switchDetailPhotoByIndex(this.detailGalleryIndex + 1);
                     break;
+                case 'openLightbox': {
+                    const startIdx = parseInt(target.dataset.index, 10);
+                    this.openLightbox(isNaN(startIdx) ? this.detailGalleryIndex : startIdx);
+                    break;
+                }
+                case 'lightboxPrev':
+                    this._lightboxNav(-1); break;
+                case 'lightboxNext':
+                    this._lightboxNav(1); break;
+                case 'closeLightbox':
+                    this.closeLightbox(); break;
                 case 'openMapModal':
                     this.openMapModal();
                     break;
@@ -619,6 +688,7 @@ class FunDaApp {
     openSettingsModal() {
         const sel = document.getElementById('settingsDaysBack');
         if (sel) sel.value = String(this.daysBack);
+        this.applyTranslations();
         this.openModal(this.settingsModal);
     }
 
@@ -736,13 +806,27 @@ class FunDaApp {
         setVal('bfMinSize',  f.minSize  || '');
         setVal('bfMaxSize',  f.maxSize  || '');
         setVal('bfMinYear',  f.minYear  || '');
-        setVal('bfMinDaysOnMarket', f.minDaysOnMarket || '');
+        // Restore days preset buttons
+        if (f.minDaysOnMarket) {
+            const presets = [14, 30, 60, 90];
+            const isPreset = presets.includes(f.minDaysOnMarket);
+            document.querySelectorAll('#bfDaysOnMarketGroup .btn-option').forEach(b => {
+                b.classList.toggle('active', isPreset && parseInt(b.dataset.value, 10) === f.minDaysOnMarket);
+            });
+            setVal('bfMinDaysOnMarket', isPreset ? '' : f.minDaysOnMarket);
+        } else {
+            setVal('bfMinDaysOnMarket', '');
+        }
+        setVal('bfMaxDaysOnMarket', f.maxDaysOnMarket || '');
         setVal('bfNeighborhood', f.neighborhood || '');
         const setChk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
         setChk('bfHasTuin', f.hasTuin);
         setChk('bfHasBalcony', f.hasBalcony);
         setChk('bfHasParking', f.hasParking);
         setChk('bfHasSolar', f.hasSolar);
+        setChk('bfIsMonument', f.isMonument);
+        setChk('bfIsAuction', f.isAuction);
+        setChk('bfIsFixer', f.isFixer);
         if (f.minBedrooms) {
             document.querySelectorAll('#bfBedroomsGroup .btn-option').forEach(b => {
                 b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minBedrooms);
@@ -751,6 +835,16 @@ class FunDaApp {
         if (f.minEnergyLabel) {
             document.querySelectorAll('#bfEnergyGroup .btn-option').forEach(b => {
                 b.classList.toggle('active', b.dataset.value === f.minEnergyLabel);
+            });
+        }
+        if (f.propertyType) {
+            document.querySelectorAll('#bfPropertyTypeGroup .btn-option').forEach(b => {
+                b.classList.toggle('active', b.dataset.value === f.propertyType);
+            });
+        }
+        if (f.minRooms) {
+            document.querySelectorAll('#bfRoomsGroup .btn-option').forEach(b => {
+                b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minRooms);
             });
         }
     }
@@ -1431,8 +1525,32 @@ class FunDaApp {
             // Sync to family
             if (this.familySync.isInFamily()) {
                 this.familySync.addFavorite(house.id);
+                // Immediate local match check (familyMatches is kept up-to-date by realtime listener)
+                const matchMembers = this.familyMatches.get(String(house.id));
+                if (matchMembers && matchMembers.size > 0) {
+                    const names = [...matchMembers.values()].map(m => (typeof m === 'object' ? m.name : m)).filter(Boolean).join(', ');
+                    this.showFamilyMatchNotification(house, names);
+                }
             }
         }
+    }
+
+    showFamilyMatchNotification(house, memberNames) {
+        const addr = cleanAddress(house.address) || 'dit huis';
+        const banner = document.createElement('div');
+        banner.className = 'family-match-banner';
+        banner.innerHTML = `
+            <div class="fmb-inner">
+                <span class="fmb-icon">💑</span>
+                <div class="fmb-text">
+                    <strong>Familie match!</strong>
+                    <span>${escapeHtml(memberNames)} vond <em>${escapeHtml(addr)}</em> ook leuk!</span>
+                </div>
+                <button class="fmb-close" aria-label="Sluiten">✕</button>
+            </div>`;
+        banner.querySelector('.fmb-close').addEventListener('click', () => banner.remove());
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 6000);
     }
 
     saveFavoriteMeta(houseId, meta) {
@@ -1559,17 +1677,17 @@ class FunDaApp {
         const extraDetails = [];
         if (house.houseType) extraDetails.push(`<span>🏠 ${escapeHtml(house.houseType)}</span>`);
         else if (house.propertyType) extraDetails.push(`<span>🏠 ${escapeHtml(house.propertyType)}</span>`);
-        if (house.plotArea) extraDetails.push(`<span>🌳 Perceel: ${house.plotArea}m²</span>`);
-        if (house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotSize}m²</span>`);
-        if (house.hasGarden) extraDetails.push(`<span>🌿 ${house.gardenType || 'Tuin'}</span>`);
-        if (house.hasBalcony) extraDetails.push(`<span>🌅 Balkon</span>`);
-        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ Dakterras</span>`);
-        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ Zonnepanelen</span>`);
-        if (house.hasHeatPump) extraDetails.push(`<span>♨️ Warmtepomp</span>`);
-        if (house.hasParking) extraDetails.push(`<span>🚗 Parkeren</span>`);
-        if (house.isMonument) extraDetails.push(`<span>🏛️ Monument</span>`);
-        if (house.isFixerUpper) extraDetails.push(`<span>🔧 Kluswoning</span>`);
-        if (house.isAuction) extraDetails.push(`<span>🔨 Veiling</span>`);
+        if (house.plotArea) extraDetails.push(`<span>🌳 ${this.t('label.plot')}: ${house.plotArea}m²</span>`);
+        if (house.plotSize) extraDetails.push(`<span>🌳 ${this.t('label.plot')}: ${house.plotSize}m²</span>`);
+        if (house.hasGarden) extraDetails.push(`<span>🌿 ${house.gardenType || this.t('feat.garden')}</span>`);
+        if (house.hasBalcony) extraDetails.push(`<span>🌅 ${this.t('feat.balcony')}</span>`);
+        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ ${this.t('feat.roofterrace')}</span>`);
+        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ ${this.t('feat.solar')}</span>`);
+        if (house.hasHeatPump) extraDetails.push(`<span>♨️ ${this.t('feat.heatpump')}</span>`);
+        if (house.hasParking) extraDetails.push(`<span>🚗 ${this.t('feat.parking')}</span>`);
+        if (house.isMonument) extraDetails.push(`<span>🏛️ ${this.t('feat.monument')}</span>`);
+        if (house.isFixerUpper) extraDetails.push(`<span>🔧 ${this.t('feat.fixer')}</span>`);
+        if (house.isAuction) extraDetails.push(`<span>🔨 ${this.t('feat.auction')}</span>`);
         if (house.parking) extraDetails.push(`<span>🚗 ${escapeHtml(house.parking)}</span>`);
         if (house.vveCosts) extraDetails.push(`<span>🏢 VvE: €${house.vveCosts}/mnd</span>`);
         if (house.status) extraDetails.push(`<span>📋 ${escapeHtml(house.status)}</span>`);
@@ -1586,8 +1704,8 @@ class FunDaApp {
         // Build popularity row
         const popularityHtml = (house.views != null || house.saves != null) ? `
             <div style="display:flex; gap:1rem; font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">
-                ${house.views != null ? `<span>👁️ ${house.views} keer bekeken</span>` : ''}
-                ${house.saves != null ? `<span>❤️ ${house.saves} keer opgeslagen</span>` : ''}
+                ${house.views != null ? `<span>👁️ ${this.t('detail.viewed', house.views)}</span>` : ''}
+                ${house.saves != null ? `<span>❤️ ${this.t('detail.saved', house.saves)}</span>` : ''}
             </div>` : '';
 
         const safeAddress = escapeHtml(cleanAddress(house.address));
@@ -1606,29 +1724,29 @@ class FunDaApp {
         const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
             <button data-action="openMapModal" class="btn-secondary" style="display:block;width:100%;text-align:center;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;cursor:pointer;">
-                🗺️ Bekijk op Maps
+                ${this.t('detail.maps')}
             </button>` : '';
 
         // Broker contact
         const brokerHtml = (house.brokerName || house.brokerPhone) ? `
             <div class="detail-section">
-                <h3>🏢 Makelaar</h3>
+                <h3>${this.t('detail.broker_title')}</h3>
                 ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
-                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary" style="display:inline-block;margin-right:0.5rem;margin-bottom:0.25rem;padding:0.4rem 0.8rem;font-size:0.85rem;">📞 Bel</a>` : ''}
-                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">✉️ Mail</a>` : ''}
+                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary" style="display:inline-block;margin-right:0.5rem;margin-bottom:0.25rem;padding:0.4rem 0.8rem;font-size:0.85rem;">📞 ${this.t('detail.call')}</a>` : ''}
+                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">✉️ ${this.t('detail.email')}</a>` : ''}
             </div>` : '';
 
         // Floorplan (first one, if available)
         const floorplanHtml = house.floorplanUrls?.length > 0 ? `
             <div class="detail-section">
-                <h3>Plattegrond</h3>
+                <h3>${this.t('detail.floorplan')}</h3>
                 <img src="${escapeHtml(safeImageUrl(house.floorplanUrls[0]))}" alt="Plattegrond" style="width:100%;border-radius:8px;" loading="lazy">
             </div>` : '';
 
         // Description
         const descHtml = house.description ? `
             <div class="detail-section">
-                <h3>Omschrijving</h3>
+                <h3>${this.t('detail.desc')}</h3>
                 <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
             </div>` : '';
 
@@ -1652,8 +1770,9 @@ class FunDaApp {
             <div class="detail-gallery-col">
                 <div class="detail-gallery">
                     ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="Vorige foto">&#8249;</button>` : ''}
-                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
+                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}" data-action="openLightbox" data-index="0" style="cursor:zoom-in" title="Vergroot foto">
                     ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="Volgende foto">&#8250;</button>` : ''}
+                    ${hasMultiplePhotos ? `<button class="detail-lightbox-btn" data-action="openLightbox" data-index="0" aria-label="Volledig scherm">⛶</button>` : ''}
                     ${galleryThumbsHtml}
                 </div>
             </div>
@@ -1668,26 +1787,26 @@ class FunDaApp {
             </div>
 
             <div class="detail-section">
-                <h3>Kenmerken</h3>
+                <h3>${this.t('detail.features')}</h3>
                 <div class="detail-grid">
                     <div class="detail-item">
                         <div class="detail-item-label">m²</div>
                         <div class="detail-item-value">${house.size || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Slaapk.</div>
+                        <div class="detail-item-label">${this.t('detail.beds')}</div>
                         <div class="detail-item-value">${house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Kamers</div>
+                        <div class="detail-item-label">${this.t('detail.rooms')}</div>
                         <div class="detail-item-value">${house.rooms || house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Bouwjaar</div>
+                        <div class="detail-item-label">${this.t('detail.yearbuilt')}</div>
                         <div class="detail-item-value">${house.yearBuilt || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Energie</div>
+                        <div class="detail-item-label">${this.t('detail.energy')}</div>
                         <div class="detail-item-value">${escapeHtml(house.energyLabel || '?')}</div>
                     </div>
                 </div>
@@ -1773,14 +1892,14 @@ class FunDaApp {
         const extraDetails = [];
         if (house.houseType) extraDetails.push(`<span>🏠 ${escapeHtml(house.houseType)}</span>`);
         else if (house.propertyType) extraDetails.push(`<span>🏠 ${escapeHtml(house.propertyType)}</span>`);
-        if (house.plotArea || house.plotSize) extraDetails.push(`<span>🌳 Perceel: ${house.plotArea || house.plotSize}m²</span>`);
-        if (house.hasGarden) extraDetails.push(`<span>🌿 Tuin</span>`);
-        if (house.hasBalcony) extraDetails.push(`<span>🌅 Balkon</span>`);
-        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ Dakterras</span>`);
-        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ Zonnepanelen</span>`);
-        if (house.hasHeatPump) extraDetails.push(`<span>♨️ Warmtepomp</span>`);
-        if (house.hasParking) extraDetails.push(`<span>🚗 Parkeren</span>`);
-        if (house.isMonument) extraDetails.push(`<span>🏛️ Monument</span>`);
+        if (house.plotArea || house.plotSize) extraDetails.push(`<span>🌳 ${this.t('label.plot')}: ${house.plotArea || house.plotSize}m²</span>`);
+        if (house.hasGarden) extraDetails.push(`<span>🌿 ${this.t('feat.garden')}</span>`);
+        if (house.hasBalcony) extraDetails.push(`<span>🌅 ${this.t('feat.balcony')}</span>`);
+        if (house.hasRoofTerrace) extraDetails.push(`<span>🏙️ ${this.t('feat.roofterrace')}</span>`);
+        if (house.hasSolarPanels) extraDetails.push(`<span>☀️ ${this.t('feat.solar')}</span>`);
+        if (house.hasHeatPump) extraDetails.push(`<span>♨️ ${this.t('feat.heatpump')}</span>`);
+        if (house.hasParking) extraDetails.push(`<span>🚗 ${this.t('feat.parking')}</span>`);
+        if (house.isMonument) extraDetails.push(`<span>🏛️ ${this.t('feat.monument')}</span>`);
 
         const safeAddress = escapeHtml(cleanAddress(house.address));
         const safeImage = escapeHtml(safeImageUrl(house.image));
@@ -1796,16 +1915,16 @@ class FunDaApp {
         const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
             <button data-action="openMapModal" class="btn-secondary btn-full" style="display:block;width:100%;text-align:center;margin-bottom:0.5rem;cursor:pointer;">
-                🗺️ Bekijk op Maps
+                ${this.t('detail.maps')}
             </button>` : '';
 
         // Broker contact
         const brokerHtml = (house.brokerName || house.brokerPhone) ? `
             <div class="detail-section">
-                <h3>🏢 Makelaar</h3>
+                <h3>${this.t('detail.broker_title')}</h3>
                 ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
                 ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary btn-full" style="display:block;text-align:center;margin-bottom:0.25rem;">📞 ${escapeHtml(house.brokerPhone)}</a>` : ''}
-                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary btn-full" style="display:block;text-align:center;">✉️ Stuur e-mail</a>` : ''}
+                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary btn-full" style="display:block;text-align:center;">✉️ ${this.t('detail.email')}</a>` : ''}
             </div>` : '';
 
         // Photo gallery
@@ -1837,8 +1956,9 @@ class FunDaApp {
             <div class="detail-gallery-col">
                 <div class="detail-gallery">
                     ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="Vorige foto">&#8249;</button>` : ''}
-                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}">
+                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}" data-action="openLightbox" data-index="0" style="cursor:zoom-in" title="Vergroot foto">
                     ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="Volgende foto">&#8250;</button>` : ''}
+                    ${hasMultiplePhotos ? `<button class="detail-lightbox-btn" data-action="openLightbox" data-index="0" aria-label="Volledig scherm">⛶</button>` : ''}
                     ${galleryThumbsHtml}
                 </div>
             </div>
@@ -1850,22 +1970,22 @@ class FunDaApp {
             </div>
 
             <div class="detail-section">
-                <h3>Kenmerken</h3>
+                <h3>${this.t('detail.features')}</h3>
                 <div class="detail-grid">
                     <div class="detail-item">
                         <div class="detail-item-label">m²</div>
                         <div class="detail-item-value">${house.size || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Slaapk.</div>
+                        <div class="detail-item-label">${this.t('detail.beds')}</div>
                         <div class="detail-item-value">${house.bedrooms || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Bouwjaar</div>
+                        <div class="detail-item-label">${this.t('detail.yearbuilt')}</div>
                         <div class="detail-item-value">${house.yearBuilt || '?'}</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Energie</div>
+                        <div class="detail-item-label">${this.t('detail.energy')}</div>
                         <div class="detail-item-value">${escapeHtml(house.energyLabel || '?')}</div>
                     </div>
                 </div>
@@ -1874,7 +1994,7 @@ class FunDaApp {
 
             ${house.description ? `
                 <div class="detail-section">
-                    <h3>Beschrijving</h3>
+                    <h3>${this.t('detail.desc_alt')}</h3>
                     <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
                 </div>
             ` : ''}
@@ -1979,6 +2099,84 @@ class FunDaApp {
         });
     }
 
+    openLightbox(startIndex = 0) {
+        const imgs = this.detailGalleryImages;
+        if (!imgs || imgs.length === 0) return;
+
+        this.lightboxIndex = ((startIndex % imgs.length) + imgs.length) % imgs.length;
+
+        // Remove any stale instance
+        document.getElementById('lightboxOverlay')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'lightboxOverlay';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.innerHTML = `
+            <button class="lb-close" data-action="closeLightbox" aria-label="Sluiten">✕</button>
+            <button class="lb-nav lb-prev" data-action="lightboxPrev" aria-label="Vorige">&#8249;</button>
+            <div class="lb-img-wrap">
+                <img class="lb-img" id="lightboxImg" src="" alt="Foto">
+                <div class="lb-counter" id="lightboxCounter"></div>
+            </div>
+            <button class="lb-nav lb-next" data-action="lightboxNext" aria-label="Volgende">&#8250;</button>`;
+
+        // Close on backdrop click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) this.closeLightbox();
+        });
+
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+        this._updateLightboxImage();
+
+        // Keyboard nav while lightbox is open
+        this._lightboxKeyHandler = (e) => {
+            if (e.key === 'Escape') this.closeLightbox();
+            else if (e.key === 'ArrowLeft') this._lightboxNav(-1);
+            else if (e.key === 'ArrowRight') this._lightboxNav(1);
+        };
+        document.addEventListener('keydown', this._lightboxKeyHandler);
+
+        // Touch / swipe support
+        let lbSwipeStartX = 0;
+        overlay.addEventListener('touchstart', (e) => { lbSwipeStartX = e.touches[0].clientX; }, { passive: true });
+        overlay.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - lbSwipeStartX;
+            if (Math.abs(dx) > 40) dx < 0 ? this._lightboxNav(1) : this._lightboxNav(-1);
+        });
+    }
+
+    _updateLightboxImage() {
+        const imgs = this.detailGalleryImages;
+        const img = document.getElementById('lightboxImg');
+        const counter = document.getElementById('lightboxCounter');
+        if (img) img.src = safeImageUrl(imgs[this.lightboxIndex]);
+        if (counter) counter.textContent = `${this.lightboxIndex + 1} / ${imgs.length}`;
+        // Hide nav buttons if only one image
+        document.querySelectorAll('#lightboxOverlay .lb-nav').forEach(btn => {
+            btn.style.display = imgs.length > 1 ? '' : 'none';
+        });
+    }
+
+    _lightboxNav(dir) {
+        const imgs = this.detailGalleryImages;
+        if (!imgs || imgs.length === 0) return;
+        this.lightboxIndex = ((this.lightboxIndex + dir + imgs.length) % imgs.length);
+        this._updateLightboxImage();
+        // Also sync detail gallery
+        this._switchDetailPhotoByIndex(this.lightboxIndex);
+    }
+
+    closeLightbox() {
+        document.getElementById('lightboxOverlay')?.remove();
+        document.body.style.overflow = '';
+        if (this._lightboxKeyHandler) {
+            document.removeEventListener('keydown', this._lightboxKeyHandler);
+            this._lightboxKeyHandler = null;
+        }
+    }
+
     openModal(modal) {
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -1994,6 +2192,8 @@ class FunDaApp {
     closeModal(modal) {
         modal.classList.add('hidden');
         document.body.style.overflow = '';
+        // Close lightbox if open when closing detail modal
+        this.closeLightbox();
         if (this._detailKeyHandler) {
             document.removeEventListener('keydown', this._detailKeyHandler);
             this._detailKeyHandler = null;
@@ -2198,6 +2398,15 @@ class FunDaApp {
                 if (f.excludedNeighborhoods.includes(neigh)) return false;
             }
             if (f.minDaysOnMarket && (house.daysOnMarket || 0) < f.minDaysOnMarket) return false;
+            if (f.maxDaysOnMarket && house.daysOnMarket != null && house.daysOnMarket > f.maxDaysOnMarket) return false;
+            if (f.propertyType) {
+                const pt = (house.propertyType || house.houseType || '').toLowerCase();
+                if (!pt.includes(f.propertyType.toLowerCase())) return false;
+            }
+            if (f.minRooms && (house.rooms || house.bedrooms || 0) < f.minRooms) return false;
+            if (f.isMonument && !house.isMonument) return false;
+            if (f.isAuction && !house.isAuction) return false;
+            if (f.isFixer && !house.isFixerUpper && !house.isFixer) return false;
             return true;
         });
 
@@ -2208,6 +2417,7 @@ class FunDaApp {
             case 'size-desc':      houses.sort((a, b) => (b.size || 0) - (a.size || 0)); break;
             case 'bedrooms-desc':  houses.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0)); break;
             case 'newest':         houses.sort((a, b) => (b.importedAt || 0) - (a.importedAt || 0)); break;
+            case 'oldest':         houses.sort((a, b) => (b.daysOnMarket ?? -1) - (a.daysOnMarket ?? -1)); break;
         }
         return houses;
     }
@@ -2232,7 +2442,22 @@ class FunDaApp {
         f.hasBalcony = document.getElementById('bfHasBalcony').checked;
         f.hasParking = document.getElementById('bfHasParking').checked;
         f.hasSolar   = document.getElementById('bfHasSolar').checked;
-        f.minDaysOnMarket = parseInt(document.getElementById('bfMinDaysOnMarket').value, 10) || null;
+        f.isMonument = document.getElementById('bfIsMonument').checked;
+        f.isAuction  = document.getElementById('bfIsAuction').checked;
+        f.isFixer    = document.getElementById('bfIsFixer').checked;
+        // Min days: prefer preset button, fall back to typed value
+        const activeDaysBtn = document.querySelector('#bfDaysOnMarketGroup .btn-option.active');
+        const typedDays = parseInt(document.getElementById('bfMinDaysOnMarket').value, 10) || null;
+        f.minDaysOnMarket = activeDaysBtn ? parseInt(activeDaysBtn.dataset.value, 10) : typedDays;
+        // Keep the text input in sync when a preset is active
+        if (activeDaysBtn) document.getElementById('bfMinDaysOnMarket').value = '';
+        f.maxDaysOnMarket = parseInt(document.getElementById('bfMaxDaysOnMarket').value, 10) || null;
+
+        const activePropTypeBtn = document.querySelector('#bfPropertyTypeGroup .btn-option.active');
+        f.propertyType = activePropTypeBtn ? activePropTypeBtn.dataset.value : null;
+
+        const activeRoomsBtn = document.querySelector('#bfRoomsGroup .btn-option.active');
+        f.minRooms = activeRoomsBtn ? parseInt(activeRoomsBtn.dataset.value, 10) : null;
 
         this.closeBrowseSidebarPanel();
         this.renderBrowseGrid();
@@ -2246,17 +2471,19 @@ class FunDaApp {
             minBedrooms: null, minEnergyLabel: null,
             neighborhood: '', minYear: null,
             hasTuin: false, hasBalcony: false, hasParking: false, hasSolar: false,
+            isMonument: false, isAuction: false, isFixer: false,
             excludedNeighborhoods: [],
-            minDaysOnMarket: null
+            minDaysOnMarket: null, maxDaysOnMarket: null,
+            propertyType: null, minRooms: null,
         };
 
         // Reset form controls
-        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear','bfMinDaysOnMarket'].forEach(id => {
+        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear','bfMinDaysOnMarket','bfMaxDaysOnMarket'].forEach(id => {
             document.getElementById(id).value = '';
         });
         document.getElementById('bfNeighborhood').value = '';
         document.getElementById('excludedNeighPills').innerHTML = '';
-        ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar'].forEach(id => {
+        ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar','bfIsMonument','bfIsAuction','bfIsFixer'].forEach(id => {
             document.getElementById(id).checked = false;
         });
         document.querySelectorAll('#browseSidebar .btn-option').forEach(b => b.classList.remove('active'));
@@ -2277,7 +2504,9 @@ class FunDaApp {
             f.minPrice, f.maxPrice, f.minSize, f.maxSize, f.minBedrooms,
             f.minEnergyLabel, f.neighborhood || null, f.minYear,
             f.hasTuin || null, f.hasBalcony || null, f.hasParking || null, f.hasSolar || null,
-            f.minDaysOnMarket,
+            f.isMonument || null, f.isAuction || null, f.isFixer || null,
+            f.minDaysOnMarket, f.maxDaysOnMarket,
+            f.propertyType, f.minRooms,
             ...(f.excludedNeighborhoods || [])
         ].filter(Boolean).length;
         const badge = document.getElementById('browseFilterBadge');
@@ -2322,9 +2551,13 @@ class FunDaApp {
         // Badges
         const badges = [];
         if (house.isNew || house.daysOnMarket === 0)
-            badges.push('<span class="bt-badge bt-badge-new">Nieuw</span>');
+            badges.push(`<span class="bt-badge bt-badge-new">${this.t('badge.new')}</span>`);
         if (house.status && /onderhandeling/i.test(house.status))
-            badges.push('<span class="bt-badge bt-badge-nego">In onderhandeling</span>');
+            badges.push(`<span class="bt-badge bt-badge-nego">${this.t('badge.nego')}</span>`);
+        if (house.daysOnMarket >= 90)
+            badges.push('<span class="bt-badge bt-badge-stale bt-badge-stale-long" title="Al meer dan 90 dagen te koop – mogelijk ruimte voor een lager bod">🎯 90+ dagen</span>');
+        else if (house.daysOnMarket >= 30)
+            badges.push(`<span class="bt-badge bt-badge-stale" title="Al ${house.daysOnMarket} dagen te koop – mogelijk ruimte voor een lager bod">🕐 ${house.daysOnMarket}d</span>`);
 
         // Price per m²
         const ppm2 = (house.price && house.size)
@@ -2342,6 +2575,8 @@ class FunDaApp {
         // Spec icons (using Unicode + text — no external assets, CSP-safe)
         const specs = [];
         if (house.size)      specs.push(`<span class="bt-spec">◻ ${house.size}\u00a0m²</span>`);
+        if (house.plotArea && house.plotArea > house.size)
+                             specs.push(`<span class="bt-spec">🌳 ${house.plotArea}\u00a0m²</span>`);
         if (house.bedrooms)  specs.push(`<span class="bt-spec">🛏 ${house.bedrooms}</span>`);
         if (house.bathrooms && house.bathrooms > 0)
                              specs.push(`<span class="bt-spec">🚿 ${house.bathrooms}</span>`);
@@ -2349,15 +2584,19 @@ class FunDaApp {
 
         // Feature pills
         const feats = [];
-        if (house.hasGarden)  feats.push('🌿 Tuin');
-        if (house.hasBalcony) feats.push('🌅 Balkon');
-        if (house.hasRoofTerrace) feats.push('🏙 Dakterras');
-        if (house.hasParking) feats.push('🚗 Parkeren');
-        if (house.hasSolarPanels) feats.push('☀️ Zonnepanelen');
+        if (house.hasGarden)      feats.push(`🌿 ${this.t('feat.garden')}`);
+        if (house.hasBalcony)     feats.push(`🌅 ${this.t('feat.balcony')}`);
+        if (house.hasRoofTerrace) feats.push(`🏙️ ${this.t('feat.roofterrace')}`);
+        if (house.hasParking)     feats.push(`🚗 ${this.t('feat.parking')}`);
+        if (house.hasSolarPanels) feats.push(`☀️ ${this.t('feat.solar')}`);
+        if (house.hasHeatPump)    feats.push(`♨️ ${this.t('feat.heatpump')}`);
+        if (house.isMonument)     feats.push(`🏛️ ${this.t('feat.monument')}`);
+        if (house.isFixerUpper)   feats.push(`🔧 ${this.t('feat.fixer')}`);
+        if (house.isAuction)      feats.push(`🔨 ${this.t('feat.auction')}`);
 
         // Days on market
         const daysHtml = (house.daysOnMarket != null && house.daysOnMarket > 0)
-            ? `<span class="bt-days">${house.daysOnMarket}\u00a0dag${house.daysOnMarket !== 1 ? 'en' : ''} geleden</span>`
+            ? `<span class="bt-days">${this.t('label.days_ago', house.daysOnMarket)}</span>`
             : '';
 
         // Photo count
