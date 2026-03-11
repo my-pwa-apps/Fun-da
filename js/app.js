@@ -805,8 +805,8 @@ class FunDaApp {
         document.getElementById('browseLayoutGrid').addEventListener('click', () => this.setBrowseLayout('grid'));
 
         document.getElementById('applyBrowseFilters')?.addEventListener('click', () => this.applyBrowseFilters());
-        document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
-        document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => {
+        document.getElementById('resetBrowseFilters')?.addEventListener('click', () => this.resetBrowseFilters());
+        document.getElementById('clearBrowseFiltersBtn')?.addEventListener('click', () => {
             if (!this.hasConfiguredSearchArea()) {
                 this.openBrowseSidebarPanel();
                 return;
