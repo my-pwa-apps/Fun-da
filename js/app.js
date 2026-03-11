@@ -2638,12 +2638,11 @@ class FunDaApp {
         overlay.id = 'mediaViewerOverlay';
         overlay.className = 'media-viewer-overlay';
         overlay.innerHTML = `
-            <button class="lb-close" data-action="closeMediaViewer" aria-label="Sluiten">✕</button>
+            <div class="media-viewer-topbar">
+                <button class="mv-close" data-action="closeMediaViewer" aria-label="Sluiten">✕</button>
+            </div>
             <iframe class="media-viewer-iframe" src="${escapeHtml(url)}" allowfullscreen allow="autoplay; fullscreen; xr-spatial-tracking"></iframe>
         `;
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) this.closeMediaViewer();
-        });
         document.body.appendChild(overlay);
         document.body.style.overflow = 'hidden';
 

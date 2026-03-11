@@ -3725,15 +3725,38 @@ textarea.bid-input {
     z-index: 10000;
     background: rgba(0, 0, 0, 0.96);
     display: flex;
+    flex-direction: column;
+}
+
+.media-viewer-topbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5rem;
+    flex-shrink: 0;
+}
+
+.media-viewer-topbar .mv-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.2s;
+}
+
+.media-viewer-topbar .mv-close:hover {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .media-viewer-iframe {
+    flex: 1;
     width: 100%;
-    height: 100%;
-    max-width: 100vw;
-    max-height: 100vh;
     border: none;
 }
 

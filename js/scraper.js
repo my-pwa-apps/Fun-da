@@ -8,15 +8,9 @@ console.debug = () => {};
 
 class FundaScraper {
     constructor() {
-        // CORS proxies om websites te kunnen benaderen vanuit de browser
-        // Eigen proxy eerst, daarna publieke fallbacks
+        // CORS proxy — own Cloudflare Worker only (no third-party fallbacks)
         this.corsProxies = [
-            // Eigen Cloudflare Worker proxy (meest betrouwbaar)
             { url: 'https://spring-night-8d4d.garfieldapp.workers.dev/?url=', jsonResponse: false },
-            // Publieke fallbacks
-            { url: 'https://corsproxy.io/?', jsonResponse: false },
-            { url: 'https://api.allorigins.win/raw?url=', jsonResponse: false },
-            { url: 'https://api.allorigins.win/get?url=', jsonResponse: true, dataField: 'contents' },
         ];
         this.currentProxyIndex = 0;
         
