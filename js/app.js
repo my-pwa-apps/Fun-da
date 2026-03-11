@@ -802,6 +802,15 @@ class FunDaApp {
                 }
                 case 'addViewingToCalendar': this.addViewingToCalendar(id); break;
                 case 'shareHouse': this.shareHouse(); break;
+                case 'excludeNeighborhood': {
+                    const neigh = target.dataset.neighborhood;
+                    if (neigh) this.excludeNeighborhoodFromDetail(neigh);
+                    break;
+                }
+                case 'hideHouse': {
+                    this.hideHouseFromDetail(id);
+                    break;
+                }
             }
         });
 
@@ -2277,6 +2286,11 @@ class FunDaApp {
             ${photos360Html}
             ${brokerHtml}
             ${mapsLinkHtml}
+
+            <div class="detail-section detail-exclude-actions">
+                ${house.neighborhood ? `<button class="btn-secondary detail-exclude-btn" data-action="excludeNeighborhood" data-neighborhood="${escapeHtml(house.neighborhood)}">${this.lang === 'en' ? 'Exclude' : 'Verberg'} ${escapeHtml(house.neighborhood)}</button>` : ''}
+                <button class="btn-secondary detail-exclude-btn detail-hide-btn" data-action="hideHouse" data-id="${escapeHtml(String(house.id))}">${this.lang === 'en' ? 'Hide this house' : 'Verberg dit huis'}</button>
+            </div>
             </div>
             </div>
         `;
@@ -2810,6 +2824,32 @@ class FunDaApp {
     closeMapModal() {
         document.getElementById('mapFrame').src = '';
         this.closeModal(this.mapModal);
+    }
+
+    excludeNeighborhoodFromDetail(neighborhood) {
+        if (!neighborhood) return;
+        if (!this.browseFilters.excludedNeighborhoods.includes(neighborhood)) {
+            this.browseFilters.excludedNeighborhoods.push(neighborhood);
+        }
+        this._restoreExcludeNeighCheckboxes();
+        this.saveSettingsToFirebase();
+        this.closeModal(this.detailModal);
+        if (this.browseOpen) this.renderBrowseGrid();
+        this.showToast(this.lang === 'en'
+            ? `${neighborhood} excluded from results`
+            : `${neighborhood} uitgesloten van resultaten`);
+    }
+
+    hideHouseFromDetail(houseId) {
+        if (!houseId) return;
+        // Remove from houses array
+        this.houses = this.houses.filter(h => String(h.id) !== String(houseId));
+        this.saveToStorage();
+        this.closeModal(this.detailModal);
+        this.renderCards();
+        if (this.browseOpen) this.renderBrowseGrid();
+        this.updateStats();
+        this.showToast(this.lang === 'en' ? 'House hidden' : 'Woning verborgen');
     }
 
     openBrowseSidebarPanel() {

@@ -1266,6 +1266,31 @@ body {
     margin-bottom: 0.5rem;
 }
 
+/* Detail exclude/hide actions */
+.detail-exclude-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--gray-lighter);
+    padding-top: 1rem;
+}
+
+.detail-exclude-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    border: 1px solid var(--gray-lighter);
+}
+
+.detail-hide-btn {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
 /* Media grid (floorplans, videos, 360°) */
 .media-grid {
     display: grid;
