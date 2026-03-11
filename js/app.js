@@ -2763,10 +2763,15 @@ class FunDaApp {
     applyBrowseFilters() {
         const f = this.browseFilters;
 
-        // Search area — either set by autocomplete (this.searchArea) or read from input
-        const inputArea = document.getElementById('bfSearchArea')?.value.trim().toLowerCase() || '';
-        // If user typed and cleared, respect that; if autocomplete set searchArea, keep it
-        const newArea = inputArea || this.searchArea || '';
+        // Search area: prefer the value set by autocomplete (this.searchArea),
+        // only read from input if user cleared the field
+        const inputEl = document.getElementById('bfSearchArea');
+        const inputRaw = (inputEl?.value || '').trim();
+        // If input is empty, user cleared it — reset searchArea
+        if (!inputRaw) {
+            this.searchArea = '';
+        }
+        const newArea = this.searchArea || '';
         const daysBackEl = document.getElementById('bfDaysBack');
         const newDaysBack = parseInt(daysBackEl?.value, 10) || 3;
 
@@ -2964,14 +2969,12 @@ class FunDaApp {
 
             list.classList.remove('hidden');
 
-            // Click handler on each suggestion
             list.querySelectorAll('.area-suggestion').forEach(li => {
                 li.addEventListener('click', () => {
                     const input = document.getElementById('bfSearchArea');
                     input.value = li.dataset.display;
                     this.searchArea = li.dataset.area;
                     list.classList.add('hidden');
-                    this.applyBrowseFilters();
                 });
             });
         } catch (e) {
