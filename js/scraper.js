@@ -141,6 +141,9 @@ class FundaScraper {
                 brokerName: source.agent?.[0]?.name || '',
                 brokerPhone: source.agent?.[0]?.phone_number || source.agent?.[0]?.phone || '',
                 brokerEmail: source.agent?.[0]?.email || '',
+                brokerId: source.agent?.[0]?.id || null,
+                brokerUrl: source.agent?.[0]?.relative_url ? `https://www.funda.nl${source.agent[0].relative_url}` : '',
+                contactUrl: detailPath ? `https://www.funda.nl${detailPath}contact/` : '',
                 image: this.getPlaceholderImage(),
                 images: [],
                 url: detailPath ? `https://www.funda.nl${detailPath}` : '#',
@@ -348,6 +351,10 @@ class FundaScraper {
             brokerName: data.SellingAgent?.Name || data.SellingAgent?.name || '',
             brokerPhone: data.SellingAgent?.PhoneNumber || data.SellingAgent?.phone_number || data.SellingAgent?.Phone || '',
             brokerEmail: data.SellingAgent?.Email || data.SellingAgent?.email || '',
+            brokerId: parseInt(ads.hoofdaanbieder) || null,
+            brokerUrl: ads.hoofdaanbieder ? `https://www.funda.nl/makelaar/${ads.hoofdaanbieder}/` : '',
+            contactUrl: url && url !== '#' ? `${url}contact/` : '',
+            hasOpenHouse: ads.openhuis === 'true',
             // Source flag
             enrichedFromMobileAPI: true,
         };

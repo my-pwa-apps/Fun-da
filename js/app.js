@@ -2085,14 +2085,37 @@ class FunDaApp {
                 ${this.t('detail.maps')}
             </button>` : '';
 
-        // Broker contact
-        const brokerHtml = (house.brokerName || house.brokerPhone) ? `
-            <div class="detail-section">
-                <h3>${this.t('detail.broker_title')}</h3>
-                ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
-                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary" style="display:inline-block;margin-right:0.5rem;margin-bottom:0.25rem;padding:0.4rem 0.8rem;font-size:0.85rem;">${this.t('detail.call')}</a>` : ''}
-                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary" style="display:inline-block;padding:0.4rem 0.8rem;font-size:0.85rem;">${this.t('detail.email')}</a>` : ''}
-            </div>` : '';
+        // Broker & contact section
+        const contactUrl = house.contactUrl ? safeExternalUrl(house.contactUrl) : '';
+        const brokerHtml = (() => {
+            const parts = [];
+            // Broker name
+            if (house.brokerName) {
+                parts.push(`<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>`);
+            }
+            // Open house badge
+            if (house.hasOpenHouse) {
+                parts.push(`<p class="open-house-badge">${this.lang === 'en' ? 'Open house scheduled' : 'Open huis gepland'}</p>`);
+            }
+            // Action buttons
+            const btns = [];
+            if (contactUrl) {
+                btns.push(`<a href="${contactUrl}" target="_blank" rel="noopener" class="btn-primary contact-btn">${this.lang === 'en' ? 'Request viewing' : 'Bezichtiging aanvragen'}</a>`);
+            }
+            if (house.brokerPhone) {
+                btns.push(`<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary contact-btn">${this.lang === 'en' ? 'Call' : 'Bellen'}</a>`);
+            }
+            if (house.brokerEmail) {
+                btns.push(`<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary contact-btn">${this.lang === 'en' ? 'Email' : 'E-mail'}</a>`);
+            }
+            if (house.url && house.url !== '#') {
+                btns.push(`<a href="${safeExternalUrl(house.url)}" target="_blank" rel="noopener" class="btn-secondary contact-btn">${this.lang === 'en' ? 'View on Funda' : 'Bekijk op Funda'}</a>`);
+            }
+            if (btns.length > 0) {
+                parts.push(`<div class="contact-actions">${btns.join('')}</div>`);
+            }
+            return parts.length > 0 ? `<div class="detail-section"><h3>${this.lang === 'en' ? 'Contact agent' : 'Contact makelaar'}</h3>${parts.join('')}</div>` : '';
+        })();
 
         // Floorplans section — show as zoomable images in lightbox
         let floorplanHtml = '';
