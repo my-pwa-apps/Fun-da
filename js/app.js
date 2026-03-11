@@ -370,10 +370,10 @@ class FunDaApp {
             return;
         }
         
-        // Check if user dismissed before
-        const dismissed = localStorage.getItem('pwa-install-dismissed');
-        if (dismissed) {
-            console.log('📱 Install prompt previously dismissed');
+        // Check if user dismissed recently (expires after 7 days)
+        const dismissedAt = localStorage.getItem('pwa-install-dismissed');
+        if (dismissedAt && (Date.now() - parseInt(dismissedAt, 10)) < 7 * 24 * 60 * 60 * 1000) {
+            console.log('📱 Install prompt recently dismissed');
             return;
         }
         
@@ -419,7 +419,7 @@ class FunDaApp {
         });
         
         toast.querySelector('#installDismiss').addEventListener('click', () => {
-            localStorage.setItem('pwa-install-dismissed', 'true');
+            localStorage.setItem('pwa-install-dismissed', Date.now().toString());
             toast.remove();
         });
         
