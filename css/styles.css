@@ -2443,12 +2443,13 @@ body {
 
 @media (min-width: 768px) {
     .browse-sidebar {
-        position: relative;
-        top: auto;
+        position: sticky;
+        top: 0;
         left: auto;
-        height: auto;
+        height: 100vh;
         transform: none;
         z-index: auto;
+        overflow-y: auto;
     }
 }
 
