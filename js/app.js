@@ -2811,41 +2811,45 @@ class FunDaApp {
     _populateBrowseNeighborhoods() {
         const select = document.getElementById('bfNeighborhood');
         const dropdown = document.getElementById('neighMsDropdown');
-        const existing = new Set(Array.from(select.options).map(o => o.value).filter(Boolean));
-        const existingInDropdown = new Set(
-            Array.from(dropdown.querySelectorAll('input[type=checkbox]')).map(cb => cb.value)
-        );
+
+        // Clear old options (keep the "Alle buurten" default)
+        while (select.options.length > 1) select.remove(1);
+        dropdown.innerHTML = '';
+
         const neighborhoods = [...new Set(
             this.houses.map(h => h.neighborhood || h.city || '').filter(Boolean)
         )].sort();
+
+        // Remove excluded neighborhoods that no longer exist
+        this.browseFilters.excludedNeighborhoods = this.browseFilters.excludedNeighborhoods.filter(
+            n => neighborhoods.includes(n)
+        );
+
         neighborhoods.forEach(n => {
-            if (!existing.has(n)) {
-                const opt = document.createElement('option');
-                opt.value = n;
-                opt.textContent = n;
-                select.appendChild(opt);
-            }
-            if (!existingInDropdown.has(n)) {
-                const lbl = document.createElement('label');
-                lbl.className = 'neigh-ms-item';
-                const cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.value = n;
-                cb.checked = this.browseFilters.excludedNeighborhoods.includes(n);
-                cb.addEventListener('change', () => {
-                    if (cb.checked) {
-                        if (!this.browseFilters.excludedNeighborhoods.includes(n))
-                            this.browseFilters.excludedNeighborhoods.push(n);
-                    } else {
-                        this.browseFilters.excludedNeighborhoods =
-                            this.browseFilters.excludedNeighborhoods.filter(x => x !== n);
-                    }
-                    this._updateExcludeNeighLabel();
-                });
-                lbl.appendChild(cb);
-                lbl.appendChild(document.createTextNode(` ${n}`));
-                dropdown.appendChild(lbl);
-            }
+            const opt = document.createElement('option');
+            opt.value = n;
+            opt.textContent = n;
+            select.appendChild(opt);
+
+            const lbl = document.createElement('label');
+            lbl.className = 'neigh-ms-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = n;
+            cb.checked = this.browseFilters.excludedNeighborhoods.includes(n);
+            cb.addEventListener('change', () => {
+                if (cb.checked) {
+                    if (!this.browseFilters.excludedNeighborhoods.includes(n))
+                        this.browseFilters.excludedNeighborhoods.push(n);
+                } else {
+                    this.browseFilters.excludedNeighborhoods =
+                        this.browseFilters.excludedNeighborhoods.filter(x => x !== n);
+                }
+                this._updateExcludeNeighLabel();
+            });
+            lbl.appendChild(cb);
+            lbl.appendChild(document.createTextNode(` ${n}`));
+            dropdown.appendChild(lbl);
         });
         this._updateExcludeNeighLabel();
     }
