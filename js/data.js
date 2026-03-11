@@ -12,7 +12,7 @@ const PLACEHOLDER_IMAGE = `data:image/svg+xml,${encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" fill="%23f0f0f0">' +
     '<rect width="800" height="600"/>' +
     '<text x="400" y="290" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%23999">Foto laden...</text>' +
-    '<text x="400" y="330" text-anchor="middle" font-family="sans-serif" font-size="40" fill="%23ccc">🏠</text>' +
+    '<text x="400" y="330" text-anchor="middle" font-family="sans-serif" font-size="24" fill="%23ccc">Geen foto</text>' +
     '</svg>'
 )}`;
 
@@ -20,25 +20,25 @@ const APP_DEBUG = false;
 
 // Fun facts about Amsterdam neighborhoods
 const NEIGHBORHOOD_FACTS = {
-    "Centrum": "🏛️ Het historische hart van Amsterdam met de beroemde grachten!",
-    "Jordaan": "🎨 Ooit een arbeiderswijk, nu dé plek voor kunstenaars en gezellige cafés!",
-    "De Pijp": "🥬 Thuisbasis van de Albert Cuypmarkt - de grootste markt van Europa!",
-    "Oost": "🌳 Hip en groen met het prachtige Oosterpark als middelpunt!",
-    "West": "🎪 Van industrieel naar trendy - de Houthavens zijn helemaal hot!",
-    "Noord": "🚀 De nieuwe creative hub van Amsterdam - edgy en upcoming!",
-    "Zuid": "🏆 Chic en verfijnd - hier wonen de echte Amsterdammers!",
-    "Oud-West": "🍔 Foodhallen, boutiques en de gezelligste pleintjes!",
-    "IJburg": "🏖️ Strand in de stad - moderne architectuur op het water!",
+    "Centrum": "Het historische hart van Amsterdam met de beroemde grachten!",
+    "Jordaan": "Ooit een arbeiderswijk, nu d\u00e9 plek voor kunstenaars en gezellige caf\u00e9s!",
+    "De Pijp": "Thuisbasis van de Albert Cuypmarkt - de grootste markt van Europa!",
+    "Oost": "Hip en groen met het prachtige Oosterpark als middelpunt!",
+    "West": "Van industrieel naar trendy - de Houthavens zijn helemaal hot!",
+    "Noord": "De nieuwe creative hub van Amsterdam - edgy en upcoming!",
+    "Zuid": "Chic en verfijnd - hier wonen de echte Amsterdammers!",
+    "Oud-West": "Foodhallen, boutiques en de gezelligste pleintjes!",
+    "IJburg": "Strand in de stad - moderne architectuur op het water!",
     "Amsterdam": ""
 };
 
 // Price range labels for fun
 const PRICE_LABELS = [
-    { max: 350000, label: "🎓 Startersvriendelijk", color: "#2ECC71" },
-    { max: 500000, label: "💼 Middenklasse", color: "#3498DB" },
-    { max: 750000, label: "🏡 Comfortabel", color: "#9B59B6" },
-    { max: 1000000, label: "✨ Premium", color: "#E67E22" },
-    { max: Infinity, label: "👑 Luxe", color: "#E74C3C" }
+    { max: 350000, label: "Startersvriendelijk", color: "#2ECC71" },
+    { max: 500000, label: "Middenklasse", color: "#3498DB" },
+    { max: 750000, label: "Comfortabel", color: "#9B59B6" },
+    { max: 1000000, label: "Premium", color: "#E67E22" },
+    { max: Infinity, label: "Luxe", color: "#E74C3C" }
 ];
 
 // Helper function to get price label

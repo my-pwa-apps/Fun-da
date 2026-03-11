@@ -25,7 +25,7 @@ class FunDaApp {
         
         // PWA install prompt
         this.deferredInstallPrompt = null;
-            this.installPromptDismissedRecently = false;
+        this.installPromptDismissedRecently = false;
 
         // Services
         this.scraper = new FundaScraper();
@@ -2090,7 +2090,7 @@ class FunDaApp {
         const hasMapData = house.latitude && house.longitude;
         const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
-            <button data-action="openMapModal" class="btn-secondary" style="display:block;width:100%;text-align:center;padding:0.6rem;font-size:0.85rem;margin-top:0.5rem;cursor:pointer;">
+            <button data-action="openMapModal" class="btn-secondary detail-action-btn">
                 ${this.t('detail.maps')}
             </button>` : '';
 
@@ -2109,19 +2109,19 @@ class FunDaApp {
             // Action buttons
             const btns = [];
             if (contactUrl) {
-                btns.push(`<a href="${contactUrl}" target="_blank" rel="noopener" class="btn-primary contact-btn">${this.lang === 'en' ? 'Request viewing' : 'Bezichtiging aanvragen'}</a>`);
+                btns.push(`<a href="${contactUrl}" target="_blank" rel="noopener" class="btn-primary detail-action-btn">${this.lang === 'en' ? 'Request viewing' : 'Bezichtiging aanvragen'}</a>`);
             }
             if (house.brokerPhone) {
-                btns.push(`<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary contact-btn">${this.lang === 'en' ? 'Call' : 'Bellen'}</a>`);
+                btns.push(`<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'Call' : 'Bellen'}</a>`);
             }
             if (house.brokerEmail) {
-                btns.push(`<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary contact-btn">${this.lang === 'en' ? 'Email' : 'E-mail'}</a>`);
+                btns.push(`<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'Email' : 'E-mail'}</a>`);
             }
             if (house.url && house.url !== '#') {
-                btns.push(`<a href="${safeExternalUrl(house.url)}" target="_blank" rel="noopener" class="btn-secondary contact-btn">${this.lang === 'en' ? 'View on Funda' : 'Bekijk op Funda'}</a>`);
+                btns.push(`<a href="${safeExternalUrl(house.url)}" target="_blank" rel="noopener" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'View on Funda' : 'Bekijk op Funda'}</a>`);
             }
             if (btns.length > 0) {
-                parts.push(`<div class="contact-actions">${btns.join('')}</div>`);
+                parts.push(`<div class="detail-actions">${btns.join('')}</div>`);
             }
             return parts.length > 0 ? `<div class="detail-section"><h3>${this.lang === 'en' ? 'Contact agent' : 'Contact makelaar'}</h3>${parts.join('')}</div>` : '';
         })();
@@ -2287,9 +2287,9 @@ class FunDaApp {
             ${brokerHtml}
             ${mapsLinkHtml}
 
-            <div class="detail-section detail-exclude-actions">
-                ${house.neighborhood ? `<button class="btn-secondary detail-exclude-btn" data-action="excludeNeighborhood" data-neighborhood="${escapeHtml(house.neighborhood)}">${this.lang === 'en' ? 'Exclude' : 'Verberg'} ${escapeHtml(house.neighborhood)}</button>` : ''}
-                <button class="btn-secondary detail-exclude-btn detail-hide-btn" data-action="hideHouse" data-id="${escapeHtml(String(house.id))}">${this.lang === 'en' ? 'Hide this house' : 'Verberg dit huis'}</button>
+            <div class="detail-actions detail-exclude-section">
+                ${house.neighborhood ? `<button class="btn-secondary detail-action-btn detail-action-muted" data-action="excludeNeighborhood" data-neighborhood="${escapeHtml(house.neighborhood)}">${this.lang === 'en' ? 'Exclude' : 'Verberg'} ${escapeHtml(house.neighborhood)}</button>` : ''}
+                <button class="btn-secondary detail-action-btn detail-action-danger" data-action="hideHouse" data-id="${escapeHtml(String(house.id))}">${this.lang === 'en' ? 'Hide this house' : 'Verberg dit huis'}</button>
             </div>
             </div>
             </div>
@@ -2389,7 +2389,7 @@ class FunDaApp {
         const hasMapData = house.latitude && house.longitude;
         const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
-            <button data-action="openMapModal" class="btn-secondary btn-full" style="display:block;width:100%;text-align:center;margin-bottom:0.5rem;cursor:pointer;">
+            <button data-action="openMapModal" class="btn-secondary detail-action-btn">
                 ${this.t('detail.maps')}
             </button>` : '';
 
@@ -2398,8 +2398,8 @@ class FunDaApp {
             <div class="detail-section">
                 <h3>${this.t('detail.broker_title')}</h3>
                 ${house.brokerName ? `<p style="font-weight:600;font-size:0.9rem;margin-bottom:0.5rem;">${escapeHtml(house.brokerName)}</p>` : ''}
-                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary btn-full" style="display:block;text-align:center;margin-bottom:0.25rem;">📞 ${escapeHtml(house.brokerPhone)}</a>` : ''}
-                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary btn-full" style="display:block;text-align:center;">✉️ ${this.t('detail.email')}</a>` : ''}
+                ${house.brokerPhone ? `<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary detail-action-btn">${escapeHtml(house.brokerPhone)}</a>` : ''}
+                ${house.brokerEmail ? `<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary detail-action-btn">${this.t('detail.email')}</a>` : ''}
             </div>` : '';
 
         // Photo gallery
@@ -2418,11 +2418,11 @@ class FunDaApp {
 
         // Bid status options
         const statusOptions = [
-            { key: 'interested', label: '👀 Interessant' },
-            { key: 'viewing', label: '📅 Bezichtiging' },
-            { key: 'bid', label: '💰 Bod' },
-            { key: 'accepted', label: '✅ Geaccepteerd' },
-            { key: 'rejected', label: '❌ Afgewezen' },
+            { key: 'interested', label: 'Interessant' },
+            { key: 'viewing', label: 'Bezichtiging' },
+            { key: 'bid', label: 'Bod' },
+            { key: 'accepted', label: 'Geaccepteerd' },
+            { key: 'rejected', label: 'Afgewezen' },
         ];
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
@@ -2476,7 +2476,7 @@ class FunDaApp {
             ` : ''}
 
             <div class="detail-section bid-panel" id="bidPanel" data-house-id="${escapeHtml(String(houseId))}">
-                <h3>📋 Notities &amp; Bieding</h3>
+                <h3>Notities &amp; Bieding</h3>
                 <div class="bid-fields">
                     <div class="bid-field">
                         <label class="bid-label">Status</label>
@@ -2490,7 +2490,7 @@ class FunDaApp {
                         <div class="bid-field">
                             <label class="bid-label" for="metaViewingDate">Bezichtigingsdatum</label>
                             <input type="date" class="bid-input" id="metaViewingDate" value="${escapeHtml(meta.viewingDate || '')}">
-                            <button class="btn-secondary btn-full" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}" style="margin-top:0.3rem;font-size:0.75rem;padding:0.3rem;cursor:pointer;">📅 Agenda</button>
+                            <button class="btn-secondary btn-full" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}" style="margin-top:0.3rem;font-size:0.75rem;padding:0.3rem;cursor:pointer;">Agenda</button>
                         </div>
                         <div class="bid-field">
                             <label class="bid-label" for="metaBidDeadline">Bieddeadline makelaar</label>
@@ -2502,7 +2502,7 @@ class FunDaApp {
                         <textarea class="bid-input" id="metaNotes" rows="3" placeholder="Aantekeningen over dit huis...">${escapeHtml(meta.notes || '')}</textarea>
                     </div>
                 </div>
-                <button class="btn-primary btn-full" id="saveBidMetaBtn" style="margin-top:0.75rem;">💾 Notities opslaan</button>
+                <button class="btn-primary btn-full" id="saveBidMetaBtn" style="margin-top:0.75rem;">Notities opslaan</button>
             </div>
 
             ${brokerHtml}
