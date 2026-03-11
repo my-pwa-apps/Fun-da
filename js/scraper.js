@@ -107,8 +107,10 @@ class FundaScraper {
 
     parseMobileSearchResults(data) {
         const houses = [];
-        const hits = data?.responses?.[0]?.hits?.hits || [];
-        console.log(`📱 Mobile API returned ${hits.length} search results`);
+        const hitsObj = data?.responses?.[0]?.hits || {};
+        const hits = hitsObj.hits || [];
+        this._lastMobileTotal = hitsObj.total?.value || hits.length;
+        console.log(`📱 Mobile API returned ${hits.length} search results (total: ${this._lastMobileTotal})`);
 
         for (const hit of hits) {
             const source = hit._source || {};
@@ -492,25 +494,26 @@ class FundaScraper {
         try {
             const days = parseInt(searchParams.days) || 3;
             const pageSize = 100;
-            let mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: 0 });
-            // Always try extra pages — don't gate on page 1 being full
-            if (days > 1) {
-                onProgress(`Pagina 2 ophalen...`, 30);
+            const maxResults = 600; // cap to avoid very long load times
+            const area = searchParams.area || 'amsterdam';
+
+            // Fetch first page and read the total from the API
+            let mobileResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: 0 });
+            const apiTotal = this._lastMobileTotal || mobileResults.length;
+            const totalPages = Math.min(Math.ceil(apiTotal / pageSize), Math.ceil(maxResults / pageSize));
+
+            // Fetch remaining pages if there are more results
+            for (let page = 1; page < totalPages; page++) {
+                const progressPct = 20 + Math.round((page / totalPages) * 30);
+                onProgress(`Pagina ${page + 1} van ${totalPages} ophalen...`, progressPct);
                 try {
-                    const page2 = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: pageSize });
+                    const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
                     const existingIds = new Set(mobileResults.map(h => h.id));
-                    const newOnes = page2.filter(h => !existingIds.has(h.id));
-                    mobileResults = [...mobileResults, ...newOnes];
-                    // Third page for long periods
-                    if (days >= 14 && page2.length >= pageSize) {
-                        try {
-                            onProgress(`Pagina 3 ophalen...`, 38);
-                            const page3 = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: pageSize * 2 });
-                            const ids2 = new Set(mobileResults.map(h => h.id));
-                            mobileResults = [...mobileResults, ...page3.filter(h => !ids2.has(h.id))];
-                        } catch (e) { /* page 3 optional */ }
-                    }
-                } catch (e) { /* page 2 optional */ }
+                    mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
+                } catch (e) {
+                    console.warn(`⚠️ Pagina ${page + 1} mislukt, verder met wat we hebben:`, e.message);
+                    break;
+                }
             }
             if (mobileResults.length > 0) {
                 console.log(`📱 Mobile API: ${mobileResults.length} woningen via JSON API`);

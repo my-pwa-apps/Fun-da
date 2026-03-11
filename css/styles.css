@@ -334,8 +334,7 @@ body {
 .card-stack {
     position: relative;
     width: 100%;
-    height: 480px;
-    min-height: 420px;
+    height: clamp(300px, calc(100dvh - 330px), 480px);
     perspective: 1000px;
 }
 
@@ -2147,23 +2146,11 @@ body {
     gap: 0.25rem;
     padding: 0.5rem 1rem 0;
     background: var(--white);
-    border-top: 2px solid var(--gray-lighter);
+    border-bottom: 2px solid var(--gray-lighter);
     flex-shrink: 0;
-    /* Stick to bottom of viewport in swipe mode */
-    position: sticky;
-    bottom: 0;
-    z-index: 30;
     margin: 0 calc(-1 * var(--app-padding));
     padding-left: var(--app-padding);
     padding-right: var(--app-padding);
-}
-
-/* In browse mode the tabs sit above the browse grid — reverse border, no sticky */
-.app--browse .view-tabs {
-    border-top: none;
-    border-bottom: 2px solid var(--gray-lighter);
-    position: static;
-    margin: 0;
 }\n
 
 .view-tab {
