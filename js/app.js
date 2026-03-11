@@ -802,9 +802,6 @@ class FunDaApp {
             this.resetBrowseFilters();
         });
 
-        // Auto-apply filters when any filter control changes
-        this._setupAutoApplyFilters();
-
         // Area autocomplete
         this._setupAreaAutocomplete();
         document.getElementById('neighMsTrigger').addEventListener('click', (e) => {
@@ -2878,40 +2875,6 @@ class FunDaApp {
     _syncTypePills(value) {
         document.querySelectorAll('#browseTypePills .browse-type-pill').forEach(p => {
             p.classList.toggle('active', (p.dataset.value || null) === (value || null));
-        });
-    }
-
-    // ------------------------------------------
-    // Auto-apply filters on any control change
-    // ------------------------------------------
-
-    _setupAutoApplyFilters() {
-        const sidebar = document.getElementById('browseSidebar');
-        if (!sidebar) return;
-
-        const debouncedApply = this._debounce(() => this.applyBrowseFilters(), 400);
-
-        // Text/number inputs — debounced (skip search area, handled by autocomplete)
-        sidebar.querySelectorAll('input[type=text]:not(#bfSearchArea), input[type=number]').forEach(el => {
-            el.addEventListener('input', debouncedApply);
-        });
-
-        // Selects — immediate
-        sidebar.querySelectorAll('select').forEach(el => {
-            el.addEventListener('change', () => this.applyBrowseFilters());
-        });
-
-        // Checkboxes — immediate
-        sidebar.querySelectorAll('input[type=checkbox]').forEach(el => {
-            el.addEventListener('change', () => this.applyBrowseFilters());
-        });
-
-        // btn-option clicks inside sidebar — immediate (use MutationObserver-like approach)
-        sidebar.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-option')) {
-                // Small delay so the active class toggles first
-                setTimeout(() => this.applyBrowseFilters(), 50);
-            }
         });
     }
 
