@@ -1254,6 +1254,7 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     animation: slideDown 0.3s ease;
 }
+.offline-banner.hidden { display: none; }
 
 @keyframes slideDown {
     from { transform: translateY(-100%); }
