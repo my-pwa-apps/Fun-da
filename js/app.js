@@ -504,6 +504,7 @@ class FunDaApp {
 
     setupEventListeners() {
         document.getElementById('likeBtn').addEventListener('click', () => this.swipe('right'));
+        document.getElementById('nopeBtn').addEventListener('click', () => this.swipe('left'));
         document.getElementById('infoBtn').addEventListener('click', () => this.showDetail());
         document.getElementById('resetBtn').addEventListener('click', () => this.reset());
 
@@ -624,6 +625,12 @@ class FunDaApp {
                 case 'openMapModal':
                     this.openMapModal();
                     break;
+                case 'expandDesc': {
+                    const desc = target.closest('.detail-section')?.querySelector('.detail-description');
+                    if (desc) desc.classList.remove('desc-collapsed');
+                    target.remove();
+                    break;
+                }
                 case 'addViewingToCalendar': this.addViewingToCalendar(id); break;
             }
         });
@@ -655,7 +662,34 @@ class FunDaApp {
     // ==========================================
 
     clearAllData() {
-        if (confirm('Weet je zeker dat je alle data wilt wissen? Dit verwijdert alle opgeslagen huizen en favorieten.')) {
+        const btn = document.getElementById('clearDataBtn');
+        if (!this._clearDataPending) {
+            this._clearDataPending = true;
+            if (btn) {
+                btn.dataset.origText = btn.textContent;
+                btn.textContent = '⚠️ Klik nogmaals om te bevestigen';
+                btn.style.background = 'var(--danger)';
+                btn.style.color = '#fff';
+            }
+            setTimeout(() => {
+                this._clearDataPending = false;
+                if (btn) {
+                    btn.textContent = btn.dataset.origText || '🗑️ Alle data wissen';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    delete btn.dataset.origText;
+                }
+            }, 4000);
+            return;
+        }
+        this._clearDataPending = false;
+        if (btn) {
+            btn.textContent = btn.dataset.origText || '🗑️ Alle data wissen';
+            btn.style.background = '';
+            btn.style.color = '';
+            delete btn.dataset.origText;
+        }
+        {
             // Clear localStorage (keep filters!)
             localStorage.removeItem('funda-favorites');
             localStorage.removeItem('funda-viewed');
@@ -907,7 +941,34 @@ class FunDaApp {
     }
 
     leaveFamily() {
-        if (confirm('Weet je zeker dat je de familie wilt verlaten?')) {
+        const btn = document.getElementById('leaveFamilyBtn');
+        if (!this._leaveFamilyPending) {
+            this._leaveFamilyPending = true;
+            if (btn) {
+                btn.dataset.origText = btn.textContent;
+                btn.textContent = '⚠️ Klik nogmaals om te bevestigen';
+                btn.style.background = 'var(--danger)';
+                btn.style.color = '#fff';
+            }
+            setTimeout(() => {
+                this._leaveFamilyPending = false;
+                if (btn) {
+                    btn.textContent = btn.dataset.origText || 'Familie verlaten';
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    delete btn.dataset.origText;
+                }
+            }, 4000);
+            return;
+        }
+        this._leaveFamilyPending = false;
+        if (btn) {
+            btn.textContent = btn.dataset.origText || 'Familie verlaten';
+            btn.style.background = '';
+            btn.style.color = '';
+            delete btn.dataset.origText;
+        }
+        {
             this.familySync.leaveFamily();
             this.familyMatches.clear();
             this.showToast('👋 Je hebt de familie verlaten');
@@ -1603,7 +1664,10 @@ class FunDaApp {
             list.innerHTML = '';
             noFavorites.classList.remove('hidden');
         } else {
-            this.openFavorites(); // Refresh the list
+            // Only refresh list if favorites modal is currently open
+            if (this.favoritesModal && !this.favoritesModal.classList.contains('hidden')) {
+                this.openFavorites();
+            }
         }
     }
 
@@ -1747,7 +1811,8 @@ class FunDaApp {
         const descHtml = house.description ? `
             <div class="detail-section">
                 <h3>${this.t('detail.desc')}</h3>
-                <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
+                <p class="detail-description${house.description.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(house.description)}</p>
+                ${house.description.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ Meer lezen</button>` : ''}
             </div>` : '';
 
         // Build photo gallery thumbnails
@@ -1900,6 +1965,8 @@ class FunDaApp {
         if (house.hasHeatPump) extraDetails.push(`<span>♨️ ${this.t('feat.heatpump')}</span>`);
         if (house.hasParking) extraDetails.push(`<span>🚗 ${this.t('feat.parking')}</span>`);
         if (house.isMonument) extraDetails.push(`<span>🏛️ ${this.t('feat.monument')}</span>`);
+        if (house.isFixerUpper) extraDetails.push(`<span>🔧 ${this.t('feat.fixer')}</span>`);
+        if (house.isAuction) extraDetails.push(`<span>🔨 ${this.t('feat.auction')}</span>`);
 
         const safeAddress = escapeHtml(cleanAddress(house.address));
         const safeImage = escapeHtml(safeImageUrl(house.image));
@@ -1995,7 +2062,8 @@ class FunDaApp {
             ${house.description ? `
                 <div class="detail-section">
                     <h3>${this.t('detail.desc_alt')}</h3>
-                    <p class="detail-description" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);max-height:8rem;overflow:hidden;">${escapeHtml(house.description.substring(0, 500))}${house.description.length > 500 ? '…' : ''}</p>
+                    <p class="detail-description${house.description.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(house.description)}</p>
+                    ${house.description.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ Meer lezen</button>` : ''}
                 </div>
             ` : ''}
 
