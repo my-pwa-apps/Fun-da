@@ -1,6 +1,7 @@
 // Fun-da App - De leukste manier om een huis te vinden!
 // Features: Funda scraping, Familie sync, Swipe interface
 
+// console.log / warn / debug suppressed in production; errors kept visible
 console.log = () => {};
 console.warn = () => {};
 console.debug = () => {};
@@ -218,7 +219,7 @@ class FunDaApp {
             
             // Use the scraper directly for splash screen updates
             const houses = await this.scraper.scrapeAllSources({ 
-                area: 'amsterdam', 
+                area: this.searchArea || 'amsterdam', 
                 days: String(this.daysBack),
                 onProgress: (message, progress) => {
                     this.stopProgressAnimation(); // Stop auto-animation once we have real progress
@@ -2676,16 +2677,13 @@ class FunDaApp {
         };
 
         // Reset form controls
-        const daysBackEl = document.getElementById('bfDaysBack');
-        if (daysBackEl) daysBackEl.value = '3';
-        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear','bfMinDaysOnMarket','bfMaxDaysOnMarket'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
-        document.getElementById('bfNeighborhood').value = '';
+        const setField = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        const setCheck = (id, v) => { const el = document.getElementById(id); if (el) el.checked = v; };
+        setField('bfDaysBack', '3');
+        ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear','bfMinDaysOnMarket','bfMaxDaysOnMarket'].forEach(id => setField(id, ''));
+        setField('bfNeighborhood', '');
         this._restoreExcludeNeighCheckboxes();
-        ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar','bfIsMonument','bfIsAuction','bfIsFixer'].forEach(id => {
-            document.getElementById(id).checked = false;
-        });
+        ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar','bfIsMonument','bfIsAuction','bfIsFixer'].forEach(id => setCheck(id, false));
         document.querySelectorAll('#browseSidebar .btn-option').forEach(b => b.classList.remove('active'));
 
         this.closeBrowseSidebarPanel();
@@ -2833,7 +2831,7 @@ class FunDaApp {
                     ${ppm2}
                 </div>
                 ${specs.length ? `<div class="bt-specs">${specs.join('')}</div>` : ''}
-                ${feats.length ? `<div class="bt-feats">${feats.map(f => `<span class="bt-feat">${escapeHtml(f)}</span>`).join('')}</div>` : ''}
+                ${feats.length ? `<div class="bt-feats">${feats.map(f => `<span class="bt-feat">${f}</span>`).join('')}</div>` : ''}
                 <div class="bt-footer">
                     ${energyHtml}
                     ${daysHtml}

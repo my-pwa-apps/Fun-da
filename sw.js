@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fun-da-v110';
+const CACHE_NAME = 'fun-da-v111';
 const swDebug = () => {};
 const ASSETS_TO_CACHE = [
     './',
@@ -9,7 +9,8 @@ const ASSETS_TO_CACHE = [
     './js/scraper.js',
     './js/firebase-sync.js',
     './manifest.json',
-    './icons/icon-192.svg',
+    './icons/icon-192.png',
+    './icons/icon-512.png',
     './icons/icon-180.png',
     './favicon.svg'
 ];
