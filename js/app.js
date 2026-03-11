@@ -2792,6 +2792,7 @@ class FunDaApp {
 
         this.searchArea = newArea;
         this.daysBack = newDaysBack;
+        console.error('🔍 applyBrowseFilters:', { newArea, newDaysBack, needsRefetch, loadedArea: this._loadedArea });
         localStorage.setItem('funda-search-area', this.searchArea);
         localStorage.setItem('funda-days-back', this.daysBack.toString());
 

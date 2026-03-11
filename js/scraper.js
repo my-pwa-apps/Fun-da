@@ -101,7 +101,7 @@ class FundaScraper {
         const queryLine = JSON.stringify({ id: 'search_result_20250805', params: searchParams });
         const ndjson = `${indexLine}\n${queryLine}\n`;
 
-        console.log('📱 Fetching from Funda mobile API...');
+        console.error('📱 Funda API request:', { area, days: params.days, from: params.from, size: params.size });
         const data = await this.fetchViaProxyPost(this.FUNDA_API_SEARCH, ndjson);
         return this.parseMobileSearchResults(data);
     }
