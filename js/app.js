@@ -2956,7 +2956,8 @@ class FunDaApp {
         if (!list) return;
 
         try {
-            const url = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q=${encodeURIComponent(query)}&fq=type:(gemeente OR woonplaats)&rows=8`;
+            // Use 'free' endpoint (not 'suggest') because it returns gemeentenaam/woonplaatsnaam
+            const url = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(query)}&fq=type:(gemeente OR woonplaats)&rows=8`;
             const resp = await fetch(url);
             if (!resp.ok) return;
             const data = await resp.json();
@@ -2969,15 +2970,12 @@ class FunDaApp {
 
             this._areaActiveIdx = -1;
             list.innerHTML = docs.map((doc, i) => {
-                const name = doc.weergavenaam || doc.naam || '';
+                const name = doc.weergavenaam || '';
                 const type = doc.type === 'gemeente' ? 'Gemeente' : 'Woonplaats';
-                // Extract the city/gemeente name that Funda uses (lowercase slug)
-                // PDOK naam gives e.g. "Amsterdam" or "'s-Gravenhage"
-                // Funda uses lowercase: "amsterdam", "den-haag", etc.
-                let fundaName = (doc.naam || name.split(',')[0] || '').trim().toLowerCase();
-                // Funda replaces spaces with hyphens and strips quotes
-                fundaName = fundaName.replace(/[''`]/g, '').replace(/\s+/g, '-');
-                return `<li class="area-suggestion" data-area="${escapeHtml(fundaName)}" data-display="${escapeHtml(name)}">${escapeHtml(name)} <span class="area-type">${type}</span></li>`;
+                // Use the clean name fields from PDOK
+                const cleanName = doc.woonplaatsnaam || doc.gemeentenaam || '';
+                const fundaName = cleanName.toLowerCase();
+                return `<li class="area-suggestion" data-area="${escapeHtml(fundaName)}" data-display="${escapeHtml(cleanName)}">${escapeHtml(name)} <span class="area-type">${type}</span></li>`;
             }).join('');
 
             list.classList.remove('hidden');
