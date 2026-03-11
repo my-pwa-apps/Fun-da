@@ -88,24 +88,6 @@
             </div>
         </div>
 
-        <!-- View Mode Tabs -->
-        <div class="view-tabs">
-            <button class="view-tab" id="tabSwipe">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <rect x="2" y="3" width="20" height="18" rx="3"/>
-                    <path d="M8 12l3 3 5-6"/>
-                </svg>
-                <span data-i18n="nav.swipe">Swipen</span>
-            </button>
-            <button class="view-tab active" id="tabBrowse">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-                </svg>
-                <span data-i18n="nav.browse">Bladeren</span>
-            </button>
-        </div>
-
         <!-- Card Stack (Swipe View) -->
         <main class="card-container hidden" id="swipeView">
             <div id="cardStack" class="card-stack">
@@ -138,6 +120,24 @@
             </button>
         </div>
 
+        <!-- View Mode Tabs -->
+        <div class="view-tabs">
+            <button class="view-tab" id="tabSwipe">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="2" y="3" width="20" height="18" rx="3"/>
+                    <path d="M8 12l3 3 5-6"/>
+                </svg>
+                <span data-i18n="nav.swipe">Swipen</span>
+            </button>
+            <button class="view-tab active" id="tabBrowse">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                <span data-i18n="nav.browse">Bladeren</span>
+            </button>
+        </div>
+
         <!-- Browse View -->
         <div id="browseView" class="browse-view">
 
@@ -152,6 +152,11 @@
                     </button>
                 </div>
                 <div class="browse-sidebar-body">
+                    <div class="bfs">
+                        <h4 class="bfs-title">Zoekgebied</h4>
+                        <p class="bfs-hint">Stad of regio (bijv. amsterdam, rotterdam, utrecht)</p>
+                        <input type="text" id="bfSearchArea" class="input-full" placeholder="amsterdam" autocomplete="off" autocorrect="off" spellcheck="false">
+                    </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Type woning</h4>
                         <div class="btn-group" id="bfPropertyTypeGroup">
@@ -346,7 +351,10 @@
         <div class="modal-content modal-large modal-detail">
             <div class="modal-header">
                 <h2 id="detailTitle">Woning Details</h2>
-                <button class="btn-close" id="closeDetailModal">&times;</button>
+                <div class="modal-header-actions">
+                    <button class="btn-share" id="shareDetailBtn" data-action="shareHouse" aria-label="Delen" title="Delen">⬆︎</button>
+                    <button class="btn-close" id="closeDetailModal">&times;</button>
+                </div>
             </div>
             <div class="modal-body" id="detailContent">
                 <!-- Detail content will be dynamically inserted here -->
@@ -522,6 +530,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Offline Banner -->
+    <div id="offlineBanner" class="offline-banner hidden" role="alert" aria-live="assertive">📡 Geen internetverbinding — opgeslagen woningen zijn beschikbaar</div>
 
     <!-- Confetti Container -->
     <div id="confetti" class="confetti-container" aria-hidden="true"></div>

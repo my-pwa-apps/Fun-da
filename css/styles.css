@@ -848,6 +848,33 @@ body {
     color: var(--dark);
 }
 
+.modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.btn-share {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--light);
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    color: var(--primary);
+    line-height: 1;
+}
+
+.btn-share:hover {
+    background: #fff5f1;
+}
+
 .btn-close {
     width: 36px;
     height: 36px;
@@ -1208,6 +1235,29 @@ body {
 
 .toast-dismiss:hover {
     opacity: 1;
+}
+
+/* Offline banner */
+.offline-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: #1e293b;
+    color: #f1f5f9;
+    text-align: center;
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to   { transform: translateY(0); }
 }
 
 /* Confetti */
@@ -2096,9 +2146,24 @@ body {
     gap: 0.25rem;
     padding: 0.5rem 1rem 0;
     background: var(--white);
-    border-bottom: 2px solid var(--gray-lighter);
+    border-top: 2px solid var(--gray-lighter);
     flex-shrink: 0;
+    /* Stick to bottom of viewport in swipe mode */
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 0 calc(-1 * var(--app-padding));
+    padding-left: var(--app-padding);
+    padding-right: var(--app-padding);
 }
+
+/* In browse mode the tabs sit above the browse grid — reverse border, no sticky */
+.app--browse .view-tabs {
+    border-top: none;
+    border-bottom: 2px solid var(--gray-lighter);
+    position: static;
+    margin: 0;
+}\n
 
 .view-tab {
     flex: 1;

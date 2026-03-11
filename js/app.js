@@ -73,6 +73,9 @@ class FunDaApp {
         this.browseSort = 'default';
         this.browseLayout = 'list';
         this.daysBack = 3; // Configurable days back for auto-load
+        this.searchArea = 'amsterdam'; // Configurable search area
+        this._loadedArea = 'amsterdam'; // Track what was last fetched
+        this._loadedDaysBack = 3;
         this.browseFilters = {
             minPrice: null, maxPrice: null,
             minSize: null, maxSize: null,
@@ -248,6 +251,8 @@ class FunDaApp {
                 this.houses = allHouses;
                 this.currentIndex = 0;
                 this.viewed = 0;
+                this._loadedArea = this.searchArea || 'amsterdam';
+                this._loadedDaysBack = this.daysBack;
                 
                 this.saveToStorage();
                 this.renderCards();
@@ -454,6 +459,14 @@ class FunDaApp {
             const savedDaysBack = localStorage.getItem('funda-days-back');
             if (savedDaysBack) this.daysBack = parseInt(savedDaysBack, 10);
 
+            // Load saved search area
+            const savedArea = localStorage.getItem('funda-search-area');
+            if (savedArea) {
+                this.searchArea = savedArea;
+                this._loadedArea = savedArea;
+                this._loadedDaysBack = this.daysBack;
+            }
+
             // Load saved browse filters (for users not signed in)
             const savedFilters = localStorage.getItem('funda-browse-filters');
             if (savedFilters) {
@@ -568,6 +581,19 @@ class FunDaApp {
             this.showToast('🎉 Fun-da - Huizenjacht was nog nooit zo leuk!');
         });
 
+        // Online / offline indicator
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineBanner').classList.remove('hidden');
+        });
+        window.addEventListener('online', () => {
+            document.getElementById('offlineBanner').classList.add('hidden');
+            this.showToast('📡 Internetverbinding hersteld');
+        });
+        // Show banner immediately if already offline on load
+        if (!navigator.onLine) {
+            document.getElementById('offlineBanner').classList.remove('hidden');
+        }
+
         // Replace inline img.onerror handlers so image fallback still works under CSP.
         document.addEventListener('error', (e) => {
             const target = e.target;
@@ -634,6 +660,7 @@ class FunDaApp {
                     break;
                 }
                 case 'addViewingToCalendar': this.addViewingToCalendar(id); break;
+                case 'shareHouse': this.shareHouse(); break;
             }
         });
 
@@ -819,6 +846,7 @@ class FunDaApp {
         // Always persist to localStorage so non-signed-in users keep their filters
         try {
             localStorage.setItem('funda-browse-filters', JSON.stringify(this.browseFilters));
+            localStorage.setItem('funda-search-area', this.searchArea || 'amsterdam');
         } catch (e) { /* storage full */ }
 
         if (!this.currentUser) return;
@@ -827,6 +855,7 @@ class FunDaApp {
             const uid = this.currentUser.uid;
             await db.ref(`users/${uid}/settings`).set({
                 daysBack: this.daysBack,
+                searchArea: this.searchArea || 'amsterdam',
                 browseFilters: this.browseFilters
             });
         } catch (e) {
@@ -848,6 +877,12 @@ class FunDaApp {
                 const sel = document.getElementById('bfDaysBack');
                 if (sel) sel.value = String(this.daysBack);
             }
+            if (data.searchArea) {
+                this.searchArea = data.searchArea;
+                localStorage.setItem('funda-search-area', this.searchArea);
+                const inp = document.getElementById('bfSearchArea');
+                if (inp) inp.value = this.searchArea;
+            }
             if (data.browseFilters) {
                 this.browseFilters = { ...this.browseFilters, ...data.browseFilters };
                 this.restoreBrowseFilterUI();
@@ -860,6 +895,7 @@ class FunDaApp {
     restoreBrowseFilterUI() {
         const f = this.browseFilters;
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+        setVal('bfSearchArea', this.searchArea || 'amsterdam');
         setVal('bfDaysBack', this.daysBack || 3);
         setVal('bfMinPrice', f.minPrice || '');
         setVal('bfMaxPrice', f.maxPrice || '');
@@ -1719,6 +1755,45 @@ class FunDaApp {
         // Update family match count
         familyMatchCount.textContent = this.familyMatches.size;
         familyMatchCount.classList.toggle('show', this.familyMatches.size > 0);
+
+        this.updateAppBadge();
+    }
+
+    updateAppBadge() {
+        const count = this.favorites.length + this.familyMatches.size;
+        if ('setAppBadge' in navigator) {
+            if (count > 0) {
+                navigator.setAppBadge(count).catch(() => {});
+            } else {
+                navigator.clearAppBadge?.().catch(() => {});
+            }
+        }
+    }
+
+    async shareHouse() {
+        const house = this._detailHouse;
+        if (!house) return;
+        const title = cleanAddress(house.address) || 'Woning op Funda';
+        const url = house.url || window.location.href;
+        const price = house.price ? formatPrice(house.price) + ' · ' : '';
+        const size = house.size ? house.size + 'm² · ' : '';
+        const beds = house.bedrooms ? house.bedrooms + ' slpk. · ' : '';
+        const neigh = house.neighborhood || house.city || '';
+        const text = `${price}${size}${beds}${neigh}`.replace(/ · $/, '');
+        if (navigator.share) {
+            try {
+                await navigator.share({ title, text, url });
+            } catch (e) {
+                if (e.name !== 'AbortError') this.showToast('❌ Delen mislukt');
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(url);
+                this.showToast('🔗 Link gekopieerd!');
+            } catch {
+                this.showToast(`🔗 ${url}`);
+            }
+        }
     }
 
     handleKeydown(e) {
@@ -1758,6 +1833,7 @@ class FunDaApp {
             return houses[this.currentIndex];
         })();
         if (!house) return;
+        this._detailHouse = house;
 
         this.detailGalleryImages = house.images?.length > 0 ? house.images : (house.image ? [house.image] : []);
         this.detailGalleryIndex = 0;
@@ -2298,21 +2374,8 @@ class FunDaApp {
     reset() {
         this.currentIndex = 0;
         this.viewed = 0;
-        this.favorites = [];
-        this.filters = {
-            minPrice: null,
-            maxPrice: null,
-            minBedrooms: null,
-            neighborhood: null
-        };
 
-        // Reset filter UI
-        document.getElementById('minPrice').value = '';
-        document.getElementById('maxPrice').value = '';
-        document.getElementById('neighborhood').value = '';
-        document.querySelectorAll('.btn-option').forEach(btn => btn.classList.remove('active'));
-
-        // Reshuffle houses
+        // Reshuffle houses so swiping starts fresh
         this.houses = shuffleArray([...this.houses]);
 
         this.renderCards();
@@ -2535,12 +2598,17 @@ class FunDaApp {
     applyBrowseFilters() {
         const f = this.browseFilters;
 
-        // daysBack: save and persist
+        // Search area + daysBack — may trigger a re-fetch
+        const newArea = (document.getElementById('bfSearchArea')?.value.trim().toLowerCase() || 'amsterdam');
         const daysBackEl = document.getElementById('bfDaysBack');
-        if (daysBackEl) {
-            this.daysBack = parseInt(daysBackEl.value, 10) || 3;
-            localStorage.setItem('funda-days-back', this.daysBack.toString());
-        }
+        const newDaysBack = parseInt(daysBackEl?.value, 10) || 3;
+
+        const needsRefetch = newArea !== this._loadedArea || newDaysBack !== this._loadedDaysBack;
+
+        this.searchArea = newArea;
+        this.daysBack = newDaysBack;
+        localStorage.setItem('funda-search-area', this.searchArea);
+        localStorage.setItem('funda-days-back', this.daysBack.toString());
 
         f.minPrice    = parseInt(document.getElementById('bfMinPrice').value, 10) || null;
         f.maxPrice    = parseInt(document.getElementById('bfMaxPrice').value, 10) || null;
@@ -2578,8 +2646,20 @@ class FunDaApp {
 
         this.closeBrowseSidebarPanel();
         this._syncTypePills(f.propertyType);
-        this.renderBrowseGrid();
         this.saveSettingsToFirebase();
+
+        if (needsRefetch) {
+            // Area or period changed — fetch fresh listings
+            this._loadedArea = this.searchArea;
+            this._loadedDaysBack = this.daysBack;
+            this.houses = [];
+            this.currentIndex = 0;
+            this.viewed = 0;
+            this.openSwipeView();
+            this.autoLoadNewListings();
+        } else {
+            this.renderBrowseGrid();
+        }
     }
 
     resetBrowseFilters() {
