@@ -1955,6 +1955,12 @@ class FunDaApp {
     }
 
     handleKeydown(e) {
+        // Don't handle shortcuts if user is typing in an input/select/textarea
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) {
+            return;
+        }
+
         // Don't handle if modal is open
         const modals = [this.settingsModal, this.favoritesModal, this.detailModal, this.familyModal, this.mapModal];
         const anyModalOpen = modals.some(m => !m.classList.contains('hidden'));
@@ -2965,8 +2971,12 @@ class FunDaApp {
             list.innerHTML = docs.map((doc, i) => {
                 const name = doc.weergavenaam || doc.naam || '';
                 const type = doc.type === 'gemeente' ? 'Gemeente' : 'Woonplaats';
-                // Extract the city/gemeente name that Funda uses (lowercase, no extras)
-                const fundaName = (doc.naam || name.split(',')[0] || '').trim().toLowerCase();
+                // Extract the city/gemeente name that Funda uses (lowercase slug)
+                // PDOK naam gives e.g. "Amsterdam" or "'s-Gravenhage"
+                // Funda uses lowercase: "amsterdam", "den-haag", etc.
+                let fundaName = (doc.naam || name.split(',')[0] || '').trim().toLowerCase();
+                // Funda replaces spaces with hyphens and strips quotes
+                fundaName = fundaName.replace(/[''`]/g, '').replace(/\s+/g, '-');
                 return `<li class="area-suggestion" data-area="${escapeHtml(fundaName)}" data-display="${escapeHtml(name)}">${escapeHtml(name)} <span class="area-type">${type}</span></li>`;
             }).join('');
 
