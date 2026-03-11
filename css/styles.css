@@ -3062,6 +3062,17 @@ body {
     stroke: var(--white);
 }
 
+.bt-fav:focus,
+.bt-fav:active {
+    outline: none;
+    background: rgba(255,255,255,0.92);
+}
+
+.bt-fav.active:focus,
+.bt-fav.active:active {
+    background: rgba(255,255,255,0.92);
+}
+
 .bt-fav:hover {
     transform: scale(1.2);
     background: var(--white);

@@ -3287,8 +3287,8 @@ class FunDaApp {
         }
         this.updateStats();
         this.saveToStorage();
+        btn.blur();
     }
-}
 
 // Initialize app
 let app;
