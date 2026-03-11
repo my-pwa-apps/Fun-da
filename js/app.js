@@ -519,13 +519,6 @@ class FunDaApp {
         document.getElementById('closeDetailModal').addEventListener('click', () => this.closeModal(this.detailModal));
         document.getElementById('closeFamilyModal').addEventListener('click', () => this.closeModal(this.familyModal));
 
-        // Settings: daysBack
-        document.getElementById('settingsDaysBack').addEventListener('change', (e) => {
-            this.daysBack = parseInt(e.target.value, 10);
-            localStorage.setItem('funda-days-back', this.daysBack.toString());
-            this.saveSettingsToFirebase();
-        });
-
         // Settings: clear data
         document.getElementById('clearDataBtn').addEventListener('click', () => this.clearAllData());
 
@@ -720,8 +713,6 @@ class FunDaApp {
     // ==========================================
 
     openSettingsModal() {
-        const sel = document.getElementById('settingsDaysBack');
-        if (sel) sel.value = String(this.daysBack);
         this.applyTranslations();
         this.openModal(this.settingsModal);
     }
@@ -820,7 +811,7 @@ class FunDaApp {
             if (data.daysBack) {
                 this.daysBack = data.daysBack;
                 localStorage.setItem('funda-days-back', this.daysBack.toString());
-                const sel = document.getElementById('settingsDaysBack');
+                const sel = document.getElementById('bfDaysBack');
                 if (sel) sel.value = String(this.daysBack);
             }
             if (data.browseFilters) {
@@ -835,6 +826,7 @@ class FunDaApp {
     restoreBrowseFilterUI() {
         const f = this.browseFilters;
         const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+        setVal('bfDaysBack', this.daysBack || 3);
         setVal('bfMinPrice', f.minPrice || '');
         setVal('bfMaxPrice', f.maxPrice || '');
         setVal('bfMinSize',  f.minSize  || '');
@@ -2493,6 +2485,13 @@ class FunDaApp {
     applyBrowseFilters() {
         const f = this.browseFilters;
 
+        // daysBack: save and persist
+        const daysBackEl = document.getElementById('bfDaysBack');
+        if (daysBackEl) {
+            this.daysBack = parseInt(daysBackEl.value, 10) || 3;
+            localStorage.setItem('funda-days-back', this.daysBack.toString());
+        }
+
         f.minPrice    = parseInt(document.getElementById('bfMinPrice').value, 10) || null;
         f.maxPrice    = parseInt(document.getElementById('bfMaxPrice').value, 10) || null;
         f.minSize     = parseInt(document.getElementById('bfMinSize').value, 10) || null;
@@ -2546,6 +2545,8 @@ class FunDaApp {
         };
 
         // Reset form controls
+        const daysBackEl = document.getElementById('bfDaysBack');
+        if (daysBackEl) daysBackEl.value = '3';
         ['bfMinPrice','bfMaxPrice','bfMinSize','bfMaxSize','bfMinYear','bfMinDaysOnMarket','bfMaxDaysOnMarket'].forEach(id => {
             document.getElementById(id).value = '';
         });

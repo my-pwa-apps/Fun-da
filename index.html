@@ -153,6 +153,17 @@
                 </div>
                 <div class="browse-sidebar-body">
                     <div class="bfs">
+                        <h4 class="bfs-title">Zoekperiode</h4>
+                        <p class="bfs-hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
+                        <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren">
+                            <option value="1">🆕 Vandaag</option>
+                            <option value="3" selected>📅 Laatste 3 dagen</option>
+                            <option value="7">📅 Laatste week</option>
+                            <option value="14">📆 Laatste 2 weken</option>
+                            <option value="30">🗓️ Laatste maand</option>
+                        </select>
+                    </div>
+                    <div class="bfs">
                         <h4 class="bfs-title">Prijs</h4>
                         <div class="range-inputs">
                             <input type="number" id="bfMinPrice" placeholder="Min €" step="25000" min="0">
@@ -366,21 +377,6 @@
                         </div>
                     </div>
                     <button class="btn-secondary settings-logout-btn" id="logoutBtn" data-i18n="settings.logout">Uitloggen</button>
-                </div>
-
-                <hr class="settings-divider">
-
-                <!-- Search settings -->
-                <h3 class="settings-section-title" data-i18n="settings.search">Zoekinstellingen</h3>
-                <div class="filter-group">
-                    <label for="settingsDaysBack" data-i18n="settings.period_label">Zoekperiode (ook bij automatisch laden)</label>
-                    <select id="settingsDaysBack" class="input-full">
-                        <option value="1">🆕 Vandaag</option>
-                        <option value="3" selected>📅 Laatste 3 dagen</option>
-                        <option value="7">📅 Laatste week</option>
-                        <option value="14">📆 Laatste 2 weken</option>
-                        <option value="30">🗓️ Laatste maand</option>
-                    </select>
                 </div>
 
                 <hr class="settings-divider">
