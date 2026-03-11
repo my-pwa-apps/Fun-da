@@ -491,16 +491,25 @@ class FundaScraper {
         onProgress('Verbinden met Funda API...', 15);
         try {
             const days = parseInt(searchParams.days) || 3;
-            // For longer time windows, fetch two pages of 100 to get more results
             const pageSize = 100;
             let mobileResults = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: 0 });
-            if (days > 7 && mobileResults.length >= pageSize) {
+            // Always try extra pages — don't gate on page 1 being full
+            if (days > 1) {
                 onProgress(`Pagina 2 ophalen...`, 30);
                 try {
                     const page2 = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: pageSize });
                     const existingIds = new Set(mobileResults.map(h => h.id));
                     const newOnes = page2.filter(h => !existingIds.has(h.id));
                     mobileResults = [...mobileResults, ...newOnes];
+                    // Third page for long periods
+                    if (days >= 14 && page2.length >= pageSize) {
+                        try {
+                            onProgress(`Pagina 3 ophalen...`, 38);
+                            const page3 = await this.searchFundaMobileAPI({ area: searchParams.area || 'amsterdam', days: searchParams.days, size: pageSize, from: pageSize * 2 });
+                            const ids2 = new Set(mobileResults.map(h => h.id));
+                            mobileResults = [...mobileResults, ...page3.filter(h => !ids2.has(h.id))];
+                        } catch (e) { /* page 3 optional */ }
+                    }
                 } catch (e) { /* page 2 optional */ }
             }
             if (mobileResults.length > 0) {

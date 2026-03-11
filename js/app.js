@@ -130,6 +130,9 @@ class FunDaApp {
         // Setup event listeners
         this.setupEventListeners();
 
+        // Restore filter UI from saved state (localStorage or Firebase will overwrite if signed in)
+        this.restoreBrowseFilterUI();
+
         // Initialize Firebase Auth
         this.initFirebaseAuth();
 
@@ -450,6 +453,12 @@ class FunDaApp {
             // Load saved daysBack setting
             const savedDaysBack = localStorage.getItem('funda-days-back');
             if (savedDaysBack) this.daysBack = parseInt(savedDaysBack, 10);
+
+            // Load saved browse filters (for users not signed in)
+            const savedFilters = localStorage.getItem('funda-browse-filters');
+            if (savedFilters) {
+                this.browseFilters = { ...this.browseFilters, ...JSON.parse(savedFilters) };
+            }
         } catch (e) {
             console.error('Error loading from storage:', e);
         }
@@ -642,11 +651,31 @@ class FunDaApp {
         });
         document.getElementById('browseLayoutList').addEventListener('click', () => this.setBrowseLayout('list'));
         document.getElementById('browseLayoutGrid').addEventListener('click', () => this.setBrowseLayout('grid'));
+
+        // Type quick-filter pills in toolbar
+        document.getElementById('browseTypePills').addEventListener('click', (e) => {
+            const pill = e.target.closest('.browse-type-pill');
+            if (!pill) return;
+            const value = pill.dataset.value || null;
+            this.browseFilters.propertyType = value;
+            this._syncTypePills(value);
+            // Also sync sidebar btn-group
+            document.querySelectorAll('#bfPropertyTypeGroup .btn-option').forEach(b => {
+                b.classList.toggle('active', b.dataset.value === value);
+            });
+            this.renderBrowseGrid();
+        });
+
         document.getElementById('applyBrowseFilters').addEventListener('click', () => this.applyBrowseFilters());
         document.getElementById('resetBrowseFilters').addEventListener('click', () => this.resetBrowseFilters());
         document.getElementById('clearBrowseFiltersBtn').addEventListener('click', () => this.resetBrowseFilters());
-        document.getElementById('bfExcludeNeighAdd').addEventListener('change', (e) => {
-            this._addExcludedNeighborhood(e.target.value);
+        document.getElementById('neighMsTrigger').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('neighMultiselect').classList.toggle('open');
+        });
+        document.addEventListener('click', (e) => {
+            const ms = document.getElementById('neighMultiselect');
+            if (ms && !ms.contains(e.target)) ms.classList.remove('open');
         });
     }
 
@@ -787,6 +816,11 @@ class FunDaApp {
     }
 
     async saveSettingsToFirebase() {
+        // Always persist to localStorage so non-signed-in users keep their filters
+        try {
+            localStorage.setItem('funda-browse-filters', JSON.stringify(this.browseFilters));
+        } catch (e) { /* storage full */ }
+
         if (!this.currentUser) return;
         try {
             const db = firebase.database();
@@ -873,6 +907,7 @@ class FunDaApp {
                 b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minRooms);
             });
         }
+        this._restoreExcludeNeighCheckboxes();
     }
 
     // ==========================================
@@ -2389,9 +2424,11 @@ class FunDaApp {
 
     _populateBrowseNeighborhoods() {
         const select = document.getElementById('bfNeighborhood');
-        const excludeSelect = document.getElementById('bfExcludeNeighAdd');
+        const dropdown = document.getElementById('neighMsDropdown');
         const existing = new Set(Array.from(select.options).map(o => o.value).filter(Boolean));
-        const existingExclude = new Set(Array.from(excludeSelect.options).map(o => o.value).filter(Boolean));
+        const existingInDropdown = new Set(
+            Array.from(dropdown.querySelectorAll('input[type=checkbox]')).map(cb => cb.value)
+        );
         const neighborhoods = [...new Set(
             this.houses.map(h => h.neighborhood || h.city || '').filter(Boolean)
         )].sort();
@@ -2402,31 +2439,44 @@ class FunDaApp {
                 opt.textContent = n;
                 select.appendChild(opt);
             }
-            if (!existingExclude.has(n)) {
-                const opt = document.createElement('option');
-                opt.value = n;
-                opt.textContent = n;
-                excludeSelect.appendChild(opt);
+            if (!existingInDropdown.has(n)) {
+                const lbl = document.createElement('label');
+                lbl.className = 'neigh-ms-item';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = n;
+                cb.checked = this.browseFilters.excludedNeighborhoods.includes(n);
+                cb.addEventListener('change', () => {
+                    if (cb.checked) {
+                        if (!this.browseFilters.excludedNeighborhoods.includes(n))
+                            this.browseFilters.excludedNeighborhoods.push(n);
+                    } else {
+                        this.browseFilters.excludedNeighborhoods =
+                            this.browseFilters.excludedNeighborhoods.filter(x => x !== n);
+                    }
+                    this._updateExcludeNeighLabel();
+                });
+                lbl.appendChild(cb);
+                lbl.appendChild(document.createTextNode(` ${n}`));
+                dropdown.appendChild(lbl);
             }
         });
+        this._updateExcludeNeighLabel();
     }
 
-    _addExcludedNeighborhood(name) {
-        if (!name) return;
-        if (this.browseFilters.excludedNeighborhoods.includes(name)) return;
-        this.browseFilters.excludedNeighborhoods.push(name);
-        const pills = document.getElementById('excludedNeighPills');
-        const pill = document.createElement('span');
-        pill.className = 'excl-neigh-pill';
-        pill.dataset.name = name;
-        pill.innerHTML = `${escapeHtml(name)}<button type="button" aria-label="Verwijder ${escapeHtml(name)}">×</button>`;
-        pill.querySelector('button').addEventListener('click', () => {
-            this.browseFilters.excludedNeighborhoods = this.browseFilters.excludedNeighborhoods.filter(n => n !== name);
-            pill.remove();
+    _updateExcludeNeighLabel() {
+        const n = this.browseFilters.excludedNeighborhoods.length;
+        const lbl = document.getElementById('neighMsLabel');
+        if (lbl) lbl.textContent = n === 0 ? 'Alle buurten' : `${n} buurt${n === 1 ? '' : 'en'} uitgesloten`;
+    }
+
+    _restoreExcludeNeighCheckboxes() {
+        const dropdown = document.getElementById('neighMsDropdown');
+        if (!dropdown) return;
+        dropdown.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            cb.checked = this.browseFilters.excludedNeighborhoods.includes(cb.value);
         });
-        pills.appendChild(pill);
-        // Reset exclude select
-        document.getElementById('bfExcludeNeighAdd').value = '';
+        this._updateExcludeNeighLabel();
     }
 
     // Energy label ranks: lower = better
@@ -2527,6 +2577,7 @@ class FunDaApp {
         f.minRooms = activeRoomsBtn ? parseInt(activeRoomsBtn.dataset.value, 10) : null;
 
         this.closeBrowseSidebarPanel();
+        this._syncTypePills(f.propertyType);
         this.renderBrowseGrid();
         this.saveSettingsToFirebase();
     }
@@ -2551,14 +2602,21 @@ class FunDaApp {
             document.getElementById(id).value = '';
         });
         document.getElementById('bfNeighborhood').value = '';
-        document.getElementById('excludedNeighPills').innerHTML = '';
+        this._restoreExcludeNeighCheckboxes();
         ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar','bfIsMonument','bfIsAuction','bfIsFixer'].forEach(id => {
             document.getElementById(id).checked = false;
         });
         document.querySelectorAll('#browseSidebar .btn-option').forEach(b => b.classList.remove('active'));
 
         this.closeBrowseSidebarPanel();
+        this._syncTypePills(null);
         this.renderBrowseGrid();
+    }
+
+    _syncTypePills(value) {
+        document.querySelectorAll('#browseTypePills .browse-type-pill').forEach(p => {
+            p.classList.toggle('active', (p.dataset.value || null) === (value || null));
+        });
     }
 
     renderBrowseGrid() {

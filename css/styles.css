@@ -2292,35 +2292,91 @@ body {
     margin: 0;
 }
 
-.excl-neigh-pills {
+/* ---- Multi-select neighbourhood exclude ---- */
+.neigh-multiselect {
+    position: relative;
+}
+
+.neigh-ms-trigger {
+    width: 100%;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 0.5rem;
-}
-
-.excl-neigh-pill {
-    display: inline-flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 0.3rem;
-    background: #fee2e2;
-    color: #b91c1c;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 0.2rem 0.55rem;
-}
-
-.excl-neigh-pill button {
-    all: unset;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid var(--gray-lighter);
+    border-radius: 0.5rem;
+    background: var(--white);
     cursor: pointer;
-    font-size: 0.9rem;
-    line-height: 1;
-    opacity: 0.7;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    text-align: left;
+    transition: border-color 0.15s;
 }
 
-.excl-neigh-pill button:hover {
-    opacity: 1;
+.neigh-ms-trigger:hover,
+.neigh-multiselect.open .neigh-ms-trigger {
+    border-color: var(--primary);
+}
+
+.neigh-multiselect.open .neigh-ms-trigger {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.neigh-ms-chevron {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.neigh-multiselect.open .neigh-ms-chevron {
+    transform: rotate(180deg);
+}
+
+.neigh-ms-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1.5px solid var(--primary);
+    border-top: none;
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    background: var(--white);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
+
+.neigh-multiselect.open .neigh-ms-dropdown {
+    display: block;
+}
+
+.neigh-ms-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-dark);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.neigh-ms-item:hover {
+    background: #fff5f1;
+}
+
+.neigh-ms-item input[type=checkbox] {
+    accent-color: var(--primary);
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    cursor: pointer;
 }
 
 .bfs .filter-row {
@@ -2423,6 +2479,40 @@ body {
     background: var(--white);
     border-bottom: 1px solid var(--gray-lighter);
     flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+/* Type quick-filter pills in the toolbar */
+.browse-type-pills {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.browse-type-pill {
+    padding: 0.3rem 0.65rem;
+    border: 1.5px solid var(--gray-lighter);
+    border-radius: 1rem;
+    background: var(--white);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.browse-type-pill.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #fff5f1;
+}
+
+.browse-type-pill:hover:not(.active) {
+    border-color: var(--text-muted);
+    color: var(--dark);
 }
 
 .browse-filter-btn {
@@ -2609,7 +2699,8 @@ body {
 .browse-layout-list .browse-tile {
     display: flex;
     flex-direction: row;
-    height: 140px;
+    min-height: 120px;
+    height: auto;
 }
 
 /* GRID layout: vertical card */
@@ -2628,7 +2719,8 @@ body {
 
 .browse-layout-list .bt-photo {
     width: 180px;
-    height: 100%;
+    min-height: 120px;
+    align-self: stretch;
 }
 
 @media (max-width: 480px) {
@@ -2832,6 +2924,15 @@ body {
     flex-wrap: wrap;
     gap: 0.25rem;
     margin-top: 0.15rem;
+}
+
+.browse-layout-list .bt-feats {
+    display: none;
+}
+
+.browse-layout-list .bt-specs {
+    flex-wrap: nowrap;
+    overflow: hidden;
 }
 
 .bt-feat {
@@ -3304,15 +3405,15 @@ textarea.bid-input {
 
 .lb-img-wrap {
     position: relative;
-    max-width: calc(100vw - 8rem);
-    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .lb-img {
-    max-width: 100%;
+    max-width: 100vw;
     max-height: 100vh;
     width: auto;
     height: auto;

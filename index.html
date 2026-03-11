@@ -153,6 +153,13 @@
                 </div>
                 <div class="browse-sidebar-body">
                     <div class="bfs">
+                        <h4 class="bfs-title">Type woning</h4>
+                        <div class="btn-group" id="bfPropertyTypeGroup">
+                            <button class="btn-option" data-value="Woning">🏠 Woning</button>
+                            <button class="btn-option" data-value="Appartement">🏢 Appartement</button>
+                        </div>
+                    </div>
+                    <div class="bfs">
                         <h4 class="bfs-title">Zoekperiode</h4>
                         <p class="bfs-hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
                         <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren">
@@ -205,10 +212,13 @@
                     </div>
                     <div class="bfs" id="bfsExcludeNeigh">
                         <h4 class="bfs-title">Buurten uitsluiten</h4>
-                        <div id="excludedNeighPills" class="excl-neigh-pills"></div>
-                        <select id="bfExcludeNeighAdd" class="input-full" title="Buurt uitsluiten">
-                            <option value="">+ Buurt uitsluiten...</option>
-                        </select>
+                        <div class="neigh-multiselect" id="neighMultiselect">
+                            <button type="button" class="neigh-ms-trigger" id="neighMsTrigger">
+                                <span id="neighMsLabel">Alle buurten</span>
+                                <span class="neigh-ms-chevron">▾</span>
+                            </button>
+                            <div class="neigh-ms-dropdown" id="neighMsDropdown"></div>
+                        </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Bouwjaar vanaf</h4>
@@ -228,13 +238,6 @@
                     <div class="bfs">
                         <h4 class="bfs-title">Op de markt (max. dagen)</h4>
                         <input type="number" id="bfMaxDaysOnMarket" placeholder="bijv. 14" min="0" step="1" class="input-full">
-                    </div>
-                    <div class="bfs">
-                        <h4 class="bfs-title">Type woning</h4>
-                        <div class="btn-group" id="bfPropertyTypeGroup">
-                            <button class="btn-option" data-value="Woning">🏠 Woning</button>
-                            <button class="btn-option" data-value="Appartement">🏢 App.</button>
-                        </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title">Kamers (min.)</h4>
@@ -277,6 +280,11 @@
                         Filters
                         <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
                     </button>
+                    <div class="browse-type-pills" id="browseTypePills">
+                        <button class="browse-type-pill active" data-value="">Alles</button>
+                        <button class="browse-type-pill" data-value="Woning">🏠 Woning</button>
+                        <button class="browse-type-pill" data-value="Appartement">🏢 App.</button>
+                    </div>
                     <span id="browseCount" class="browse-count">0 woningen</span>
                     <select id="browseSortBy" class="browse-sort" title="Sorteer op">
                         <option value="default">Volgorde</option>
