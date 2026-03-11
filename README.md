@@ -2,7 +2,7 @@
 
 **Bring the fun back to huizenjacht!**
 
-Fun-da is een Progressive Web App (PWA) die het zoeken naar een huis in Amsterdam weer leuk maakt. Met een Tinder-style swipe interface kun je snel door beschikbare woningen bladeren.
+Fun-da is een Progressive Web App (PWA) die het zoeken naar een huis in Nederland weer leuk maakt. Met een Tinder-style swipe interface kun je snel door beschikbare woningen bladeren.
 
 ## ✨ Features
 
@@ -73,15 +73,6 @@ fun-da/
 └── icons/
     └── icon-*.png     # PWA iconen
 ```
-
-## 🏠 Over de data
-
-Aangezien Funda geen publieke API heeft, gebruiken we realistische mockdata van Amsterdamse woningen. De data bevat:
-
-- Adressen in verschillende buurten (Jordaan, De Pijp, Oost, etc.)
-- Realistische prijzen voor de Amsterdamse markt
-- Kenmerken zoals oppervlakte, slaapkamers, bouwjaar
-- Leuke neighborhood facts
 
 ## 🎨 Aanpassen
 
