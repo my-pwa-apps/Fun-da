@@ -3289,6 +3289,7 @@ class FunDaApp {
         this.saveToStorage();
         btn.blur();
     }
+}
 
 // Initialize app
 let app;
