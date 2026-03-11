@@ -2,14 +2,14 @@
     "name": "Fun-da - Bring the fun back!",
     "short_name": "Fun-da",
     "description": "De leukste manier om een huis te vinden in Amsterdam! Swipe door Funda woningen, synchroniseer met je familie en vind jullie droomhuis.",
-    "start_url": "/Fun-da/?source=pwa",
-    "scope": "/Fun-da/",
+    "start_url": "./?source=pwa",
+    "scope": "./",
     "display": "standalone",
     "display_override": ["standalone", "minimal-ui"],
     "background_color": "#FFF5F0",
     "theme_color": "#FF6B35",
     "orientation": "portrait-primary",
-    "id": "/Fun-da/",
+    "id": "Fun-da",
     "prefer_related_applications": false,
     "icons": [
         {
@@ -48,14 +48,14 @@
             "name": "Swipe woningen",
             "short_name": "Swipe",
             "description": "Swipe door nieuwe woningen",
-            "url": "/Fun-da/?view=swipe",
+            "url": "./?view=swipe",
             "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
         },
         {
             "name": "Browse woningen",
             "short_name": "Browse",
             "description": "Doorzoek alle beschikbare woningen",
-            "url": "/Fun-da/?view=browse",
+            "url": "./?view=browse",
             "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
         }
     ],
