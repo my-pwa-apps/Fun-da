@@ -2031,14 +2031,40 @@ class FunDaApp {
         }
     }
 
-    showDetail(houseArg = null) {
-        const house = houseArg || (() => {
+    async showDetail(houseArg = null) {
+        let house = houseArg || (() => {
             const houses = this.getFilteredHouses();
             return houses[this.currentIndex];
         })();
         if (!house) return;
-        this._detailHouse = house;
 
+        // Fetch full detail data on-demand if not yet enriched
+        if (!house.hasDetailData && house.url && house.url !== '#') {
+            this._detailHouse = house;
+            // Show modal immediately with basic data, then update when detail arrives
+            this._renderDetailContent(house);
+            this.openModal(this.detailModal);
+
+            const detail = await this.scraper.fetchFundaMobileDetail(house.url);
+            if (detail) {
+                const merged = { ...house, ...detail, id: house.id, address: detail.address || house.address };
+                // Update house in the array so detail is cached
+                const idx = this.houses.findIndex(h => h.id === house.id);
+                if (idx >= 0) this.houses[idx] = merged;
+                house = merged;
+                this._detailHouse = house;
+                this._renderDetailContent(house);
+                this.saveToStorage();
+            }
+            return;
+        }
+
+        this._detailHouse = house;
+        this._renderDetailContent(house);
+        this.openModal(this.detailModal);
+    }
+
+    _renderDetailContent(house) {
         this.detailGalleryImages = house.images?.length > 0 ? house.images : (house.image ? [house.image] : []);
         this.detailGalleryIndex = 0;
 
@@ -2300,7 +2326,6 @@ class FunDaApp {
         `;
 
         this._bindDetailGallerySwipe();
-        this.openModal(this.detailModal);
     }
 
     addToFavoritesAndClose(houseId) {

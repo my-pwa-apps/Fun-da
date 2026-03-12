@@ -119,6 +119,10 @@ class FundaScraper {
             const houseNumberSuffix = address.house_number_suffix || '';
             const fullAddress = [streetName, houseNumber, houseNumberSuffix].filter(Boolean).join(' ');
 
+            // Build photo URLs from thumbnail_id array in search results
+            const thumbIds = Array.isArray(source.thumbnail_id) ? source.thumbnail_id : (source.thumbnail_id ? [source.thumbnail_id] : []);
+            const photoUrls = thumbIds.map(id => `https://cloud.funda.nl/valentina_media/${id}_groot.jpg`);
+
             houses.push({
                 id: `funda-api-${hit._id}`,
                 globalId: hit._id,
@@ -133,7 +137,7 @@ class FundaScraper {
                 size: source.floor_area?.[0] || 0,
                 plotArea: source.plot_area_range?.gte || 0,
                 energyLabel: source.energy_label || '',
-                yearBuilt: null,           // Not in search results – fetched from detail
+                yearBuilt: null,
                 propertyType: { house: 'Woning', apartment: 'Appartement', parking_space: 'Parkeerplaats', building_plot: 'Bouwgrond' }[source.object_type] || source.object_type || '',
                 constructionType: source.construction_type || '',
                 publicationDate: source.publish_date || '',
@@ -144,8 +148,9 @@ class FundaScraper {
                 brokerId: source.agent?.[0]?.id || null,
                 brokerUrl: source.agent?.[0]?.relative_url ? `https://www.funda.nl${source.agent[0].relative_url}` : '',
                 contactUrl: detailPath ? `https://www.funda.nl${detailPath}contact/` : '',
-                image: this.getPlaceholderImage(),
-                images: [],
+                hasDetailData: false,
+                image: photoUrls[0] || this.getPlaceholderImage(),
+                images: photoUrls.slice(0, 30),
                 url: detailPath ? `https://www.funda.nl${detailPath}` : '#',
                 description: '',
                 features: [],
@@ -354,6 +359,7 @@ class FundaScraper {
             hasOpenHouse: ads.openhuis === 'true',
             // Source flag
             enrichedFromMobileAPI: true,
+            hasDetailData: true,
         };
     }
 
@@ -572,13 +578,12 @@ class FundaScraper {
             }
             if (mobileResults.length > 0) {
                 console.log(`📱 Mobile API: ${mobileResults.length} woningen via JSON API`);
-                onProgress(`${mobileResults.length} woningen gevonden, details ophalen...`, 50);
-                const enriched = await this.enrichWithMobileDetails(mobileResults, onProgress);
-
+                // Return search results immediately without detail enrichment
+                // Details are fetched on-demand when user opens a listing
                 const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                console.log(`✅ Klaar in ${elapsed}s – ${enriched.length} woningen via Funda Mobile API`);
+                console.log(`✅ Klaar in ${elapsed}s – ${mobileResults.length} woningen`);
                 onProgress('Klaar!', 100);
-                return enriched;
+                return mobileResults;
             }
         } catch (error) {
             console.warn('📱 Mobile API niet beschikbaar, val terug op HTML scraping:', error.message);
