@@ -80,7 +80,8 @@ class FunDaApp {
         this.browseLayout = 'list';
         this.daysBack = 3; // Configurable days back for auto-load
         this.searchArea = ''; // Configurable search area
-        this.searchStreet = ''; // Optional street name filter (set when selecting a street from autocomplete)
+        this.searchStreet = ''; // Optional street name filter
+        this.searchCity = ''; // Parent city (for swipe view filtering when street is selected)
         this._loadedArea = null; // Track what was last fetched
         this._loadedDaysBack = 3;
         this.browseFilters = {
@@ -1626,13 +1627,12 @@ class FunDaApp {
         return this.houses.filter(house => {
             // Exclude already-swiped houses
             if (this.swipedIds.has(String(house.id))) return false;
-            // Filter by street name if a specific street was selected
-            if (this.searchStreet) {
-                const addr = (house.address || '').toLowerCase();
-                const street = this.searchStreet.toLowerCase();
-                if (!addr.includes(street)) return false;
+            // Swipe uses the parent city filter (not street or zoekperiode)
+            if (this.searchCity) {
+                const houseCity = (house.city || '').toLowerCase();
+                if (houseCity && houseCity !== this.searchCity) return false;
             }
-            // Apply same filters as browse view (except daysBack — swipe uses full loaded period)
+            // Apply property filters only
             if (f.minPrice && house.price < f.minPrice) return false;
             if (f.maxPrice && house.price > f.maxPrice) return false;
             if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
@@ -3336,6 +3336,7 @@ class FunDaApp {
         if (!inputRaw) {
             this.searchArea = '';
             this.searchStreet = '';
+            this.searchCity = '';
         }
         const newArea = this.searchArea || '';
         const daysBackEl = document.getElementById('bfDaysBack');
@@ -3608,8 +3609,8 @@ class FunDaApp {
                     const pc = doc.postcode || '';
                     fundaArea = pc ? pc.substring(0, 4) : (doc.woonplaatsnaam || doc.gemeentenaam || '').toLowerCase();
                     typeLabel = 'Straat';
-                    // Store street name for local filtering
                     suggestions._streetName = doc.straatnaam || name.split(',')[0]?.trim() || '';
+                    suggestions._parentCity = (doc.woonplaatsnaam || doc.gemeentenaam || '').toLowerCase();
                 } else if (doc.type === 'postcode') {
                     displayName = name;
                     const pc = doc.postcode || '';
@@ -3619,14 +3620,15 @@ class FunDaApp {
 
                 if (!fundaArea || seen.has(fundaArea + typeLabel)) continue;
                 seen.add(fundaArea + typeLabel);
-                suggestions.push({ name, displayName, fundaArea, typeLabel, streetName: suggestions._streetName || '' });
+                suggestions.push({ name, displayName, fundaArea, typeLabel, streetName: suggestions._streetName || '', parentCity: suggestions._parentCity || '' });
                 delete suggestions._streetName;
+                delete suggestions._parentCity;
                 if (suggestions.length >= 8) break;
             }
 
             this._areaActiveIdx = -1;
             list.innerHTML = suggestions.map(s =>
-                `<li class="area-suggestion" data-area="${escapeHtml(s.fundaArea)}" data-display="${escapeHtml(s.displayName)}" data-street="${escapeHtml(s.streetName)}">${escapeHtml(s.name)} <span class="area-type">${s.typeLabel}</span></li>`
+                `<li class="area-suggestion" data-area="${escapeHtml(s.fundaArea)}" data-display="${escapeHtml(s.displayName)}" data-street="${escapeHtml(s.streetName)}" data-city="${escapeHtml(s.parentCity)}">${escapeHtml(s.name)} <span class="area-type">${s.typeLabel}</span></li>`
             ).join('');
 
             list.classList.remove('hidden');
@@ -3637,6 +3639,7 @@ class FunDaApp {
                     input.value = li.dataset.display;
                     this.searchArea = li.dataset.area;
                     this.searchStreet = li.dataset.street || '';
+                    this.searchCity = li.dataset.city || li.dataset.area;
                     list.classList.add('hidden');
                     if (window.matchMedia('(min-width: 768px)').matches) {
                         this.applyBrowseFilters();
