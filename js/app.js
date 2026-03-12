@@ -277,18 +277,21 @@ class FunDaApp {
                 });
 
                 // Merge with Firebase houses (previously found, not yet discarded)
-                // Only merge houses that belong to the same search area
+                // Only merge houses that belong to the same search area and match the time period
                 let allHouses = [...houses];
                 if (this.familySync.isInFamily()) {
                     try {
                         const firebaseHouses = await this.familySync.loadHousesFromDB();
                         const freshIds = new Set(houses.map(h => String(h.id)));
                         const currentArea = (this.searchArea || '').toLowerCase();
+                        const maxDays = this.daysBack || 30;
                         const extraFromFirebase = firebaseHouses.filter(h => {
                             if (freshIds.has(String(h.id))) return false;
-                            // Only include houses from the same area
                             const houseCity = (h.city || '').toLowerCase();
-                            return !currentArea || houseCity === currentArea || !houseCity;
+                            if (currentArea && houseCity && houseCity !== currentArea) return false;
+                            // Filter by publication period
+                            if (h.daysOnMarket != null && h.daysOnMarket > maxDays) return false;
+                            return true;
                         });
                         allHouses = [...houses, ...extraFromFirebase];
                     } catch (e) { /* ignore if Firebase unavailable */ }
@@ -1563,6 +1566,8 @@ class FunDaApp {
 
     getFilteredHouses() {
         return this.houses.filter(house => {
+            // Filter by search period
+            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
             const { minPrice, maxPrice, minBedrooms, neighborhood } = this.filters;
             if (minPrice && house.price < minPrice) return false;
             if (maxPrice && house.price > maxPrice) return false;
@@ -3054,6 +3059,8 @@ class FunDaApp {
     getBrowseHouses() {
         const f = this.browseFilters;
         let houses = this.houses.filter(house => {
+            // Filter by search period (daysBack) — only show houses published within the selected period
+            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
             if (f.minPrice && house.price < f.minPrice) return false;
             if (f.maxPrice && house.price > f.maxPrice) return false;
             if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
