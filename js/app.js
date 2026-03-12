@@ -2616,18 +2616,48 @@ class FunDaApp {
 
         // Touch / swipe support
         let lbSwipeStartX = 0;
-        overlay.addEventListener('touchstart', (e) => { lbSwipeStartX = e.touches[0].clientX; }, { passive: true });
+        let lbSwipeStartY = 0;
+        overlay.addEventListener('touchstart', (e) => {
+            lbSwipeStartX = e.touches[0].clientX;
+            lbSwipeStartY = e.touches[0].clientY;
+        }, { passive: true });
         overlay.addEventListener('touchend', (e) => {
+            const img = document.getElementById('lightboxImg');
+            if (img && img.classList.contains('zoomed')) return; // Don't swipe when zoomed
             const dx = e.changedTouches[0].clientX - lbSwipeStartX;
-            if (Math.abs(dx) > 40) dx < 0 ? this._lightboxNav(1) : this._lightboxNav(-1);
+            const dy = e.changedTouches[0].clientY - lbSwipeStartY;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+                dx < 0 ? this._lightboxNav(1) : this._lightboxNav(-1);
+            }
         });
+
+        // Double-tap or click to zoom
+        const imgEl = document.getElementById('lightboxImg');
+        if (imgEl) {
+            imgEl.addEventListener('click', () => {
+                imgEl.classList.toggle('zoomed');
+                // Scroll to center when zooming in
+                if (imgEl.classList.contains('zoomed')) {
+                    const wrap = imgEl.closest('.lb-img-wrap');
+                    if (wrap) {
+                        setTimeout(() => {
+                            wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+                            wrap.scrollTop = (wrap.scrollHeight - wrap.clientHeight) / 2;
+                        }, 50);
+                    }
+                }
+            });
+        }
     }
 
     _updateLightboxImage() {
         const imgs = this.detailGalleryImages;
         const img = document.getElementById('lightboxImg');
         const counter = document.getElementById('lightboxCounter');
-        if (img) img.src = safeImageUrl(imgs[this.lightboxIndex]);
+        if (img) {
+            img.src = safeImageUrl(imgs[this.lightboxIndex]);
+            img.classList.remove('zoomed'); // Reset zoom on nav
+        }
         if (counter) counter.textContent = `${this.lightboxIndex + 1} / ${imgs.length}`;
         // Hide nav buttons if only one image
         document.querySelectorAll('#lightboxOverlay .lb-nav').forEach(btn => {
