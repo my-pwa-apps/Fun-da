@@ -2924,16 +2924,67 @@ class FunDaApp {
             this.openBrowseSidebarPanel();
             return;
         }
-        // Sync daysBack from dropdown in case user changed it without applying
+        // Sync daysBack from dropdown
         const daysEl = document.getElementById('bfDaysBack');
         if (daysEl) this.daysBack = parseInt(daysEl.value, 10) || this.daysBack;
 
-        // Force refetch by resetting loaded tracking
-        this._loadedArea = null;
-        this._loadedDaysBack = null;
+        // Show loading state but keep existing houses visible
+        this.showBrowseLoading('Nieuwe woningen ophalen...');
 
-        // Use applyBrowseFilters which handles everything consistently
-        this.applyBrowseFilters();
+        try {
+            this.scraper._wantEnglishDesc = (this.lang === 'en');
+            const freshHouses = await this.scraper.scrapeAllSources({
+                area: this.searchArea,
+                days: String(this.daysBack),
+                onProgress: (message, progress) => {
+                    this.updateBrowseLoading(message, progress);
+                }
+            });
+
+            if (freshHouses.length > 0) {
+                freshHouses.forEach(h => { h.importedAt = Date.now(); });
+                // Merge: add new houses, update existing ones with fresh data
+                const existingIds = new Map(this.houses.map(h => [String(h.id), h]));
+                let added = 0;
+                for (const fresh of freshHouses) {
+                    const id = String(fresh.id);
+                    if (existingIds.has(id)) {
+                        // Update existing house but keep detail data if already fetched
+                        const existing = existingIds.get(id);
+                        if (existing.hasDetailData) {
+                            Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate });
+                        } else {
+                            existingIds.set(id, { ...existing, ...fresh });
+                        }
+                    } else {
+                        this.houses.push(fresh);
+                        added++;
+                    }
+                }
+                // Update existing entries
+                this.houses = this.houses.map(h => existingIds.get(String(h.id)) || h);
+
+                this._loadedArea = this.searchArea;
+                this._loadedDaysBack = this.daysBack;
+                this.saveToStorage();
+                this._populateBrowseNeighborhoods();
+
+                const msg = added > 0
+                    ? (this.lang === 'en' ? `${added} new listings added` : `${added} nieuwe woningen toegevoegd`)
+                    : (this.lang === 'en' ? 'No new listings found' : 'Geen nieuwe woningen gevonden');
+                this.showToast(msg);
+            } else {
+                this.showToast(this.lang === 'en' ? 'No new listings found' : 'Geen nieuwe woningen gevonden');
+            }
+        } catch (e) {
+            console.error('Refresh error:', e);
+            this.showToast(this.lang === 'en' ? 'Refresh failed' : 'Vernieuwen mislukt');
+        }
+
+        this.hideBrowseLoading();
+        this.renderCards();
+        if (this.browseOpen) this.renderBrowseGrid();
+        this.updateStats();
     }
 
     openBrowseSidebarPanel() {
