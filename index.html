@@ -137,9 +137,9 @@
                 <div class="browse-sidebar-body">
                     <div class="bfs">
                         <h4 class="bfs-title">Zoekgebied</h4>
-                        <p class="bfs-hint">Kies een Nederlandse stad of woonplaats</p>
+                        <p class="bfs-hint">Stad, straat, of postcode</p>
                         <div class="area-autocomplete" id="areaAutocomplete">
-                            <input type="text" id="bfSearchArea" class="input-full" placeholder="Typ een stad, bijv. Amsterdam" autocomplete="off" autocorrect="off" spellcheck="false">
+                            <input type="text" id="bfSearchArea" class="input-full" placeholder="bijv. Amsterdam, Victorieplein, 1071" autocomplete="off" autocorrect="off" spellcheck="false">
                             <ul class="area-suggestions hidden" id="areaSuggestions"></ul>
                         </div>
                     </div>
@@ -270,6 +270,12 @@
                         </svg>
                         Filters
                         <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
+                    </button>
+                    <button class="browse-refresh-btn" id="browseRefreshBtn" title="Ververs woningen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
                     </button>
                     <span id="browseCount" class="browse-count">0 woningen</span>
                     <select id="browseSortBy" class="browse-sort" title="Sorteer op">

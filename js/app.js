@@ -255,6 +255,9 @@ class FunDaApp {
         try {
             this.updateSplashStatus('Verbinden met Funda...');
             
+            // Tell scraper whether to fetch English descriptions
+            this.scraper._wantEnglishDesc = (this.lang === 'en');
+            
             // Use the scraper directly for splash screen updates
             const houses = await this.scraper.scrapeAllSources({ 
                 area: this.searchArea,
@@ -816,6 +819,7 @@ class FunDaApp {
 
         // Browse view controls
         document.getElementById('browseFilterToggleBtn').addEventListener('click', () => this.openBrowseSidebarPanel());
+        document.getElementById('browseRefreshBtn')?.addEventListener('click', () => this.refreshListings());
         document.getElementById('closeBrowseSidebar').addEventListener('click', () => this.closeBrowseSidebarPanel());
         document.getElementById('browseSidebarOverlay').addEventListener('click', () => this.closeBrowseSidebarPanel());
         document.getElementById('browseSortBy').addEventListener('change', (e) => {
@@ -2882,6 +2886,19 @@ class FunDaApp {
         this.showToast(this.lang === 'en' ? 'House hidden' : 'Woning verborgen');
     }
 
+    refreshListings() {
+        if (!this.hasConfiguredSearchArea()) {
+            this.openBrowseSidebarPanel();
+            return;
+        }
+        this._loadedArea = null; // Force refetch
+        this._loadedDaysBack = null;
+        this.houses = [];
+        this.currentIndex = 0;
+        this.viewed = 0;
+        this.autoLoadNewListings();
+    }
+
     openBrowseSidebarPanel() {
         document.getElementById('browseSidebar').classList.add('open');
         document.getElementById('browseSidebarOverlay').classList.remove('hidden');
@@ -3290,8 +3307,8 @@ class FunDaApp {
         if (!list) return;
 
         try {
-            // Use 'free' endpoint (not 'suggest') because it returns gemeentenaam/woonplaatsnaam
-            const url = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(query)}&fq=type:(gemeente OR woonplaats)&rows=8`;
+            // Search cities, streets, and postcodes
+            const url = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(query)}&fq=type:(gemeente OR woonplaats OR weg OR postcode)&rows=10`;
             const resp = await fetch(url);
             if (!resp.ok) return;
             const data = await resp.json();
@@ -3302,15 +3319,46 @@ class FunDaApp {
                 return;
             }
 
-            this._areaActiveIdx = -1;
-            list.innerHTML = docs.map((doc, i) => {
+            // Deduplicate and build suggestions
+            const seen = new Set();
+            const suggestions = [];
+            for (const doc of docs) {
                 const name = doc.weergavenaam || '';
-                const type = doc.type === 'gemeente' ? 'Gemeente' : 'Woonplaats';
-                // Use the clean name fields from PDOK
-                const cleanName = doc.woonplaatsnaam || doc.gemeentenaam || '';
-                const fundaName = cleanName.toLowerCase();
-                return `<li class="area-suggestion" data-area="${escapeHtml(fundaName)}" data-display="${escapeHtml(cleanName)}">${escapeHtml(name)} <span class="area-type">${type}</span></li>`;
-            }).join('');
+                let fundaArea = '';
+                let displayName = '';
+                let typeLabel = '';
+
+                if (doc.type === 'gemeente') {
+                    displayName = doc.gemeentenaam || name;
+                    fundaArea = (doc.gemeentenaam || '').toLowerCase();
+                    typeLabel = 'Gemeente';
+                } else if (doc.type === 'woonplaats') {
+                    displayName = doc.woonplaatsnaam || name;
+                    fundaArea = (doc.woonplaatsnaam || '').toLowerCase();
+                    typeLabel = 'Stad';
+                } else if (doc.type === 'weg') {
+                    // Street: use postcode prefix (first 4 digits) for Funda search
+                    displayName = name;
+                    const pc = doc.postcode || '';
+                    fundaArea = pc ? pc.substring(0, 4) : (doc.woonplaatsnaam || doc.gemeentenaam || '').toLowerCase();
+                    typeLabel = 'Straat';
+                } else if (doc.type === 'postcode') {
+                    displayName = name;
+                    const pc = doc.postcode || '';
+                    fundaArea = pc ? pc.substring(0, 4) : '';
+                    typeLabel = 'Postcode';
+                }
+
+                if (!fundaArea || seen.has(fundaArea + typeLabel)) continue;
+                seen.add(fundaArea + typeLabel);
+                suggestions.push({ name, displayName, fundaArea, typeLabel });
+                if (suggestions.length >= 8) break;
+            }
+
+            this._areaActiveIdx = -1;
+            list.innerHTML = suggestions.map(s =>
+                `<li class="area-suggestion" data-area="${escapeHtml(s.fundaArea)}" data-display="${escapeHtml(s.displayName)}">${escapeHtml(s.name)} <span class="area-type">${s.typeLabel}</span></li>`
+            ).join('');
 
             list.classList.remove('hidden');
 
@@ -3320,7 +3368,6 @@ class FunDaApp {
                     input.value = li.dataset.display;
                     this.searchArea = li.dataset.area;
                     list.classList.add('hidden');
-                    // On desktop, auto-apply immediately; on mobile, user presses the button
                     if (window.matchMedia('(min-width: 768px)').matches) {
                         this.applyBrowseFilters();
                     }

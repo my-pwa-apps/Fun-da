@@ -169,38 +169,35 @@ class FundaScraper {
 
         const detailUrl = `${this.FUNDA_API_DETAIL_BASE}/tinyId/${tinyId}`;
         const detailUrlEN = detailUrl.replace('/nl/', '/en/');
-
-        // Try all proxies in order; CF Worker first, then public fallbacks.
         const proxiesToTry = this.corsProxies;
 
         for (const proxy of proxiesToTry) {
             try {
                 const proxyUrl = proxy.url + encodeURIComponent(detailUrl);
-                const response = await fetch(proxyUrl);
-                if (!response.ok) continue;
-                const raw = proxy.jsonResponse
-                    ? await response.json()
-                    : await response.json().catch(async () => {
-                        // Some proxies wrap JSON in a field
-                        return null;
-                    });
+                // Fetch NL and EN in parallel
+                const fetchEN = this._wantEnglishDesc;
+                const promises = [fetch(proxyUrl)];
+                if (fetchEN) promises.push(fetch(proxy.url + encodeURIComponent(detailUrlEN)));
+
+                const responses = await Promise.all(promises);
+                if (!responses[0].ok) continue;
+
+                const raw = await responses[0].json().catch(() => null);
                 if (!raw) continue;
                 const data = proxy.dataField ? raw[proxy.dataField] : raw;
                 if (!data) continue;
                 const parsed = typeof data === 'string' ? JSON.parse(data) : data;
                 const result = this.parseMobileDetail(parsed);
                 if (result) {
-                    // Fetch English description in parallel (best-effort)
-                    try {
-                        const enProxyUrl = proxy.url + encodeURIComponent(detailUrlEN);
-                        const enResp = await fetch(enProxyUrl);
-                        if (enResp.ok) {
-                            const enRaw = await enResp.json();
+                    // Extract EN description from parallel fetch
+                    if (fetchEN && responses[1]?.ok) {
+                        try {
+                            const enRaw = await responses[1].json();
                             const enData = proxy.dataField ? enRaw[proxy.dataField] : enRaw;
                             const enParsed = typeof enData === 'string' ? JSON.parse(enData) : enData;
                             result.descriptionEN = enParsed?.ListingDescription?.Description || '';
-                        }
-                    } catch (e) { /* English description unavailable */ }
+                        } catch (e) { /* EN unavailable */ }
+                    }
                     return result;
                 }
             } catch (e) {
@@ -362,7 +359,7 @@ class FundaScraper {
 
     // Enrich a batch of houses with full mobile API detail data
     async enrichWithMobileDetails(houses, onProgress = () => {}) {
-        const batchSize = 3;
+        const batchSize = 5; // Parallel batch size for our own CF Worker
         const enriched = [];
 
         for (let i = 0; i < houses.length; i += batchSize) {
@@ -385,7 +382,7 @@ class FundaScraper {
             enriched.push(...enrichedBatch);
 
             if (i + batchSize < houses.length) {
-                await new Promise(r => setTimeout(r, 200));
+                await new Promise(r => setTimeout(r, 100));
             }
         }
 

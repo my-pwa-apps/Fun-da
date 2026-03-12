@@ -2802,6 +2802,34 @@ body {
     color: var(--primary);
 }
 
+.browse-refresh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--gray-lighter);
+    background: var(--white);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.browse-refresh-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.browse-refresh-btn:active svg {
+    animation: spin 0.5s ease;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 @media (min-width: 768px) {
     .browse-filter-btn {
         display: none;
