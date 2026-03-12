@@ -271,6 +271,7 @@ class FunDaApp {
                     this._bgLoading = false;
                     this.saveToStorage();
                     this._populateBrowseNeighborhoods();
+                    // Final full re-render to apply correct sort/filter with all data
                     if (this.browseOpen) this.renderBrowseGrid();
                     this.updateStats();
                     // Save all houses to Firebase
@@ -285,8 +286,12 @@ class FunDaApp {
                 const existingIds = new Set(this.houses.map(h => String(h.id)));
                 const truly = newHouses.filter(h => !existingIds.has(String(h.id)));
                 this.houses.push(...truly);
-                // Update UI incrementally
-                if (this.browseOpen) this.renderBrowseGrid();
+                // Append tiles incrementally (no full re-render)
+                if (this.browseOpen && this.browseSort === 'default') {
+                    this._appendBrowseTiles(truly);
+                } else if (this.browseOpen) {
+                    this.renderBrowseGrid(); // Non-default sort needs full re-render
+                }
                 this.updateStats();
             };
             
@@ -3205,8 +3210,16 @@ class FunDaApp {
                         }
                         return;
                     }
-                    mergeFreshHouses(newHouses);
-                    if (this.browseOpen) this.renderBrowseGrid();
+                    const added = mergeFreshHouses(newHouses);
+                    if (this.browseOpen && this.browseSort === 'default') {
+                        // Append only — avoid full re-render flash
+                        const existingIds = new Set(this.houses.map(h => String(h.id)));
+                        const newOnly = newHouses.filter(h => !existingIds.has(String(h.id)));
+                        // mergeFreshHouses already added them, just append tiles
+                        this._appendBrowseTiles(newHouses);
+                    } else if (this.browseOpen) {
+                        this.renderBrowseGrid();
+                    }
                     this.updateStats();
                 },
             });
@@ -3783,6 +3796,52 @@ class FunDaApp {
         empty.classList.add('hidden');
 
         grid.innerHTML = houses.map(house => this._browseTile(house)).join('');
+    }
+
+    /** Append new tiles without re-rendering existing ones (avoids image flash during background load) */
+    _appendBrowseTiles(newHouses) {
+        const grid = document.getElementById('browseGrid');
+        const count = document.getElementById('browseCount');
+        const empty = document.getElementById('browseEmpty');
+        if (!grid) return;
+
+        // Filter through getBrowseHouses logic for the new houses only
+        const f = this.browseFilters;
+        const filtered = newHouses.filter(house => {
+            if (this.searchStreet) {
+                const addr = (house.address || '').toLowerCase();
+                if (!addr.includes(this.searchStreet.toLowerCase())) return false;
+            }
+            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
+            if (f.minPrice && house.price < f.minPrice) return false;
+            if (f.maxPrice && house.price > f.maxPrice) return false;
+            if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
+            if (f.minSize && house.size < f.minSize) return false;
+            if (f.maxSize && house.size > f.maxSize) return false;
+            if (f.propertyType) {
+                const pt = (house.propertyType || house.houseType || '').toLowerCase();
+                if (!pt.includes(f.propertyType.toLowerCase())) return false;
+            }
+            if (f.excludedNeighborhoods?.length > 0) {
+                const neigh = house.neighborhood || house.city || '';
+                if (f.excludedNeighborhoods.includes(neigh)) return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) return;
+
+        // Append HTML (default sort = newest, new pages are older, so append at end)
+        const html = filtered.map(h => this._browseTile(h)).join('');
+        grid.insertAdjacentHTML('beforeend', html);
+
+        // Update count
+        if (count) {
+            const total = grid.querySelectorAll('.browse-tile').length;
+            count.textContent = `${total} woning${total !== 1 ? 'en' : ''}${this._bgLoading ? ' (laden...)' : ''}`;
+        }
+        if (empty) empty.classList.add('hidden');
+        if (grid.classList.contains('hidden')) grid.classList.remove('hidden');
     }
 
     _browseTile(house) {

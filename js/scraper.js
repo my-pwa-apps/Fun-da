@@ -155,7 +155,7 @@ class FundaScraper {
                 rooms: source.number_of_rooms || 0,
                 size: source.floor_area?.[0] || 0,
                 plotArea: source.plot_area_range?.gte || 0,
-                energyLabel: source.energy_label || '',
+                energyLabel: (source.energy_label && source.energy_label !== 'unknown') ? source.energy_label : '',
                 yearBuilt: null,
                 propertyType: { house: 'Woning', apartment: 'Appartement', parking_space: 'Parkeerplaats', building_plot: 'Bouwgrond' }[source.object_type] || source.object_type || '',
                 constructionType: source.construction_type || '',
