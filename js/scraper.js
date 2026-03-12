@@ -2,9 +2,11 @@
 // Bronnen: Funda, Jaap.nl, BAG (overheid), en meer
 // Parallel fetching voor snelheid
 
-console.log = () => {};
-console.warn = () => {};
-console.debug = () => {};
+// Suppress verbose logging in production; keep warn + error visible
+if (!window.__FUNDA_DEBUG) {
+    console.log = () => {};
+    console.debug = () => {};
+}
 
 class FundaScraper {
     constructor() {
@@ -95,7 +97,7 @@ class FundaScraper {
         const queryLine = JSON.stringify({ id: 'search_result_20250805', params: searchParams });
         const ndjson = `${indexLine}\n${queryLine}\n`;
 
-        console.error('📱 Funda API request:', { area, days: params.days, from: params.from, size: params.size });
+        console.log('📱 Funda API request:', { area, days: params.days, from: params.from, size: params.size });
         const data = await this.fetchViaProxyPost(this.FUNDA_API_SEARCH, ndjson);
         return this.parseMobileSearchResults(data);
     }
@@ -572,10 +574,10 @@ class FundaScraper {
             const apiTotal = this._lastMobileTotal || mobileResults.length;
             const totalPages = Math.min(Math.ceil(apiTotal / pageSize), Math.ceil(maxResults / pageSize));
 
-            let oldestDaysFirstPage = 0;
-            if (mobileResults.length > 0) {
-                oldestDaysFirstPage = mobileResults[mobileResults.length - 1].daysOnMarket || 0;
-            }
+            // Check if first page already exceeds the requested timeframe
+            const oldestDaysFirstPage = mobileResults.length > 0
+                ? (mobileResults[mobileResults.length - 1].daysOnMarket ?? Infinity)
+                : 0;
 
             // Only paginate if we haven't reached the requested timeframe yet
             if (oldestDaysFirstPage <= days) {
@@ -592,9 +594,10 @@ class FundaScraper {
                         const existingIds = new Set(mobileResults.map(h => h.id));
                         mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
 
-                        const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket || 0;
-                        if (oldestDays > days) {
-                            console.log(`🛑 Stop fetching: reached houses ${oldestDays} days old (limit: ${days})`);
+                        // Stop when the oldest house on this page exceeds the requested period
+                        const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket;
+                        if (oldestDays != null && oldestDays > days) {
+                            console.warn(`🛑 Stop fetching: reached houses ${oldestDays} days old (limit: ${days})`);
                             break;
                         }
                     } catch (e) {

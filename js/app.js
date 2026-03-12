@@ -1,10 +1,11 @@
 // Fun-da App - De leukste manier om een huis te vinden!
 // Features: Funda scraping, Familie sync, Swipe interface
 
-// console.log / warn / debug suppressed in production; errors kept visible
-console.log = () => {};
-console.warn = () => {};
-console.debug = () => {};
+// Suppress verbose logging in production; keep warn + error visible
+if (!window.__FUNDA_DEBUG) {
+    console.log = () => {};
+    console.debug = () => {};
+}
 
 // Utility function
 const $ = (id) => document.getElementById(id);
@@ -255,7 +256,7 @@ class FunDaApp {
             this.showBrowseLoading('Verbinden met Funda...');
         }
 
-        console.error('🚀 Auto-loading nieuwe woningen van vandaag...');
+        console.log('🚀 Auto-loading nieuwe woningen van vandaag...');
         
         try {
             this.updateSplashStatus('Verbinden met Funda...');
@@ -360,7 +361,7 @@ class FunDaApp {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
                 .then((registration) => {
-                    console.error('🏠 Fun-da SW registered:', registration.scope);
+                    console.log('🏠 Fun-da SW registered:', registration.scope);
                     
                     // Force update check on every page load
                     registration.update().catch(() => {});
@@ -368,13 +369,13 @@ class FunDaApp {
                     // Check for updates
                     registration.addEventListener('updatefound', () => {
                         const newWorker = registration.installing;
-                        console.error('🔄 New service worker installing...');
+                        console.log('🔄 New service worker installing...');
                         
                         newWorker.addEventListener('statechange', () => {
                             // Only show update toast if there's an existing controller
                             // This means it's an update, not a first install
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                console.error('🆕 New version available!');
+                                console.log('🆕 New version available!');
                                 this.showUpdateToast(registration);
                             }
                         });
@@ -391,7 +392,7 @@ class FunDaApp {
                 
             // Listen for controller change (new SW activated)
             navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.error('🔄 New service worker activated, reloading...');
+                console.log('🔄 New service worker activated, reloading...');
                 window.location.reload();
             });
         }
@@ -3391,7 +3392,7 @@ class FunDaApp {
 
         this.searchArea = newArea;
         this.daysBack = newDaysBack;
-        console.error('🔍 applyBrowseFilters:', { newArea, newDaysBack, needsRefetch, loadedArea: this._loadedArea });
+        console.log('🔍 applyBrowseFilters:', { newArea, newDaysBack, needsRefetch, loadedArea: this._loadedArea });
         localStorage.setItem('funda-search-area', this.searchArea);
         localStorage.setItem('funda-days-back', this.daysBack.toString());
 
