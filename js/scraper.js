@@ -61,7 +61,7 @@ class FundaScraper {
     async fetchViaProxyPost(targetUrl, ndjsonBody) {
         const cfProxy = this.corsProxies[0]; // Our CF worker – the only proxy that forwards POST body
         const proxyUrl = cfProxy.url + encodeURIComponent(targetUrl);
-        const maxRetries = 2;
+        const maxRetries = 3;
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const response = await fetch(proxyUrl, {
                 method: 'POST',
@@ -70,8 +70,9 @@ class FundaScraper {
             });
             if (response.ok) return response.json();
             if (attempt < maxRetries - 1) {
-                console.warn(`API request failed (${response.status}), retrying...`);
-                await new Promise(r => setTimeout(r, 600));
+                const delay = (attempt + 1) * 800; // 800ms, 1600ms
+                console.warn(`API request failed (${response.status}), retry ${attempt + 1}/${maxRetries - 1} in ${delay}ms...`);
+                await new Promise(r => setTimeout(r, delay));
             } else {
                 throw new Error(`Mobile API POST failed: ${response.status}`);
             }
@@ -594,8 +595,8 @@ class FundaScraper {
                     const progressPct = 20 + Math.round((page / totalPages) * 30);
                     onProgress(`Pagina ${page + 1} ophalen (${mobileResults.length} woningen)...`, progressPct);
                     try {
-                        // Small delay between pages to avoid rate limiting
-                        if (page > 1) await new Promise(r => setTimeout(r, 200));
+                        // Increasing delay between pages to avoid Funda rate limiting
+                        await new Promise(r => setTimeout(r, page <= 5 ? 250 : page <= 20 ? 400 : 600));
                         const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
                         if (pageResults.length === 0) break; // No more results
                         
