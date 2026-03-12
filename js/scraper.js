@@ -65,13 +65,14 @@ class FundaScraper {
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const response = await fetch(proxyUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-ndjson' },
+                headers: { 'Content-Type': 'application/json' },
                 body: ndjsonBody,
             });
             if (response.ok) return response.json();
+            // Rate-limited or server error — wait longer on each retry
             if (attempt < maxRetries - 1) {
-                const delay = (attempt + 1) * 800; // 800ms, 1600ms
-                console.warn(`API request failed (${response.status}), retry ${attempt + 1}/${maxRetries - 1} in ${delay}ms...`);
+                const delay = 1500 * (attempt + 1); // 1.5s, 3s
+                console.warn(`API ${response.status}, retry ${attempt + 1} in ${delay}ms...`);
                 await new Promise(r => setTimeout(r, delay));
             } else {
                 throw new Error(`Mobile API POST failed: ${response.status}`);
@@ -564,6 +565,7 @@ class FundaScraper {
         console.log('🚀 Starting scrape from available sources...');
         const startTime = Date.now();
         const onProgress = searchParams.onProgress || (() => {});
+        const onBatch = searchParams.onBatch || null; // Called with new houses as they arrive
 
         // ── PRIMARY: Funda Mobile API ──────────────────────────────────────────
         // This uses Funda's internal *.funda.io API (reverse-engineered from Android app).
@@ -583,44 +585,86 @@ class FundaScraper {
             const apiTotal = this._lastMobileTotal || mobileResults.length;
             const totalPages = Math.min(Math.ceil(apiTotal / pageSize), Math.ceil(maxResults / pageSize));
 
-            // Check if first page already exceeds the requested timeframe
-            const oldestDaysFirstPage = mobileResults.length > 0
-                ? (mobileResults[mobileResults.length - 1].daysOnMarket ?? Infinity)
-                : 0;
+            if (mobileResults.length > 0) {
+                // Return first page immediately so the UI can render
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`📱 First page: ${mobileResults.length} houses in ${elapsed}s (total available: ${apiTotal})`);
+                onProgress(`${mobileResults.length} woningen geladen...`, 30);
 
-            // Only paginate if we haven't reached the requested timeframe yet
-            if (oldestDaysFirstPage <= days) {
-                // Fetch remaining pages if there are more results
-                for (let page = 1; page < totalPages; page++) {
-                    const progressPct = 20 + Math.round((page / totalPages) * 30);
-                    onProgress(`Pagina ${page + 1} ophalen (${mobileResults.length} woningen)...`, progressPct);
-                    try {
-                        // Increasing delay between pages to avoid Funda rate limiting
-                        await new Promise(r => setTimeout(r, page <= 5 ? 250 : page <= 20 ? 400 : 600));
-                        const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
-                        if (pageResults.length === 0) break; // No more results
-                        
-                        const existingIds = new Set(mobileResults.map(h => h.id));
-                        mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
+                // Check if first page already exceeds the requested timeframe
+                const oldestDaysFirstPage = (mobileResults[mobileResults.length - 1].daysOnMarket ?? Infinity);
+                const needsMorePages = oldestDaysFirstPage <= days && totalPages > 1;
 
-                        // Stop when the oldest house on this page exceeds the requested period
-                        const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket;
-                        if (oldestDays != null && oldestDays > days) {
-                            console.warn(`🛑 Stop fetching: reached houses ${oldestDays} days old (limit: ${days})`);
+                if (needsMorePages && onBatch) {
+                    // Start background fetching — caller gets first page now, rest via onBatch
+                    const existingIds = new Set(mobileResults.map(h => h.id));
+                    this._backgroundFetch = (async () => {
+                        let totalNew = 0;
+                        for (let page = 1; page < totalPages; page++) {
+                            try {
+                                // Delay: 300ms base + 2s pause every 5 pages
+                                const baseDelay = 300;
+                                const batchPause = (page % 5 === 0) ? 2000 : 0;
+                                await new Promise(r => setTimeout(r, baseDelay + batchPause));
+
+                                const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
+                                if (pageResults.length === 0) break;
+
+                                const newHouses = pageResults.filter(h => !existingIds.has(h.id));
+                                newHouses.forEach(h => existingIds.add(h.id));
+                                totalNew += newHouses.length;
+
+                                if (newHouses.length > 0) {
+                                    onBatch(newHouses, { page: page + 1, totalPages, totalLoaded: existingIds.size });
+                                }
+
+                                // Stop when we've gone past the requested time period
+                                const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket;
+                                if (oldestDays != null && oldestDays > days) {
+                                    console.warn(`🛑 Stop: reached ${oldestDays} days old (limit: ${days})`);
+                                    break;
+                                }
+                            } catch (e) {
+                                console.warn(`⚠️ Pagina ${page + 1} mislukt:`, e.message);
+                                break;
+                            }
+                        }
+                        const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                        console.log(`✅ Background fetch done: ${totalNew} extra houses in ${totalElapsed}s`);
+                        // Signal completion with null
+                        onBatch(null, { done: true, totalLoaded: existingIds.size });
+                        this._backgroundFetch = null;
+                    })();
+
+                    // Return first page immediately
+                    return mobileResults;
+                }
+
+                // No background fetch needed (single page or no onBatch callback)
+                if (needsMorePages && !onBatch) {
+                    // Legacy path: fetch all pages synchronously (used when onBatch not provided)
+                    for (let page = 1; page < totalPages; page++) {
+                        const progressPct = 20 + Math.round((page / totalPages) * 30);
+                        onProgress(`Pagina ${page + 1} ophalen (${mobileResults.length} woningen)...`, progressPct);
+                        try {
+                            const baseDelay = 300;
+                            const batchPause = (page % 5 === 0) ? 2000 : 0;
+                            await new Promise(r => setTimeout(r, baseDelay + batchPause));
+                            const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
+                            if (pageResults.length === 0) break;
+                            const existingIds = new Set(mobileResults.map(h => h.id));
+                            mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
+                            const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket;
+                            if (oldestDays != null && oldestDays > days) break;
+                        } catch (e) {
+                            console.warn(`⚠️ Pagina ${page + 1} mislukt:`, e.message);
                             break;
                         }
-                    } catch (e) {
-                        console.warn(`⚠️ Pagina ${page + 1} mislukt, verder met wat we hebben:`, e.message);
-                        break;
                     }
                 }
-            }
-            if (mobileResults.length > 0) {
-                console.log(`📱 Mobile API: ${mobileResults.length} woningen via JSON API`);
-                // Return search results immediately without detail enrichment
-                // Details are fetched on-demand when user opens a listing
-                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                console.log(`✅ Klaar in ${elapsed}s – ${mobileResults.length} woningen`);
+
+                const finalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`✅ Klaar in ${finalElapsed}s – ${mobileResults.length} woningen`);
                 onProgress('Klaar!', 100);
                 return mobileResults;
             }

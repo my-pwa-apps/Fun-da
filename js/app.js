@@ -263,14 +263,41 @@ class FunDaApp {
             
             // Tell scraper whether to fetch English descriptions
             this.scraper._wantEnglishDesc = (this.lang === 'en');
+
+            // Handler for background batches arriving after the initial render
+            const handleBatch = (newHouses, info) => {
+                if (!newHouses) {
+                    // Background fetch complete
+                    this._bgLoading = false;
+                    this.saveToStorage();
+                    this._populateBrowseNeighborhoods();
+                    if (this.browseOpen) this.renderBrowseGrid();
+                    this.updateStats();
+                    // Save all houses to Firebase
+                    if (this.familySync.isInFamily()) {
+                        this.familySync.saveHousesToDB(this.houses).catch(() => {});
+                    }
+                    return;
+                }
+                // Append new houses
+                const now = Date.now();
+                newHouses.forEach(h => { h.importedAt = now; });
+                const existingIds = new Set(this.houses.map(h => String(h.id)));
+                const truly = newHouses.filter(h => !existingIds.has(String(h.id)));
+                this.houses.push(...truly);
+                // Update UI incrementally
+                if (this.browseOpen) this.renderBrowseGrid();
+                this.updateStats();
+            };
             
-            // Use the scraper directly for splash screen updates
+            // Use the scraper with progressive loading
             const houses = await this.scraper.scrapeAllSources({ 
                 area: this.searchArea,
                 days: String(this.daysBack),
                 onProgress: (message, progress) => {
                     updateProgress(message, progress);
-                }
+                },
+                onBatch: handleBatch,
             });
             
             if (houses.length > 0) {
@@ -309,15 +336,18 @@ class FunDaApp {
                 this.viewed = 0;
                 this._loadedArea = this.searchArea;
                 this._loadedDaysBack = this.daysBack;
+                this._bgLoading = !!this.scraper._backgroundFetch;
                 
                 this.saveToStorage();
                 this.renderCards();
                 this.updateStats();
 
-                // Save fresh houses to Firebase for cross-device persistence
-                if (this.familySync.isInFamily()) {
+                // Save first batch to Firebase (background batches saved when done)
+                if (this.familySync.isInFamily() && !this._bgLoading) {
                     this.familySync.saveHousesToDB(houses).catch(() => {});
-                    // Also load favoriteMeta from Firebase
+                }
+                // Load favoriteMeta from Firebase
+                if (this.familySync.isInFamily()) {
                     this.familySync.loadAllFavoriteMetaFromDB().then(meta => {
                         if (meta && Object.keys(meta).length > 0) {
                             this.favoriteMeta = { ...meta, ...this.favoriteMeta };
@@ -326,11 +356,11 @@ class FunDaApp {
                     }).catch(() => {});
                 }
                 
-                this.updateSplashStatus(`${allHouses.length} woningen geladen`);
+                this.updateSplashStatus(`${allHouses.length} woningen geladen${this._bgLoading ? ' (meer laden...)' : ''}`);
                 this.updateSplashProgress(100);
                 
                 // Small delay to show success message
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 300));
             } else {
                 this.updateSplashStatus('Geen woningen gevonden');
                 this.updateSplashProgress(100);
@@ -3131,23 +3161,15 @@ class FunDaApp {
 
         try {
             this.scraper._wantEnglishDesc = (this.lang === 'en');
-            const freshHouses = await this.scraper.scrapeAllSources({
-                area: this.searchArea,
-                days: String(this.daysBack),
-                onProgress: (message, progress) => {
-                    this.updateBrowseLoading(message, progress);
-                }
-            });
 
-            if (freshHouses.length > 0) {
+            // Merge helper: integrate fresh houses into existing collection
+            const mergeFreshHouses = (freshHouses) => {
                 freshHouses.forEach(h => { h.importedAt = Date.now(); });
-                // Merge: add new houses, update existing ones with fresh data
                 const existingIds = new Map(this.houses.map(h => [String(h.id), h]));
                 let added = 0;
                 for (const fresh of freshHouses) {
                     const id = String(fresh.id);
                     if (existingIds.has(id)) {
-                        // Update existing house but keep detail data if already fetched
                         const existing = existingIds.get(id);
                         if (existing.hasDetailData) {
                             Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate });
@@ -3156,21 +3178,51 @@ class FunDaApp {
                         }
                     } else {
                         this.houses.push(fresh);
+                        existingIds.set(id, fresh);
                         added++;
                     }
                 }
-                // Update existing entries
                 this.houses = this.houses.map(h => existingIds.get(String(h.id)) || h);
+                return added;
+            };
 
+            const freshHouses = await this.scraper.scrapeAllSources({
+                area: this.searchArea,
+                days: String(this.daysBack),
+                onProgress: (message, progress) => {
+                    this.updateBrowseLoading(message, progress);
+                },
+                onBatch: (newHouses, info) => {
+                    if (!newHouses) {
+                        // Background done
+                        this._bgLoading = false;
+                        this.saveToStorage();
+                        this._populateBrowseNeighborhoods();
+                        if (this.browseOpen) this.renderBrowseGrid();
+                        this.updateStats();
+                        if (this.familySync.isInFamily()) {
+                            this.familySync.saveHousesToDB(this.houses).catch(() => {});
+                        }
+                        return;
+                    }
+                    mergeFreshHouses(newHouses);
+                    if (this.browseOpen) this.renderBrowseGrid();
+                    this.updateStats();
+                },
+            });
+
+            if (freshHouses.length > 0) {
+                const added = mergeFreshHouses(freshHouses);
                 this._loadedArea = this.searchArea;
                 this._loadedDaysBack = this.daysBack;
+                this._bgLoading = !!this.scraper._backgroundFetch;
                 this.saveToStorage();
                 this._populateBrowseNeighborhoods();
 
                 const msg = added > 0
                     ? (this.lang === 'en' ? `${added} new listings added` : `${added} nieuwe woningen toegevoegd`)
-                    : (this.lang === 'en' ? 'No new listings found' : 'Geen nieuwe woningen gevonden');
-                this.showToast(msg);
+                    : (this.lang === 'en' ? 'Listings updated' : 'Woningen bijgewerkt');
+                this.showToast(this._bgLoading ? msg + (this.lang === 'en' ? ' (loading more...)' : ' (meer laden...)') : msg);
             } else {
                 this.showToast(this.lang === 'en' ? 'No new listings found' : 'Geen nieuwe woningen gevonden');
             }
@@ -3714,7 +3766,7 @@ class FunDaApp {
             badge.classList.add('hidden');
         }
 
-        count.textContent = `${houses.length} woning${houses.length !== 1 ? 'en' : ''}`;
+        count.textContent = `${houses.length} woning${houses.length !== 1 ? 'en' : ''}${this._bgLoading ? ' (laden...)' : ''}`;
 
         // Keep layout class in sync
         grid.classList.toggle('browse-layout-list', this.browseLayout === 'list');
