@@ -2477,10 +2477,10 @@ a.btn-secondary {
 
 @media (min-width: 768px) {
     .browse-sidebar {
-        position: sticky;
-        top: 0;
+        position: static;
+        top: auto;
         left: auto;
-        height: 100vh;
+        height: auto; /* Fill parent via flexbox stretch, not fixed viewport height */
         transform: none;
         z-index: auto;
         overflow-y: auto;
@@ -3019,7 +3019,7 @@ a.btn-secondary {
 .browse-layout-list .browse-tile {
     display: flex;
     flex-direction: row;
-    min-height: 0;
+    flex-shrink: 0; /* Prevent cards from shrinking when more load */
     height: auto;
 }
 
@@ -3027,6 +3027,7 @@ a.btn-secondary {
 .browse-layout-grid .browse-tile {
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 /* ---- Photo area ---- */
@@ -3188,6 +3189,7 @@ a.btn-secondary {
     display: flex;
     flex-direction: column;
     gap: 0.12rem;
+    overflow: hidden; /* Clip long text horizontally; children use ellipsis */
 }
 
 .bt-type {
