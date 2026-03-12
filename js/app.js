@@ -2261,14 +2261,6 @@ class FunDaApp {
         if (house.vveCosts) extraDetails.push(`<span>VvE: €${house.vveCosts}/mnd</span>`);
         if (house.status) extraDetails.push(`<span>${escapeHtml(house.status)}</span>`);
         if (house.acceptance) extraDetails.push(`<span>${escapeHtml(house.acceptance)}</span>`);
-        
-        // Build data source badge
-        const sourceBadges = [];
-        if (house.enrichedFromMobileAPI) sourceBadges.push('<span class="source-badge source-funda">API ✓</span>');
-        else {
-            if (house.enrichedFromBag) sourceBadges.push('<span class="source-badge source-bag">BAG ✓</span>');
-            if (house.enrichedFromFunda) sourceBadges.push('<span class="source-badge source-funda">Details ✓</span>');
-        }
 
         // Build popularity row
         const popularityHtml = (house.views != null || house.saves != null) ? `
@@ -2450,7 +2442,6 @@ class FunDaApp {
                 <div class="card-neighborhood" style="margin-top: 0.25rem; font-size: 0.85rem;">${safeLocation}</div>
                 ${house.municipality ? `<div style="font-size:0.8rem;color:var(--text-muted);">Gemeente ${safeMunicipality}</div>` : ''}
                 ${popularityHtml}
-                ${sourceBadges.length > 0 ? `<div style="margin-top:0.4rem;">${sourceBadges.join('')}</div>` : ''}
             </div>
 
             <div class="detail-section">
