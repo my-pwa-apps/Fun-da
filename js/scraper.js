@@ -221,6 +221,8 @@ class FundaScraper {
 
     parseMobileDetail(data) {
         if (!data) return null;
+        // Skip sold/rented listings
+        if (data.IsSoldOrRented === true) return null;
 
         const identifiers = data.Identifiers || {};
         const address = data.AddressDetails || {};
@@ -364,6 +366,8 @@ class FundaScraper {
             brokerUrl: ads.hoofdaanbieder ? `https://www.funda.nl/makelaar/${ads.hoofdaanbieder}/` : '',
             contactUrl: url && url !== '#' ? `${url}contact/` : '',
             hasOpenHouse: ads.openhuis === 'true',
+            isSold: data.IsSoldOrRented === true,
+            status: ads.status || '',
             // Source flag
             enrichedFromMobileAPI: true,
             hasDetailData: true,
