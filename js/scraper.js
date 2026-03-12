@@ -80,7 +80,7 @@ class FundaScraper {
             offering_type: 'buy',
             selected_area: [area],
             sort: { field: 'publish_date_utc', order: 'desc' },
-            page: { from: params.from || 0, size: params.size || 100 },
+            page: { from: params.from || 0, size: params.size || 15 },
         };
 
         // Add price filter
@@ -547,8 +547,8 @@ class FundaScraper {
         onProgress('Verbinden met Funda API...', 15);
         try {
             const days = parseInt(searchParams.days) || 3;
-            const pageSize = 100;
-            const maxResults = 600; // cap to avoid very long load times
+            const pageSize = 15; // Funda API hard-caps at 15 results per page
+            const maxResults = 1000; // Allow up to ~67 pages
             const area = searchParams.area || '';
             if (!area) throw new Error('No search area specified');
 
@@ -560,9 +560,12 @@ class FundaScraper {
             // Fetch remaining pages if there are more results
             for (let page = 1; page < totalPages; page++) {
                 const progressPct = 20 + Math.round((page / totalPages) * 30);
-                onProgress(`Pagina ${page + 1} van ${totalPages} ophalen...`, progressPct);
+                onProgress(`Pagina ${page + 1} van ${totalPages} ophalen (${mobileResults.length} woningen)...`, progressPct);
                 try {
+                    // Small delay between pages to avoid rate limiting
+                    if (page > 1) await new Promise(r => setTimeout(r, 200));
                     const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
+                    if (pageResults.length === 0) break; // No more results
                     const existingIds = new Set(mobileResults.map(h => h.id));
                     mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
                 } catch (e) {
