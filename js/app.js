@@ -3307,6 +3307,7 @@ class FunDaApp {
                         this.browseFilters.excludedNeighborhoods.filter(x => x !== n);
                 }
                 this._updateExcludeNeighLabel();
+                this.saveSettingsToFirebase();
                 this.renderBrowseGrid();
             });
             lbl.appendChild(cb);
