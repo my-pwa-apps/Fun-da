@@ -16,6 +16,9 @@ class FunDaApp {
         this.currentIndex = 0;
         this.favorites = [];
         this.viewed = 0;
+        this.swipedIds = new Set(); // Track swiped house IDs (both liked and discarded)
+        this.discardedHouses = []; // Temporary bin: {house, discardedAt}
+        this.discardBinDays = 7; // Auto-expire after N days
         this.filters = {
             minPrice: null,
             maxPrice: null,
@@ -596,6 +599,23 @@ class FunDaApp {
             if (savedFilters) {
                 this.browseFilters = { ...this.browseFilters, ...JSON.parse(savedFilters) };
             }
+
+            // Load swiped house IDs
+            const savedSwiped = localStorage.getItem('funda-swiped-ids');
+            if (savedSwiped) {
+                this.swipedIds = new Set(JSON.parse(savedSwiped));
+            }
+
+            // Load discarded houses bin and expire old entries
+            const savedDiscarded = localStorage.getItem('funda-discarded-houses');
+            if (savedDiscarded) {
+                const all = JSON.parse(savedDiscarded);
+                const cutoff = Date.now() - (this.discardBinDays * 24 * 60 * 60 * 1000);
+                this.discardedHouses = all.filter(d => d.discardedAt > cutoff);
+                // Clean up expired swipedIds too
+                const expiredIds = all.filter(d => d.discardedAt <= cutoff).map(d => String(d.house?.id));
+                expiredIds.forEach(id => this.swipedIds.delete(id));
+            }
         } catch (e) {
             console.error('Error loading from storage:', e);
         }
@@ -611,6 +631,8 @@ class FunDaApp {
             localStorage.setItem('funda-days-back', this.daysBack.toString());
             localStorage.setItem('funda-search-area', this.searchArea || '');
             localStorage.setItem('funda-view-mode', this.currentView);
+            localStorage.setItem('funda-swiped-ids', JSON.stringify([...this.swipedIds]));
+            localStorage.setItem('funda-discarded-houses', JSON.stringify(this.discardedHouses));
         } catch (e) {
             console.error('Error saving to storage:', e);
         }
@@ -687,6 +709,10 @@ class FunDaApp {
         document.getElementById('langNl')?.addEventListener('click', () => this.setLang('nl'));
         document.getElementById('langEn')?.addEventListener('click', () => this.setLang('en'));
 
+        // Discard bin
+        document.getElementById('openDiscardBinBtn')?.addEventListener('click', () => this.openDiscardBin());
+        document.getElementById('closeDiscardBinModal')?.addEventListener('click', () => this.closeModal(document.getElementById('discardBinModal')));
+
         // Family controls
         document.getElementById('createFamilyBtn').addEventListener('click', () => this.createFamily());
         document.getElementById('joinFamilyBtn').addEventListener('click', () => this.joinFamily());
@@ -710,6 +736,12 @@ class FunDaApp {
         this.mapModal.addEventListener('click', (e) => {
             if (e.target === this.mapModal) this.closeMapModal();
         });
+        const discardBinModal = document.getElementById('discardBinModal');
+        if (discardBinModal) {
+            discardBinModal.addEventListener('click', (e) => {
+                if (e.target === discardBinModal) this.closeModal(discardBinModal);
+            });
+        }
 
         // Logo click - easter egg
         document.querySelector('.logo').addEventListener('click', () => {
@@ -817,6 +849,10 @@ class FunDaApp {
                     this.hideHouseFromDetail(id);
                     break;
                 }
+                case 'restoreFromBin': {
+                    this.restoreFromDiscardBin(id);
+                    break;
+                }
             }
         });
 
@@ -921,6 +957,7 @@ class FunDaApp {
 
     openSettingsModal() {
         this.applyTranslations();
+        this._updateDiscardBinBadge();
         this.openModal(this.settingsModal);
     }
 
@@ -959,13 +996,28 @@ class FunDaApp {
                     headerAvatar.classList.add('hidden');
                 }
             }
+            // Update family member photo if in a family
+            this.familySync.photoURL = user.photoURL || '';
+            if (this.familySync.isInFamily()) {
+                this._updateFamilyMemberPhoto(user.photoURL);
+            }
             // Load settings from Firebase for this user
             this.loadSettingsFromFirebase();
         } else {
             if (loggedOutEl) loggedOutEl.classList.remove('hidden');
             if (loggedInEl) loggedInEl.classList.add('hidden');
             if (headerAvatar) headerAvatar.classList.add('hidden');
+            this.familySync.photoURL = '';
         }
+    }
+
+    async _updateFamilyMemberPhoto(photoURL) {
+        if (!this.familySync.isFirebaseReady || !this.familySync.familyCode) return;
+        try {
+            const code = this.familySync.sanitizeForFirebase(this.familySync.familyCode);
+            const userKey = this.familySync.sanitizeForFirebase(this.familySync.userId);
+            await firebase.database().ref(`families/${code}/members/${userKey}/photoURL`).set(photoURL || '');
+        } catch (e) { /* best effort */ }
     }
 
     async loginWithGoogle() {
@@ -1405,15 +1457,19 @@ class FunDaApp {
 
             // Show members
             const members = this.familySync.getMembersList();
-            membersList.innerHTML = members.map(m => `
+            membersList.innerHTML = members.map(m => {
+                const avatarHtml = m.photoURL
+                    ? `<img class="member-avatar-img" src="${escapeHtml(m.photoURL)}" alt="${escapeHtml(m.name)}">`
+                    : `<div class="member-avatar">${escapeHtml(m.name.charAt(0).toUpperCase())}</div>`;
+                return `
                 <div class="member-item ${m.isCurrentUser ? 'current-user' : ''}">
-                    <div class="member-avatar">${this.getAvatarEmoji(m.name)}</div>
+                    ${avatarHtml}
                     <div class="member-info">
                         <div class="member-name">${escapeHtml(m.name)} ${m.isCurrentUser ? '<span class="member-badge">Jij</span>' : ''}</div>
                         <div class="member-stats">${escapeHtml(String(m.favoriteCount))} favorieten</div>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
 
             // Show family matches
             if (this.familyMatches.size > 0) {
@@ -1565,14 +1621,40 @@ class FunDaApp {
     // ==========================================
 
     getFilteredHouses() {
+        const f = this.browseFilters;
         return this.houses.filter(house => {
-            // Filter by search period
-            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket >= this.daysBack) return false;
-            const { minPrice, maxPrice, minBedrooms, neighborhood } = this.filters;
-            if (minPrice && house.price < minPrice) return false;
-            if (maxPrice && house.price > maxPrice) return false;
-            if (minBedrooms && house.bedrooms < minBedrooms) return false;
-            if (neighborhood && house.neighborhood !== neighborhood) return false;
+            // Exclude already-swiped houses
+            if (this.swipedIds.has(String(house.id))) return false;
+            // Apply same filters as browse view (except daysBack — swipe uses full loaded period)
+            if (f.minPrice && house.price < f.minPrice) return false;
+            if (f.maxPrice && house.price > f.maxPrice) return false;
+            if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
+            if (f.minSize && house.size < f.minSize) return false;
+            if (f.maxSize && house.size > f.maxSize) return false;
+            if (f.neighborhood && house.neighborhood !== f.neighborhood && house.city !== f.neighborhood) return false;
+            if (f.minYear && house.yearBuilt && house.yearBuilt < f.minYear) return false;
+            if (f.minEnergyLabel) {
+                const maxRank = this._energyRank(f.minEnergyLabel);
+                if (this._energyRank(house.energyLabel) > maxRank) return false;
+            }
+            if (f.hasTuin && !house.hasGarden) return false;
+            if (f.hasBalcony && !house.hasBalcony && !house.hasRoofTerrace) return false;
+            if (f.hasParking && !house.hasParking) return false;
+            if (f.hasSolar && !house.hasSolarPanels) return false;
+            if (f.excludedNeighborhoods && f.excludedNeighborhoods.length > 0) {
+                const neigh = house.neighborhood || house.city || '';
+                if (f.excludedNeighborhoods.includes(neigh)) return false;
+            }
+            if (f.minDaysOnMarket && (house.daysOnMarket || 0) < f.minDaysOnMarket) return false;
+            if (f.maxDaysOnMarket && house.daysOnMarket != null && house.daysOnMarket > f.maxDaysOnMarket) return false;
+            if (f.propertyType) {
+                const pt = (house.propertyType || house.houseType || '').toLowerCase();
+                if (!pt.includes(f.propertyType.toLowerCase())) return false;
+            }
+            if (f.minRooms && (house.rooms || house.bedrooms || 0) < f.minRooms) return false;
+            if (f.isMonument && !house.isMonument) return false;
+            if (f.isAuction && !house.isAuction) return false;
+            if (f.isFixer && !house.isFixerUpper && !house.isFixer) return false;
             return true;
         });
     }
@@ -1583,7 +1665,7 @@ class FunDaApp {
         this.updateEmptyStates();
         
         const houses = this.getFilteredHouses();
-        const remaining = houses.slice(this.currentIndex);
+        const remaining = houses; // All unswiped houses (swiped are already filtered out)
 
         if (remaining.length === 0) {
             emptyState.classList.remove('hidden');
@@ -1820,7 +1902,8 @@ class FunDaApp {
         if (!card) return;
 
         const houses = this.getFilteredHouses();
-        const house = houses[this.currentIndex];
+        const house = houses[0]; // Always first unswiped house
+        if (!house) return;
 
         card.classList.add('animating');
         
@@ -1829,14 +1912,16 @@ class FunDaApp {
             this.addToFavorites(house);
         } else {
             card.style.transform = 'translateX(-150%) rotate(-30deg)';
-            // Remove from Firebase house pool (discard)
+            // Save to discard bin for potential recovery
+            this.discardedHouses.push({ house, discardedAt: Date.now() });
             if (house && this.familySync.isInFamily()) {
                 this.familySync.discardHouseInDB(house.id);
             }
         }
 
+        // Track this house as swiped so it never comes back
+        this.swipedIds.add(String(house.id));
         this.viewed++;
-        this.currentIndex++;
 
         setTimeout(() => {
             this.renderCards();
@@ -1939,7 +2024,7 @@ class FunDaApp {
 
     updateStats() {
         const houses = this.getFilteredHouses();
-        const remaining = houses.length - this.currentIndex;
+        const remaining = houses.length; // All unswiped houses
         const { housesViewed, housesLeft, matchScore, favCount, familyMatchCount } = this.elements;
 
         housesViewed.textContent = this.viewed;
@@ -2039,7 +2124,7 @@ class FunDaApp {
     async showDetail(houseArg = null) {
         let house = houseArg || (() => {
             const houses = this.getFilteredHouses();
-            return houses[this.currentIndex];
+            return houses[0]; // First unswiped house
         })();
         if (!house) return;
 
@@ -2799,9 +2884,7 @@ class FunDaApp {
 
         this.currentIndex = 0;
         this.viewed = 0;
-
-        // Reshuffle houses so swiping starts fresh
-        this.houses = shuffleArray([...this.houses]);
+        this.swipedIds.clear(); // Reset swiped tracking so all houses return
 
         this.renderCards();
         this.updateStats();
@@ -2909,7 +2992,12 @@ class FunDaApp {
 
     hideHouseFromDetail(houseId) {
         if (!houseId) return;
-        // Remove from houses array
+        // Save to discard bin before removing
+        const house = this.houses.find(h => String(h.id) === String(houseId));
+        if (house) {
+            this.discardedHouses.push({ house, discardedAt: Date.now() });
+        }
+        this.swipedIds.add(String(houseId));
         this.houses = this.houses.filter(h => String(h.id) !== String(houseId));
         this.saveToStorage();
         this.closeModal(this.detailModal);
@@ -2917,6 +3005,72 @@ class FunDaApp {
         if (this.browseOpen) this.renderBrowseGrid();
         this.updateStats();
         this.showToast(this.lang === 'en' ? 'House hidden' : 'Woning verborgen');
+    }
+
+    openDiscardBin() {
+        const modal = document.getElementById('discardBinModal');
+        const list = document.getElementById('discardBinList');
+        const empty = document.getElementById('discardBinEmpty');
+
+        // Expire old entries
+        const cutoff = Date.now() - (this.discardBinDays * 24 * 60 * 60 * 1000);
+        this.discardedHouses = this.discardedHouses.filter(d => d.discardedAt > cutoff);
+
+        if (this.discardedHouses.length === 0) {
+            list.classList.add('hidden');
+            empty.classList.remove('hidden');
+        } else {
+            list.classList.remove('hidden');
+            empty.classList.add('hidden');
+            list.innerHTML = this.discardedHouses.map(d => {
+                const h = d.house;
+                const safeImage = escapeHtml(safeImageUrl(h.image));
+                const safeAddress = escapeHtml(cleanAddress(h.address));
+                const daysAgo = Math.floor((Date.now() - d.discardedAt) / 86400000);
+                const timeLabel = daysAgo === 0 ? (this.lang === 'en' ? 'today' : 'vandaag') : `${daysAgo}d`;
+                return `
+                <div class="favorite-item">
+                    <img class="favorite-image" src="${safeImage}" alt="${safeAddress}">
+                    <div class="favorite-info">
+                        <div class="favorite-price">${formatPrice(h.price)}</div>
+                        <div class="favorite-address">${safeAddress}</div>
+                        <div class="favorite-features">${escapeHtml(h.neighborhood || h.city || '')} · ${timeLabel}</div>
+                    </div>
+                    <button class="btn-secondary" data-action="restoreFromBin" data-id="${escapeHtml(String(h.id))}" style="flex-shrink:0;padding:0.4rem 0.6rem;font-size:0.75rem;">
+                        ${this.lang === 'en' ? 'Restore' : 'Herstel'}
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        this.closeModal(this.settingsModal);
+        this.openModal(modal);
+    }
+
+    restoreFromDiscardBin(houseId) {
+        const idx = this.discardedHouses.findIndex(d => String(d.house?.id) === String(houseId));
+        if (idx < 0) return;
+        const { house } = this.discardedHouses[idx];
+        this.discardedHouses.splice(idx, 1);
+        this.swipedIds.delete(String(houseId));
+        // Add back to houses if not already there
+        if (!this.houses.find(h => String(h.id) === String(houseId))) {
+            this.houses.push(house);
+        }
+        this.saveToStorage();
+        this.renderCards();
+        if (this.browseOpen) this.renderBrowseGrid();
+        this.updateStats();
+        this.openDiscardBin(); // Re-render the bin
+        this.showToast(this.lang === 'en' ? 'House restored' : 'Woning hersteld');
+    }
+
+    _updateDiscardBinBadge() {
+        const badge = document.getElementById('discardBinCount');
+        if (!badge) return;
+        const count = this.discardedHouses.length;
+        badge.textContent = count;
+        badge.classList.toggle('hidden', count === 0);
     }
 
     async refreshListings() {

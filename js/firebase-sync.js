@@ -129,7 +129,7 @@ class FamilySync {
             // Add current user as member
             await familyRef.child(`members/${userKey}`).set({
                 name: this.userName,
-                userId: this.userId,
+                userId: this.userId,                photoURL: this.photoURL || '',                photoURL: this.photoURL || '',
                 favorites: [],
                 joinedAt: firebase.database.ServerValue.TIMESTAMP,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP
@@ -370,6 +370,7 @@ class FamilySync {
         for (const [name, data] of this.members) {
             list.push({
                 name: data.name || name,
+                photoURL: data.photoURL || '',
                 favoriteCount: (data.favorites || []).length,
                 lastSeen: data.lastSeen,
                 isCurrentUser: data.userId === this.userId || (data.name || name) === this.userName

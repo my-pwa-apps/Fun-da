@@ -1972,8 +1972,9 @@ body {
 }
 
 .btn-small {
-    background: var(--white);
-    border: 2px solid #eee;
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.4);
+    color: var(--white);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-sm);
     font-family: inherit;
@@ -1984,7 +1985,8 @@ body {
 }
 
 .btn-small:hover {
-    border-color: var(--primary);
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.6);
 }
 
 /* Family Dashboard */
@@ -2047,7 +2049,18 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.member-avatar-img {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 .member-info {

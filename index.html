@@ -413,10 +413,33 @@
                     <hr class="settings-divider">
                 </div>
 
+                <!-- Discard bin -->
+                <h3 class="settings-section-title">Prullenbak</h3>
+                <p class="modal-description" id="discardBinDesc">Weggeswipete woningen worden 7 dagen bewaard.</p>
+                <button id="openDiscardBinBtn" class="btn-secondary detail-action-btn">Prullenbak openen <span id="discardBinCount" class="browse-filter-badge hidden" style="position:static;margin-left:0.3rem;">0</span></button>
+
+                <hr class="settings-divider">
+
                 <!-- Data management -->
                 <h3 class="settings-section-title" data-i18n="settings.data">Data</h3>
                 <div class="clear-data-wrapper">
                     <button id="clearDataBtn" class="btn-clear-data" data-i18n="settings.clear">Wis alle data (start opnieuw)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discard Bin Modal -->
+    <div id="discardBinModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Prullenbak</h2>
+                <button class="btn-close" id="closeDiscardBinModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="discardBinList" class="favorites-list"></div>
+                <div id="discardBinEmpty" class="no-favorites">
+                    <p>De prullenbak is leeg.</p>
                 </div>
             </div>
         </div>
