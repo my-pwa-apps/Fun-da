@@ -3020,7 +3020,7 @@ a.btn-secondary {
     display: flex;
     flex-direction: row;
     flex-shrink: 0; /* Prevent cards from shrinking when more load */
-    height: auto;
+    height: 140px; /* Uniform card height */
 }
 
 /* GRID layout: vertical card */
@@ -3040,7 +3040,6 @@ a.btn-secondary {
 
 .browse-layout-list .bt-photo {
     width: 180px;
-    min-height: 110px;
     align-self: stretch;
 }
 
