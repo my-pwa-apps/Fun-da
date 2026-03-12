@@ -2686,7 +2686,7 @@ class FunDaApp {
                         <div class="bid-field">
                             <label class="bid-label" for="metaViewingDate">Bezichtigingsdatum</label>
                             <input type="date" class="bid-input" id="metaViewingDate" value="${escapeHtml(meta.viewingDate || '')}">
-                            <button class="btn-secondary btn-full" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}" style="margin-top:0.3rem;font-size:0.75rem;padding:0.3rem;cursor:pointer;">Agenda</button>
+                            <button class="btn-secondary detail-action-btn" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}">Agenda</button>
                         </div>
                         <div class="bid-field">
                             <label class="bid-label" for="metaBidDeadline">Bieddeadline makelaar</label>
@@ -2698,13 +2698,13 @@ class FunDaApp {
                         <textarea class="bid-input" id="metaNotes" rows="3" placeholder="Aantekeningen over dit huis...">${escapeHtml(meta.notes || '')}</textarea>
                     </div>
                 </div>
-                <button class="btn-primary btn-full" id="saveBidMetaBtn" style="margin-top:0.75rem;">Notities opslaan</button>
+                <button class="btn-primary btn-full" id="saveBidMetaBtn">Notities opslaan</button>
             </div>
 
             ${brokerHtml}
             ${mapsLinkHtml}
 
-            <button class="btn-primary btn-full" style="background: var(--danger); margin-top: 0.5rem;" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
+            <button class="btn-danger btn-full" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
                 Verwijderen uit favorieten
             </button>
             </div>
@@ -3110,7 +3110,7 @@ class FunDaApp {
                         <div class="favorite-address">${safeAddress}</div>
                         <div class="favorite-features">${escapeHtml(h.neighborhood || h.city || '')} · ${timeLabel}</div>
                     </div>
-                    <button class="btn-secondary" data-action="restoreFromBin" data-id="${escapeHtml(String(h.id))}" style="flex-shrink:0;padding:0.4rem 0.6rem;font-size:0.75rem;">
+                    <button class="btn-secondary detail-action-btn" data-action="restoreFromBin" data-id="${escapeHtml(String(h.id))}">
                         ${this.lang === 'en' ? 'Restore' : 'Herstel'}
                     </button>
                 </div>`;

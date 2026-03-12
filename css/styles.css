@@ -956,31 +956,31 @@ a.btn-secondary {
     gap: 0.5rem;
 }
 
+/* Preset toggle buttons (settings language/view mode) — same as btn-option */
 .preset-btn {
     flex: 1;
     min-width: 0;
-    padding: 0.75rem 0.875rem;
-    border: 2px solid var(--gray-lighter);
-    background: var(--light);
-    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.875rem;
+    border: 1.5px solid var(--gray-lighter);
+    background: var(--white);
+    border-radius: 1rem;
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    color: var(--dark);
+    color: var(--text-secondary);
     cursor: pointer;
     transition: var(--transition);
 }
 
 .preset-btn:hover {
-    border-color: var(--primary-light);
-    background: rgba(255, 107, 53, 0.05);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 .preset-btn.active {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border-color: var(--primary);
-    color: var(--white);
-    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    color: var(--primary);
+    background: #fff5f1;
 }
 
 .range-inputs {
@@ -1028,34 +1028,33 @@ a.btn-secondary {
 
 .btn-group {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
 }
 
+/* Toggle buttons (sidebar filters, settings toggles) */
 .btn-option {
-    flex: 1;
-    min-width: 60px;
-    padding: 0.65rem 0.5rem;
-    border: 2px solid var(--gray-lighter);
-    background: var(--light);
-    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.7rem;
+    border: 1.5px solid var(--gray-lighter);
+    border-radius: 1rem;
+    background: var(--white);
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
+    color: var(--text-secondary);
     cursor: pointer;
     transition: var(--transition);
 }
 
 .btn-option:hover {
-    border-color: var(--primary-light);
-    background: rgba(255, 107, 53, 0.05);
+    border-color: var(--primary);
+    color: var(--primary);
 }
 
 .btn-option.active {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     border-color: var(--primary);
-    color: var(--white);
-    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    color: var(--primary);
+    background: #fff5f1;
 }
 
 /* Favorites List */
@@ -1961,7 +1960,6 @@ a.btn-secondary {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
-    width: 100%;
 }
 
 .btn-secondary:hover {
@@ -1980,7 +1978,6 @@ a.btn-secondary {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
-    margin-top: 2rem;
 }
 
 .btn-danger:hover {
@@ -2529,6 +2526,14 @@ a.btn-secondary {
     }
 }
 
+/* Sidebar inputs are more compact than modal inputs */
+.browse-sidebar .input-full {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.85rem;
+    border-width: 1.5px;
+    border-radius: var(--radius-sm);
+}
+
 .browse-sidebar-body {
     flex: 1;
     overflow-y: auto;
@@ -2711,18 +2716,17 @@ a.btn-secondary {
 }
 
 .btn-option-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    display: none; /* Unused — use .btn-group instead */
 }
 
+/* Sidebar .btn-option: override base pill with slightly different sizing */
 .btn-option {
-    padding: 0.3rem 0.6rem;
+    padding: 0.4rem 0.7rem;
     border: 1.5px solid var(--gray-lighter);
     border-radius: 1rem;
     background: var(--white);
     font-family: inherit;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
@@ -3674,13 +3678,14 @@ textarea.bid-input {
     gap: 0.35rem;
 }
 
+/* Bid status toggles — same pill style as btn-option */
 .bid-status-btn {
-    padding: 0.3rem 0.6rem;
+    padding: 0.35rem 0.65rem;
     border: 1.5px solid var(--gray-lighter);
     border-radius: 1rem;
     background: var(--white);
     font-family: inherit;
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-secondary);
     cursor: pointer;
