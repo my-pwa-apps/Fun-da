@@ -2379,10 +2379,10 @@ class FunDaApp {
                 </div>
             </div>` : '';
 
-        // Description — show only the active language, fall back only when that language is empty
+        // Description — show only the active language, fall back to the other if empty
         const descNL = house.description || '';
         const descEN = house.descriptionEN || '';
-        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : descNL;
+        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : (descNL || descEN);
         const descHtml = primaryDesc ? `
             <div class="detail-section">
                 <h3>${this.t('detail.desc')}</h3>
@@ -2659,13 +2659,17 @@ class FunDaApp {
                 ${extraDetails.length > 0 ? `<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;font-size:0.85rem;color:var(--text-muted);">${extraDetails.join('')}</div>` : ''}
             </div>
 
-            ${house.description ? `
+            ${(() => {
+                const favDescNL = house.description || '';
+                const favDescEN = house.descriptionEN || '';
+                const favDesc = this.lang === 'en' ? (favDescEN || favDescNL) : (favDescNL || favDescEN);
+                return favDesc ? `
                 <div class="detail-section">
                     <h3>${this.t('detail.desc_alt')}</h3>
-                    <p class="detail-description${house.description.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(house.description)}</p>
-                    ${house.description.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ Meer lezen</button>` : ''}
-                </div>
-            ` : ''}
+                    <p class="detail-description${favDesc.length > 400 ? ' desc-collapsed' : ''}" style="font-size:0.875rem;line-height:1.5;color:var(--text-secondary);">${escapeHtml(favDesc)}</p>
+                    ${favDesc.length > 400 ? `<button class="desc-expand-btn" data-action="expandDesc">▾ ${this.lang === 'en' ? 'Read more' : 'Meer lezen'}</button>` : ''}
+                </div>` : '';
+            })()}
 
             <div class="detail-section bid-panel" id="bidPanel" data-house-id="${escapeHtml(String(houseId))}">
                 <h3>Notities &amp; Bieding</h3>
