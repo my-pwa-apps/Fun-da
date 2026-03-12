@@ -158,13 +158,13 @@ export default {
 };
 
 function getCORSHeaders(request) {
-    const origin = request.headers.get('Origin') || '*';
+    const origin = request.headers.get('Origin') || '';
     
-    // Check if origin is allowed (or allow all for development)
+    // Only allow requests from known origins
     const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
     
     return {
-        'Access-Control-Allow-Origin': '*', // Use '*' for easy testing, restrict in production
+        'Access-Control-Allow-Origin': allowedOrigin,
         'Access-Control-Allow-Methods': 'GET, POST, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Accept',
         'Access-Control-Max-Age': '86400',

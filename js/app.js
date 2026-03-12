@@ -1645,7 +1645,7 @@ class FunDaApp {
             </div>
 
             ${safeFundaUrl !== '#' ? `
-                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-full" style="display: block; text-align: center; text-decoration: none;">
+                <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-full">
                     Bekijk op Funda
                 </a>
             ` : ''}
@@ -3310,7 +3310,7 @@ class FunDaApp {
                 if (!addr.includes(street)) return false;
             }
             // Filter by search period (daysBack) — only show houses published within the selected period
-            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket >= this.daysBack) return false;
+            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
             if (f.minPrice && house.price < f.minPrice) return false;
             if (f.maxPrice && house.price > f.maxPrice) return false;
             if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;

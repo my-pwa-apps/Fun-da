@@ -1,7 +1,7 @@
 {
     "name": "Fun-da - Bring the fun back!",
     "short_name": "Fun-da",
-    "description": "De leukste manier om een huis te vinden in Amsterdam! Swipe door Funda woningen, synchroniseer met je familie en vind jullie droomhuis.",
+    "description": "De leukste manier om een huis te vinden! Swipe door Funda woningen, synchroniseer met je familie en vind jullie droomhuis.",
     "start_url": "./?source=pwa",
     "scope": "./",
     "display": "standalone",

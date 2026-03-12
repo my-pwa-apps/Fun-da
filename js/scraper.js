@@ -562,7 +562,8 @@ class FundaScraper {
         try {
             const days = parseInt(searchParams.days) || 3;
             const pageSize = 15; // Funda API hard-caps at 15 results per page
-            const maxResults = 1000; // Allow up to ~67 pages
+            const maxResults = 3000; // Allow up to ~200 pages to cover 30 days in large cities
+
             const area = searchParams.area || '';
             if (!area) throw new Error('No search area specified');
 
@@ -571,20 +572,35 @@ class FundaScraper {
             const apiTotal = this._lastMobileTotal || mobileResults.length;
             const totalPages = Math.min(Math.ceil(apiTotal / pageSize), Math.ceil(maxResults / pageSize));
 
-            // Fetch remaining pages if there are more results
-            for (let page = 1; page < totalPages; page++) {
-                const progressPct = 20 + Math.round((page / totalPages) * 30);
-                onProgress(`Pagina ${page + 1} van ${totalPages} ophalen (${mobileResults.length} woningen)...`, progressPct);
-                try {
-                    // Small delay between pages to avoid rate limiting
-                    if (page > 1) await new Promise(r => setTimeout(r, 200));
-                    const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
-                    if (pageResults.length === 0) break; // No more results
-                    const existingIds = new Set(mobileResults.map(h => h.id));
-                    mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
-                } catch (e) {
-                    console.warn(`⚠️ Pagina ${page + 1} mislukt, verder met wat we hebben:`, e.message);
-                    break;
+            let oldestDaysFirstPage = 0;
+            if (mobileResults.length > 0) {
+                oldestDaysFirstPage = mobileResults[mobileResults.length - 1].daysOnMarket || 0;
+            }
+
+            // Only paginate if we haven't reached the requested timeframe yet
+            if (oldestDaysFirstPage <= days) {
+                // Fetch remaining pages if there are more results
+                for (let page = 1; page < totalPages; page++) {
+                    const progressPct = 20 + Math.round((page / totalPages) * 30);
+                    onProgress(`Pagina ${page + 1} ophalen (${mobileResults.length} woningen)...`, progressPct);
+                    try {
+                        // Small delay between pages to avoid rate limiting
+                        if (page > 1) await new Promise(r => setTimeout(r, 200));
+                        const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
+                        if (pageResults.length === 0) break; // No more results
+                        
+                        const existingIds = new Set(mobileResults.map(h => h.id));
+                        mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
+
+                        const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket || 0;
+                        if (oldestDays > days) {
+                            console.log(`🛑 Stop fetching: reached houses ${oldestDays} days old (limit: ${days})`);
+                            break;
+                        }
+                    } catch (e) {
+                        console.warn(`⚠️ Pagina ${page + 1} mislukt, verder met wat we hebben:`, e.message);
+                        break;
+                    }
                 }
             }
             if (mobileResults.length > 0) {
@@ -1365,9 +1381,9 @@ class FundaScraper {
 
         
         // NIEUWE METHODE: Zoek naar detail URLs om listings te vinden
-        // Format: /detail/koop/amsterdam/[type-]straatnaam-huisnummer/id/
+        // Format: /detail/koop/<city>/[type-]straatnaam-huisnummer/id/
         // Types: huis, appartement, penthouse, etc.
-        const detailUrlRegex = /href="(\/detail\/koop\/amsterdam\/([a-z\-]+?)-(\d+[a-z]?(?:-[a-z0-9]+)?)\/([\d]+)\/)"/gi;
+        const detailUrlRegex = /href="(\/detail\/koop\/([a-z][a-z0-9\-]+)\/([a-z\-]+?)-(\d+[a-z]?(?:-[a-z0-9]+)?)\/([\d]+)\/)"/gi;
         const detailMatches = [...html.matchAll(detailUrlRegex)];
         console.log(`📊 Found ${detailMatches.length} detail URLs in HTML`);
         
@@ -1377,7 +1393,7 @@ class FundaScraper {
             const typesPrefixes = ['huis', 'appartement', 'penthouse', 'studio', 'woning', 'bovenwoning', 'benedenwoning', 'grachtenpand', 'herenhuis', 'villa'];
             
             detailMatches.forEach((match, i) => {
-                const [, fullUrl, streetPart, houseNumber, listingId] = match;
+                const [, fullUrl, , streetPart, houseNumber, listingId] = match;
                 
                 if (seenUrls.has(fullUrl)) return;
                 seenUrls.add(fullUrl);
@@ -1508,8 +1524,8 @@ class FundaScraper {
             .map(m => m[1].replace(/\s+/g, ' '))
             .filter(pc => {
                 const digits = parseInt(pc.substring(0, 4));
-                // Amsterdam postcodes are 1000-1109, also include nearby areas
-                return digits >= 1000 && digits <= 1200;
+                // Dutch postcodes range from 1000 to 9999
+                return digits >= 1000 && digits <= 9999;
             });
         
         console.log(`📊 Found ${allSizes.length} sizes, ${allRooms.length} room counts, ${allPostcodes.length} postcodes in HTML`);
