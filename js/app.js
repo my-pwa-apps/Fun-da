@@ -2911,17 +2911,21 @@ class FunDaApp {
         this.showToast(this.lang === 'en' ? 'House hidden' : 'Woning verborgen');
     }
 
-    refreshListings() {
+    async refreshListings() {
         if (!this.hasConfiguredSearchArea()) {
             this.openBrowseSidebarPanel();
             return;
         }
-        this._loadedArea = null; // Force refetch
+        // Keep current area and period, just refetch
+        this._loadedArea = null;
         this._loadedDaysBack = null;
         this.houses = [];
         this.currentIndex = 0;
         this.viewed = 0;
-        this.autoLoadNewListings();
+        this.showBrowseLoading('Woningen vernieuwen...');
+        this.renderCards();
+        this.updateStats();
+        await this.autoLoadNewListings();
     }
 
     openBrowseSidebarPanel() {
