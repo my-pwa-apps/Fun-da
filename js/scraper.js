@@ -61,23 +61,15 @@ class FundaScraper {
     async fetchViaProxyPost(targetUrl, ndjsonBody) {
         const cfProxy = this.corsProxies[0]; // Our CF worker – the only proxy that forwards POST body
         const proxyUrl = cfProxy.url + encodeURIComponent(targetUrl);
-        const maxRetries = 3;
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            const response = await fetch(proxyUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: ndjsonBody,
-            });
-            if (response.ok) return response.json();
-            // Rate-limited or server error — wait longer on each retry
-            if (attempt < maxRetries - 1) {
-                const delay = 1500 * (attempt + 1); // 1.5s, 3s
-                console.warn(`API ${response.status}, retry ${attempt + 1} in ${delay}ms...`);
-                await new Promise(r => setTimeout(r, delay));
-            } else {
-                throw new Error(`Mobile API POST failed: ${response.status}`);
-            }
-        }
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: ndjsonBody,
+        });
+        if (response.ok) return response.json();
+        const err = new Error(`Mobile API POST failed: ${response.status}`);
+        err.status = response.status;
+        throw err;
     }
 
     async searchFundaMobileAPI(params = {}) {
@@ -642,23 +634,25 @@ class FundaScraper {
 
                 // No background fetch needed (single page or no onBatch callback)
                 if (needsMorePages && !onBatch) {
-                    // Legacy path: fetch all pages synchronously (used when onBatch not provided)
+                    // Legacy path: fetch all pages synchronously
+                    let consecutiveFailures = 0;
                     for (let page = 1; page < totalPages; page++) {
                         const progressPct = 20 + Math.round((page / totalPages) * 30);
                         onProgress(`Pagina ${page + 1} ophalen (${mobileResults.length} woningen)...`, progressPct);
                         try {
-                            const baseDelay = 300;
-                            const batchPause = (page % 5 === 0) ? 2000 : 0;
-                            await new Promise(r => setTimeout(r, baseDelay + batchPause));
+                            await new Promise(r => setTimeout(r, 500));
                             const pageResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: page * pageSize });
                             if (pageResults.length === 0) break;
+                            consecutiveFailures = 0;
                             const existingIds = new Set(mobileResults.map(h => h.id));
                             mobileResults = [...mobileResults, ...pageResults.filter(h => !existingIds.has(h.id))];
                             const oldestDays = pageResults[pageResults.length - 1]?.daysOnMarket;
                             if (oldestDays != null && oldestDays > days) break;
                         } catch (e) {
-                            console.warn(`⚠️ Pagina ${page + 1} mislukt:`, e.message);
-                            break;
+                            consecutiveFailures++;
+                            if (consecutiveFailures >= 3) break;
+                            console.warn(`⚠️ Page ${page + 1} failed (${consecutiveFailures}/3), pausing 5s...`);
+                            await new Promise(r => setTimeout(r, 5000));
                         }
                     }
                 }
