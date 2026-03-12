@@ -61,13 +61,21 @@ class FundaScraper {
     async fetchViaProxyPost(targetUrl, ndjsonBody) {
         const cfProxy = this.corsProxies[0]; // Our CF worker – the only proxy that forwards POST body
         const proxyUrl = cfProxy.url + encodeURIComponent(targetUrl);
-        const response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: ndjsonBody,
-        });
-        if (!response.ok) throw new Error(`Mobile API POST failed: ${response.status}`);
-        return response.json();
+        const maxRetries = 2;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-ndjson' },
+                body: ndjsonBody,
+            });
+            if (response.ok) return response.json();
+            if (attempt < maxRetries - 1) {
+                console.warn(`API request failed (${response.status}), retrying...`);
+                await new Promise(r => setTimeout(r, 600));
+            } else {
+                throw new Error(`Mobile API POST failed: ${response.status}`);
+            }
+        }
     }
 
     async searchFundaMobileAPI(params = {}) {
