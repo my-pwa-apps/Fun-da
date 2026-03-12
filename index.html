@@ -264,29 +264,34 @@
             <!-- Results column -->
             <div class="browse-main">
                 <div class="browse-toolbar">
-                    <button class="browse-filter-btn" id="browseFilterToggleBtn">
+                    <button class="browse-toolbar-btn" id="browseFilterToggleBtn" title="Filters">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
                         </svg>
-                        Filters
                         <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
                     </button>
-                    <button class="browse-refresh-btn" id="browseRefreshBtn" title="Ververs woningen">
+                    <button class="browse-toolbar-btn" id="browseRefreshBtn" title="Ververs woningen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
                             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                         </svg>
                     </button>
                     <span id="browseCount" class="browse-count">0 woningen</span>
-                    <select id="browseSortBy" class="browse-sort" title="Sorteer op">
-                        <option value="default">Volgorde</option>
-                        <option value="price-asc">Prijs laag → hoog</option>
-                        <option value="price-desc">Prijs hoog → laag</option>
-                        <option value="size-desc">Grootste eerst</option>
-                        <option value="bedrooms-desc">Meeste kamers</option>
-                        <option value="newest">Nieuwste eerst</option>
-                        <option value="oldest">Langst op markt</option>
-                    </select>
+                    <div class="browse-sort-wrap">
+                        <svg class="browse-sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                            <path d="M11 5h10M11 9h7M11 13h4"/>
+                            <path d="M3 4v16M3 20l-2-2m2 2l2-2"/>
+                        </svg>
+                        <select id="browseSortBy" class="browse-sort" title="Sorteer op">
+                            <option value="default">Standaard</option>
+                            <option value="price-asc">Prijs ↑</option>
+                            <option value="price-desc">Prijs ↓</option>
+                            <option value="size-desc">m² ↓</option>
+                            <option value="bedrooms-desc">Kamers ↓</option>
+                            <option value="newest">Nieuwste</option>
+                            <option value="oldest">Oudste</option>
+                        </select>
+                    </div>
                     <div class="browse-layout-toggle">
                         <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
