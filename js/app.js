@@ -3300,7 +3300,7 @@ class FunDaApp {
             case 'price-desc':     houses.sort((a, b) => (b.price || 0) - (a.price || 0)); break;
             case 'size-desc':      houses.sort((a, b) => (b.size || 0) - (a.size || 0)); break;
             case 'bedrooms-desc':  houses.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0)); break;
-            case 'newest':         houses.sort((a, b) => (b.importedAt || 0) - (a.importedAt || 0)); break;
+            case 'newest':         houses.sort((a, b) => (a.daysOnMarket ?? 9999) - (b.daysOnMarket ?? 9999)); break;
             case 'oldest':         houses.sort((a, b) => (b.daysOnMarket ?? -1) - (a.daysOnMarket ?? -1)); break;
         }
         return houses;
