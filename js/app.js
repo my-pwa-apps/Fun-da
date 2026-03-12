@@ -968,15 +968,15 @@ class FunDaApp {
     async loginWithGoogle() {
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) {
-                this.showToast('❌ Firebase Auth niet beschikbaar');
+                this.showToast('Firebase Auth niet beschikbaar');
                 return;
             }
             const provider = new firebase.auth.GoogleAuthProvider();
             await firebase.auth().signInWithPopup(provider);
-            this.showToast('✅ Ingelogd!');
+            this.showToast('Ingelogd!');
         } catch (e) {
             console.error('Google login error:', e);
-            this.showToast('❌ Inloggen mislukt: ' + (e.message || 'onbekende fout'));
+            this.showToast('Inloggen mislukt: ' + (e.message || 'onbekende fout'));
         }
     }
 
@@ -1152,21 +1152,21 @@ class FunDaApp {
         const name = nameInput.value.trim();
 
         if (!name) {
-            this.showToast('❌ Vul eerst je naam in');
+            this.showToast('Vul eerst je naam in');
             return;
         }
 
         try {
             const code = await this.familySync.createFamily(name);
             if (!code) {
-                this.showToast('❌ Familie aanmaken mislukt. Probeer het opnieuw.');
+                this.showToast('Familie aanmaken mislukt. Probeer het opnieuw.');
                 return;
             }
             this.showToast(`Familie aangemaakt! Code: ${code}`);
             this.updateFamilyUI();
         } catch (e) {
             console.error('createFamily error:', e);
-            this.showToast('❌ Familie aanmaken mislukt. Controleer je internetverbinding.');
+            this.showToast('Familie aanmaken mislukt. Controleer je internetverbinding.');
         }
     }
 
@@ -1177,26 +1177,26 @@ class FunDaApp {
         const code = codeInput.value.trim();
 
         if (!name) {
-            this.showToast('❌ Vul eerst je naam in');
+            this.showToast('Vul eerst je naam in');
             return;
         }
 
         if (!code) {
-            this.showToast('❌ Vul de familie code in');
+            this.showToast('Vul de familie code in');
             return;
         }
 
         try {
             const joined = await this.familySync.joinFamily(code, name);
             if (!joined) {
-                this.showToast('❌ Familie niet gevonden. Controleer de code.');
+                this.showToast('Familie niet gevonden. Controleer de code.');
                 return;
             }
             this.showToast(`Je bent nu lid van familie ${code}!`);
             this.updateFamilyUI();
         } catch (e) {
             console.error('joinFamily error:', e);
-            this.showToast('❌ Familie joinen mislukt. Controleer de code en je internetverbinding.');
+            this.showToast('Familie joinen mislukt. Controleer de code en je internetverbinding.');
         }
     }
 
@@ -1881,7 +1881,7 @@ class FunDaApp {
         if (this.familySync.isInFamily()) {
             this.familySync.saveFavoriteMetaInDB(houseId, meta);
         }
-        this.showToast('✅ Notities opgeslagen');
+        this.showToast('Notities opgeslagen');
     }
 
     addViewingToCalendar(houseId) {
@@ -1982,7 +1982,7 @@ class FunDaApp {
             try {
                 await navigator.share({ title, text, url });
             } catch (e) {
-                if (e.name !== 'AbortError') this.showToast('❌ Delen mislukt');
+                if (e.name !== 'AbortError') this.showToast('Delen mislukt');
             }
         } else {
             try {
@@ -2045,16 +2045,19 @@ class FunDaApp {
             this._renderDetailContent(house);
             this.openModal(this.detailModal);
 
-            const detail = await this.scraper.fetchFundaMobileDetail(house.url);
-            if (detail) {
-                const merged = { ...house, ...detail, id: house.id, address: detail.address || house.address };
-                // Update house in the array so detail is cached
-                const idx = this.houses.findIndex(h => h.id === house.id);
-                if (idx >= 0) this.houses[idx] = merged;
-                house = merged;
-                this._detailHouse = house;
-                this._renderDetailContent(house);
-                this.saveToStorage();
+            try {
+                const detail = await this.scraper.fetchFundaMobileDetail(house.url);
+                if (detail) {
+                    const merged = { ...house, ...detail, id: house.id, address: detail.address || house.address };
+                    const idx = this.houses.findIndex(h => h.id === house.id);
+                    if (idx >= 0) this.houses[idx] = merged;
+                    house = merged;
+                    this._detailHouse = house;
+                    this._renderDetailContent(house);
+                    this.saveToStorage();
+                }
+            } catch (e) {
+                console.error('Detail fetch failed:', e);
             }
             return;
         }
