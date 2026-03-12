@@ -2632,7 +2632,7 @@ body {
 }
 
 .neigh-ms-item:hover {
-    background: #fff5f1;
+    background: rgba(255, 107, 53, 0.08);
 }
 
 .neigh-ms-item input[type=checkbox] {

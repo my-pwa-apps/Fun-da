@@ -2916,7 +2916,11 @@ class FunDaApp {
             this.openBrowseSidebarPanel();
             return;
         }
-        // Keep current area and period, just refetch
+        // Sync daysBack from dropdown in case user changed it without applying
+        const daysEl = document.getElementById('bfDaysBack');
+        if (daysEl) this.daysBack = parseInt(daysEl.value, 10) || this.daysBack;
+
+        // Force refetch with current settings
         this._loadedArea = null;
         this._loadedDaysBack = null;
         this.houses = [];
@@ -2961,10 +2965,13 @@ class FunDaApp {
             this.houses.map(h => h.neighborhood || h.city || '').filter(Boolean)
         )].sort();
 
-        // Remove excluded neighborhoods that no longer exist
-        this.browseFilters.excludedNeighborhoods = this.browseFilters.excludedNeighborhoods.filter(
-            n => neighborhoods.includes(n)
-        );
+        // Only clean up excluded neighborhoods if we actually have houses loaded
+        // (prevents clearing exclusions during refresh when houses array is temporarily empty)
+        if (this.houses.length > 0) {
+            this.browseFilters.excludedNeighborhoods = this.browseFilters.excludedNeighborhoods.filter(
+                n => neighborhoods.includes(n)
+            );
+        }
 
         neighborhoods.forEach(n => {
             const opt = document.createElement('option');
