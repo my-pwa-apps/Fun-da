@@ -3019,7 +3019,7 @@ a.btn-secondary {
 .browse-layout-list .browse-tile {
     display: flex;
     flex-direction: row;
-    min-height: 120px;
+    min-height: 0;
     height: auto;
 }
 
@@ -3039,7 +3039,7 @@ a.btn-secondary {
 
 .browse-layout-list .bt-photo {
     width: 180px;
-    min-height: 120px;
+    min-height: 110px;
     align-self: stretch;
 }
 
@@ -3188,7 +3188,6 @@ a.btn-secondary {
     display: flex;
     flex-direction: column;
     gap: 0.12rem;
-    overflow: hidden;
 }
 
 .bt-type {
