@@ -2928,16 +2928,12 @@ class FunDaApp {
         const daysEl = document.getElementById('bfDaysBack');
         if (daysEl) this.daysBack = parseInt(daysEl.value, 10) || this.daysBack;
 
-        // Force refetch with current settings
+        // Force refetch by resetting loaded tracking
         this._loadedArea = null;
         this._loadedDaysBack = null;
-        this.houses = [];
-        this.currentIndex = 0;
-        this.viewed = 0;
-        this.showBrowseLoading('Woningen vernieuwen...');
-        this.renderCards();
-        this.updateStats();
-        await this.autoLoadNewListings();
+
+        // Use applyBrowseFilters which handles everything consistently
+        this.applyBrowseFilters();
     }
 
     openBrowseSidebarPanel() {
