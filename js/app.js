@@ -1567,7 +1567,7 @@ class FunDaApp {
     getFilteredHouses() {
         return this.houses.filter(house => {
             // Filter by search period
-            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
+            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket >= this.daysBack) return false;
             const { minPrice, maxPrice, minBedrooms, neighborhood } = this.filters;
             if (minPrice && house.price < minPrice) return false;
             if (maxPrice && house.price > maxPrice) return false;
@@ -3060,7 +3060,7 @@ class FunDaApp {
         const f = this.browseFilters;
         let houses = this.houses.filter(house => {
             // Filter by search period (daysBack) — only show houses published within the selected period
-            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
+            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket >= this.daysBack) return false;
             if (f.minPrice && house.price < f.minPrice) return false;
             if (f.maxPrice && house.price > f.maxPrice) return false;
             if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
