@@ -572,8 +572,21 @@ class FundaScraper {
             const area = searchParams.area || '';
             if (!area) throw new Error('No search area specified');
 
-            // Fetch first page and read the total from the API
-            let mobileResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: 0 });
+            // Fetch first page — retry up to 3 times since this is the critical initial load
+            let mobileResults = [];
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+                    mobileResults = await this.searchFundaMobileAPI({ area, days: searchParams.days, size: pageSize, from: 0 });
+                    break; // Success
+                } catch (e) {
+                    if (attempt < 2) {
+                        console.warn(`First page failed (attempt ${attempt + 1}/3), retrying in ${2 * (attempt + 1)}s...`);
+                    } else {
+                        throw e; // Give up after 3 attempts
+                    }
+                }
+            }
             const apiTotal = this._lastMobileTotal || mobileResults.length;
             const totalPages = Math.min(Math.ceil(apiTotal / pageSize), Math.ceil(maxResults / pageSize));
 
