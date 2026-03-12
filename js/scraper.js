@@ -120,8 +120,15 @@ class FundaScraper {
             const fullAddress = [streetName, houseNumber, houseNumberSuffix].filter(Boolean).join(' ');
 
             // Build photo URLs from thumbnail_id array in search results
+            // IDs are 9-digit numbers like 225636263 → URL path is 225/636/263.jpg
             const thumbIds = Array.isArray(source.thumbnail_id) ? source.thumbnail_id : (source.thumbnail_id ? [source.thumbnail_id] : []);
-            const photoUrls = thumbIds.map(id => `https://cloud.funda.nl/valentina_media/${id}_groot.jpg`);
+            const photoUrls = thumbIds.map(id => {
+                const s = String(id);
+                const slashed = s.length >= 9
+                    ? s.substring(0, 3) + '/' + s.substring(3, 6) + '/' + s.substring(6)
+                    : s;
+                return `https://cloud.funda.nl/valentina_media/${slashed}.jpg`;
+            });
 
             houses.push({
                 id: `funda-api-${hit._id}`,
