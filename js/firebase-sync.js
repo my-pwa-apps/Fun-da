@@ -21,11 +21,13 @@ class FamilySync {
         this.familyCode = null;
         this.userName = null;
         this.userId = null;
+        this.authUid = null;
         this.members = new Map();
         this.onFamilyUpdate = null;
         this.unsubscribe = null;
         this.db = null;
         this.isFirebaseReady = false;
+        this.photoURL = '';
 
         this.init();
     }
@@ -37,6 +39,7 @@ class FamilySync {
                 firebase.initializeApp(FIREBASE_CONFIG);
             }
             this.db = firebase.database();
+            this.authUid = firebase.auth?.().currentUser?.uid || null;
             
             this.isFirebaseReady = true;
             console.log('🔥 Firebase initialized successfully!');
@@ -51,8 +54,63 @@ class FamilySync {
         this.userId = localStorage.getItem('funda-user-id') || this.generateUserId();
         localStorage.setItem('funda-user-id', this.userId);
 
-        if (this.familyCode && this.isFirebaseReady) {
+        if (this.familyCode && this.canUseFamilySync()) {
             await this.startRealtimeSync();
+        }
+    }
+
+    canUseFamilySync() {
+        return Boolean(this.isFirebaseReady && typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser);
+    }
+
+    async handleAuthStateChanged(user) {
+        this.authUid = user?.uid || null;
+        this.photoURL = user?.photoURL || '';
+
+        if (!this.familyCode || !this.isFirebaseReady) {
+            return;
+        }
+
+        if (!user) {
+            if (this.unsubscribe) {
+                this.unsubscribe();
+                this.unsubscribe = null;
+            }
+            this.members.clear();
+            if (this.onFamilyUpdate) {
+                this.onFamilyUpdate(new Map(), this.members);
+            }
+            return;
+        }
+
+        await this.registerWriterAccess();
+        await this.startRealtimeSync();
+    }
+
+    async registerWriterAccess() {
+        if (!this.familyCode || !this.canUseFamilySync() || !this.authUid) return;
+
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        try {
+            await this.db.ref(`families/${sanitizedCode}/writers/${this.authUid}`).set(true);
+        } catch (error) {
+            console.error('Error registering family writer access:', error);
+        }
+    }
+
+    async updateMemberProfile(profile = {}) {
+        if (!this.familyCode || !this.canUseFamilySync() || !this.authUid) return;
+
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        const userKey = this.sanitizeForFirebase(this.userId);
+        try {
+            await this.db.ref(`families/${sanitizedCode}/members/${userKey}`).update({
+                ...profile,
+                authUid: this.authUid,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP,
+            });
+        } catch (error) {
+            console.error('Error updating family member profile:', error);
         }
     }
     generateUserName() {
@@ -91,7 +149,7 @@ class FamilySync {
     }
 
     async createFamily(userName) {
-        if (!this.isFirebaseReady) {
+        if (!this.canUseFamilySync() || !this.authUid) {
             console.error('Firebase not ready');
             return null;
         }
@@ -127,12 +185,17 @@ class FamilySync {
             });
 
             // Add current user as member
-            await familyRef.child(`members/${userKey}`).set({
-                name: this.userName,
-                userId: this.userId,                photoURL: this.photoURL || '',                photoURL: this.photoURL || '',
-                favorites: [],
-                joinedAt: firebase.database.ServerValue.TIMESTAMP,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            await familyRef.update({
+                [`members/${userKey}`]: {
+                    name: this.userName,
+                    userId: this.userId,
+                    authUid: this.authUid,
+                    photoURL: this.photoURL || '',
+                    favorites: [],
+                    joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                },
+                [`writers/${this.authUid}`]: true,
             });
 
             localStorage.setItem('funda-family-code', this.familyCode);
@@ -150,7 +213,7 @@ class FamilySync {
     }
 
     async joinFamily(familyCode, userName) {
-        if (!this.isFirebaseReady) {
+        if (!this.canUseFamilySync() || !this.authUid) {
             console.error('Firebase not ready');
             return false;
         }
@@ -174,12 +237,17 @@ class FamilySync {
             const favoriteIds = existingFavorites.map(h => h.id);
 
             // Add current user as member
-            await familyRef.child(`members/${userKey}`).set({
-                name: nextUserName,
-                userId: this.userId,
-                favorites: favoriteIds,
-                joinedAt: firebase.database.ServerValue.TIMESTAMP,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            await familyRef.update({
+                [`members/${userKey}`]: {
+                    name: nextUserName,
+                    userId: this.userId,
+                    authUid: this.authUid,
+                    photoURL: this.photoURL || '',
+                    favorites: favoriteIds,
+                    joinedAt: firebase.database.ServerValue.TIMESTAMP,
+                    lastSeen: firebase.database.ServerValue.TIMESTAMP
+                },
+                [`writers/${this.authUid}`]: true,
             });
 
             this.familyCode = normalizedFamilyCode;
@@ -206,8 +274,14 @@ class FamilySync {
 
         try {
             // Remove user from family
-            if (this.isFirebaseReady) {
-                await this.db.ref(`families/${sanitizedCode}/members/${userKey}`).remove();
+            if (this.canUseFamilySync()) {
+                const updates = {
+                    [`families/${sanitizedCode}/members/${userKey}`]: null,
+                };
+                if (this.authUid) {
+                    updates[`families/${sanitizedCode}/writers/${this.authUid}`] = null;
+                }
+                await this.db.ref().update(updates);
             }
         } catch (error) {
             console.error('Error leaving family:', error);
@@ -226,7 +300,7 @@ class FamilySync {
     }
 
     async startRealtimeSync() {
-        if (!this.familyCode || !this.isFirebaseReady) return;
+        if (!this.familyCode || !this.canUseFamilySync()) return;
 
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const familyRef = this.db.ref(`families/${sanitizedCode}/members`);
@@ -268,7 +342,7 @@ class FamilySync {
     }
 
     async updatePresence() {
-        if (!this.familyCode || !this.isFirebaseReady) return;
+        if (!this.familyCode || !this.canUseFamilySync()) return;
 
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const userKey = this.sanitizeForFirebase(this.userId);
@@ -282,7 +356,7 @@ class FamilySync {
     }
 
     async addFavorite(houseId) {
-        if (!this.familyCode || !this.isFirebaseReady) return;
+        if (!this.familyCode || !this.canUseFamilySync()) return;
 
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const userKey = this.sanitizeForFirebase(this.userId);
@@ -304,7 +378,7 @@ class FamilySync {
     }
 
     async removeFavorite(houseId) {
-        if (!this.familyCode || !this.isFirebaseReady) return;
+        if (!this.familyCode || !this.canUseFamilySync()) return;
 
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const userKey = this.sanitizeForFirebase(this.userId);
@@ -394,7 +468,7 @@ class FamilySync {
     // ==========================================
 
     async saveHousesToDB(houses) {
-        if (!this.familyCode || !this.isFirebaseReady || !houses.length) return;
+        if (!this.familyCode || !this.canUseFamilySync() || !houses.length) return;
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const updates = {};
         for (const house of houses) {
@@ -437,7 +511,7 @@ class FamilySync {
     }
 
     async loadHousesFromDB() {
-        if (!this.familyCode || !this.isFirebaseReady) return [];
+        if (!this.familyCode || !this.canUseFamilySync()) return [];
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         try {
             const snapshot = await this.db.ref(`families/${sanitizedCode}/houses`).once('value');
@@ -450,7 +524,7 @@ class FamilySync {
     }
 
     async discardHouseInDB(houseId) {
-        if (!this.familyCode || !this.isFirebaseReady) return;
+        if (!this.familyCode || !this.canUseFamilySync()) return;
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const key = this.sanitizeForFirebase(String(houseId));
         try {
@@ -465,7 +539,7 @@ class FamilySync {
     // ==========================================
 
     async saveFavoriteMetaInDB(houseId, meta) {
-        if (!this.familyCode || !this.isFirebaseReady) return;
+        if (!this.familyCode || !this.canUseFamilySync()) return;
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         const key = this.sanitizeForFirebase(String(houseId));
         try {
@@ -479,7 +553,7 @@ class FamilySync {
     }
 
     async loadAllFavoriteMetaFromDB() {
-        if (!this.familyCode || !this.isFirebaseReady) return {};
+        if (!this.familyCode || !this.canUseFamilySync()) return {};
         const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
         try {
             const snapshot = await this.db.ref(`families/${sanitizedCode}/favoriteMeta`).once('value');

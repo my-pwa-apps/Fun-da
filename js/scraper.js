@@ -19,7 +19,7 @@ class FundaScraper {
             funda: {
                 name: 'Funda',
                 baseUrl: 'https://www.funda.nl',
-                searchUrl: 'https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&publication_date="1"',
+                searchUrl: 'https://www.funda.nl/zoeken/koop?publication_date="1"',
                 enabled: true
             }
         };
@@ -137,7 +137,7 @@ class FundaScraper {
                 address: fullAddress || 'Adres onbekend',
                 houseNumber: houseNumber,
                 postalCode: postalCode,
-                city: address.city || 'Amsterdam',
+                city: address.city || '',
                 neighborhood: address.neighbourhood || this.getNeighborhoodFromPostcode(postalCode),
                 bedrooms: source.number_of_bedrooms || 0,
                 rooms: source.number_of_rooms || 0,
@@ -314,7 +314,7 @@ class FundaScraper {
             houseNumber: address.HouseNumber || '',
             houseNumberExt: address.HouseNumberExtension || '',
             postalCode: address.PostCode || '',
-            city: address.City || 'Amsterdam',
+            city: address.City || ads.gemeente || '',
             neighborhood: address.NeighborhoodName || '',
             municipality: ads.gemeente || '',
             bedrooms: fastView.NumberOfBedrooms || null,
@@ -894,7 +894,7 @@ class FundaScraper {
     async fetchBagDataForHouse(house) {
         try {
             // Use PDOK Locatieserver to find address and get BAG data
-            const searchQuery = `${house.address} ${house.postalCode || 'Amsterdam'}`;
+            const searchQuery = `${house.address} ${house.postalCode || house.city || ''}`.trim();
             const url = `${this.pdokUrl}?q=${encodeURIComponent(searchQuery)}&rows=1&fq=type:adres`;
             
             const response = await fetch(url);
@@ -1111,7 +1111,7 @@ class FundaScraper {
                 let address = 'Adres onbekend';
                 let houseNumber = '';
                 let postalCode = '';
-                let city = 'Amsterdam';
+                let city = '';
                 let neighborhood = '';
 
                 if (item.address) {
@@ -1121,7 +1121,7 @@ class FundaScraper {
                         address = item.address.street || item.address.streetName || '';
                         houseNumber = item.address.houseNumber || item.address.huisnummer || '';
                         postalCode = item.address.postalCode || item.address.postcode || '';
-                        city = item.address.city || item.address.plaats || 'Amsterdam';
+                        city = item.address.city || item.address.plaats || '';
                         neighborhood = item.address.neighborhood || item.address.wijk || item.address.buurt || '';
                     }
                 }
@@ -1209,7 +1209,7 @@ class FundaScraper {
             id: `funda-jsonld-${index}`,
             price: this.extractPrice(item.offers?.price),
             address: item.address?.streetAddress || item.name || 'Adres onbekend',
-            city: item.address?.addressLocality || 'Amsterdam',
+            city: item.address?.addressLocality || '',
             neighborhood: item.address?.addressRegion || '',
             postalCode: item.address?.postalCode || '',
             bedrooms: item.numberOfRooms || 0,
@@ -1242,7 +1242,7 @@ class FundaScraper {
             id: `funda-html-${index}-${Math.random().toString(36).substring(2, 9)}`,
             price: price,
             address: address,
-            city: 'Amsterdam',
+            city: '',
             neighborhood: this.extractNeighborhood(address),
             bedrooms: roomsEl ? parseInt(roomsEl.textContent) || 0 : 0,
             bathrooms: 1,
@@ -1426,7 +1426,7 @@ class FundaScraper {
                     price: null, // Will be filled from detail page
                     address: address,
                     postalCode: postcode,
-                    city: 'Amsterdam',
+                    city: '',
                     neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(address),
                     bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
                     bathrooms: 1,
@@ -1476,7 +1476,7 @@ class FundaScraper {
                         price: price,
                         address: addr,
                         postalCode: postcode,
-                        city: 'Amsterdam',
+                        city: '',
                         neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(addr),
                         bedrooms: roomMatch ? parseInt(roomMatch[1]) : 0,
                         bathrooms: 1,
@@ -1562,7 +1562,7 @@ class FundaScraper {
                         price: this.extractPrice(price),
                         address: cleanAddress,
                         postalCode: cleanPostcode,
-                        city: 'Amsterdam',
+                        city: '',
                         neighborhood: this.getNeighborhoodFromPostcode(cleanPostcode) || this.extractNeighborhood(cleanAddress),
                         bedrooms: parseInt(rooms) || 0,
                         bathrooms: 1,
@@ -1631,7 +1631,7 @@ class FundaScraper {
                         price: this.extractPrice(price),
                         address: address,
                         postalCode: postalCode,
-                        city: 'Amsterdam',
+                        city: '',
                         neighborhood: this.getNeighborhoodFromPostcode(postalCode) || this.extractNeighborhood(address),
                         bedrooms: bedrooms,
                         bathrooms: bathrooms,
@@ -1710,7 +1710,7 @@ class FundaScraper {
                 price: price,
                 address: address,
                 postalCode: postcode,
-                city: 'Amsterdam',
+                city: '',
                 neighborhood: this.getNeighborhoodFromPostcode(postcode) || this.extractNeighborhood(address),
                 bedrooms: bedrooms,
                 bathrooms: bathrooms,
@@ -1735,7 +1735,7 @@ class FundaScraper {
             price: this.extractPrice(item.price?.amount || item.price || item.koopprijs),
             address: item.address?.street || item.address || 'Adres onbekend',
             houseNumber: item.address?.houseNumber || '',
-            city: item.address?.city || 'Amsterdam',
+            city: item.address?.city || '',
             neighborhood: item.address?.neighborhood || '',
             bedrooms: item.bedrooms || item.rooms || 0,
             bathrooms: item.bathrooms || 1,
@@ -1836,7 +1836,7 @@ class FundaScraper {
             }
         }
         
-        return 'Amsterdam';
+        return '';
     }
 
     getNeighborhoodFromPostcode(postcode) {
@@ -1892,7 +1892,7 @@ class FundaScraper {
     // Genereer een Funda zoek URL (nieuw formaat 2024+)
     static buildSearchUrl(options = {}) {
         const {
-            city = 'amsterdam',
+            city = '',
             type = 'koop', // koop of huur
             minPrice = '',
             maxPrice = '',
@@ -1903,7 +1903,11 @@ class FundaScraper {
         } = options;
 
         // Nieuw Funda URL formaat
-        let url = `https://www.funda.nl/zoeken/${type}?selected_area=["${city}"]`;
+        let url = `https://www.funda.nl/zoeken/${type}?`;
+
+        if (city) {
+            url += `selected_area=["${city}"]&`;
+        }
         
         // Publicatie datum filter (1 = vandaag, 3 = laatste 3 dagen, 5 = laatste 5 dagen, etc.)
         if (daysOld) {
@@ -1923,7 +1927,7 @@ class FundaScraper {
             url += `&search_result_page=${page}`;
         }
 
-        return url;
+        return url.replace(/\?&/, '?').replace(/&$/, '');
     }
 
     // Genereer een Funda zoek-URL op basis van adres
@@ -1934,11 +1938,11 @@ class FundaScraper {
             const houseNumberMatch = address.match(/(\d+[a-zA-Z]?(?:[\-\/][a-zA-Z0-9]+)?)\s*$/);
             const houseNumber = houseNumberMatch ? houseNumberMatch[1] : '';
             const searchQuery = `${postalCode} ${houseNumber}`.trim();
-            return `https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&search_query=${encodeURIComponent(searchQuery)}`;
+            return `https://www.funda.nl/zoeken/koop?search_query=${encodeURIComponent(searchQuery)}`;
         }
         
         // Anders zoek op adres
-        return `https://www.funda.nl/zoeken/koop?selected_area=["amsterdam"]&search_query=${encodeURIComponent(address)}`;
+        return `https://www.funda.nl/zoeken/koop?search_query=${encodeURIComponent(address)}`;
     }
 }
 

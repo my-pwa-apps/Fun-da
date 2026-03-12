@@ -906,15 +906,13 @@ class FunDaApp {
             if (btn) {
                 btn.dataset.origText = btn.textContent;
                 btn.textContent = 'Klik nogmaals om te bevestigen';
-                btn.style.background = 'var(--danger)';
-                btn.style.color = '#fff';
+                btn.classList.add('btn-confirm-danger');
             }
             setTimeout(() => {
                 this._clearDataPending = false;
                 if (btn) {
                     btn.textContent = btn.dataset.origText || 'Alle data wissen';
-                    btn.style.background = '';
-                    btn.style.color = '';
+                    btn.classList.remove('btn-confirm-danger');
                     delete btn.dataset.origText;
                 }
             }, 4000);
@@ -923,8 +921,7 @@ class FunDaApp {
         this._clearDataPending = false;
         if (btn) {
             btn.textContent = btn.dataset.origText || 'Alle data wissen';
-            btn.style.background = '';
-            btn.style.color = '';
+            btn.classList.remove('btn-confirm-danger');
             delete btn.dataset.origText;
         }
         {
@@ -933,21 +930,32 @@ class FunDaApp {
             localStorage.removeItem('funda-viewed');
             localStorage.removeItem('funda-index');
             localStorage.removeItem('funda-houses');
+            localStorage.removeItem('funda-favorite-meta');
+            localStorage.removeItem('funda-swiped-ids');
+            localStorage.removeItem('funda-discarded-houses');
             // Note: We keep funda-filters so user doesn't have to re-enter them
             
             // Reset app state (keep filters!)
             this.houses = [];
             this.favorites = [];
+            this.favoriteMeta = {};
             this.currentIndex = 0;
             this.viewed = 0;
+            this.swipedIds = new Set();
+            this.discardedHouses = [];
+            this.familyMatches.clear();
             // Filters are intentionally kept
             
             // Clear scraper cache
             this.scraper.cache.clear();
+
+            this.saveToStorage();
             
             // Re-render
             this.renderCards();
             this.updateStats();
+            this.updateFamilyUI();
+            this._updateDiscardBinBadge();
             
             this.showToast('Alle data gewist!');
         }
@@ -982,6 +990,7 @@ class FunDaApp {
 
     onAuthStateChanged(user) {
         this.currentUser = user;
+        this.familySync.handleAuthStateChanged(user).catch(() => {});
         const loggedOutEl = document.getElementById('settingsLoggedOut');
         const loggedInEl = document.getElementById('settingsLoggedIn');
         const headerAvatar = document.getElementById('headerUserAvatar');
@@ -1016,9 +1025,7 @@ class FunDaApp {
     async _updateFamilyMemberPhoto(photoURL) {
         if (!this.familySync.isFirebaseReady || !this.familySync.familyCode) return;
         try {
-            const code = this.familySync.sanitizeForFirebase(this.familySync.familyCode);
-            const userKey = this.familySync.sanitizeForFirebase(this.familySync.userId);
-            await firebase.database().ref(`families/${code}/members/${userKey}/photoURL`).set(photoURL || '');
+            await this.familySync.updateMemberProfile({ photoURL: photoURL || '' });
         } catch (e) { /* best effort */ }
     }
 
@@ -1029,7 +1036,12 @@ class FunDaApp {
                 return;
             }
             const provider = new firebase.auth.GoogleAuthProvider();
-            await firebase.auth().signInWithPopup(provider);
+            const currentUser = firebase.auth().currentUser;
+            if (currentUser?.isAnonymous && typeof currentUser.linkWithPopup === 'function') {
+                await currentUser.linkWithPopup(provider);
+            } else {
+                await firebase.auth().signInWithPopup(provider);
+            }
             this.showToast('Ingelogd!');
         } catch (e) {
             console.error('Google login error:', e);
@@ -1200,11 +1212,28 @@ class FunDaApp {
         }
     }
 
+    getHouseCityName(house) {
+        return (house?.city || house?.municipality || '').trim();
+    }
+
+    buildHouseLocationText(house) {
+        return [house?.address || '', house?.postalCode || '', this.getHouseCityName(house)].filter(Boolean).join(', ');
+    }
+
+    buildHouseMapQuery(house) {
+        return [house?.address || '', house?.postalCode || '', this.getHouseCityName(house)].filter(Boolean).join(' ').trim();
+    }
+
     // ==========================================
     // FAMILY SYNC
     // ==========================================
 
     async createFamily() {
+        if (!this.currentUser) {
+            this.showToast('Log eerst in met Google om familie sync te gebruiken');
+            return;
+        }
+
         const nameInput = document.getElementById('familyUserName');
         const name = nameInput.value.trim();
 
@@ -1228,6 +1257,11 @@ class FunDaApp {
     }
 
     async joinFamily() {
+        if (!this.currentUser) {
+            this.showToast('Log eerst in met Google om familie sync te gebruiken');
+            return;
+        }
+
         const nameInput = document.getElementById('familyUserName');
         const codeInput = document.getElementById('joinFamilyCode');
         const name = nameInput.value.trim();
@@ -1258,21 +1292,24 @@ class FunDaApp {
     }
 
     leaveFamily() {
+        if (!this.currentUser) {
+            this.showToast('Log eerst in met Google om familie sync te beheren');
+            return;
+        }
+
         const btn = document.getElementById('leaveFamilyBtn');
         if (!this._leaveFamilyPending) {
             this._leaveFamilyPending = true;
             if (btn) {
                 btn.dataset.origText = btn.textContent;
                 btn.textContent = 'Klik nogmaals om te bevestigen';
-                btn.style.background = 'var(--danger)';
-                btn.style.color = '#fff';
+                btn.classList.add('btn-confirm-danger');
             }
             setTimeout(() => {
                 this._leaveFamilyPending = false;
                 if (btn) {
                     btn.textContent = btn.dataset.origText || 'Familie verlaten';
-                    btn.style.background = '';
-                    btn.style.color = '';
+                    btn.classList.remove('btn-confirm-danger');
                     delete btn.dataset.origText;
                 }
             }, 4000);
@@ -1281,8 +1318,7 @@ class FunDaApp {
         this._leaveFamilyPending = false;
         if (btn) {
             btn.textContent = btn.dataset.origText || 'Familie verlaten';
-            btn.style.background = '';
-            btn.style.color = '';
+            btn.classList.remove('btn-confirm-danger');
             delete btn.dataset.origText;
         }
         {
@@ -1706,7 +1742,7 @@ class FunDaApp {
         const isFamilyMatch = this.familyMatches.has(house.id) || this.familyMatches.has(house.id?.toString());
         const matchMembers = this.familyMatches.get(house.id) || this.familyMatches.get(house.id?.toString());
         const safeAddress = escapeHtml(cleanAddress(house.address));
-        const safeNeighborhood = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || house.city || 'Amsterdam'}`);
+        const safeNeighborhood = escapeHtml(`${house.postalCode ? house.postalCode + ' - ' : ''}${house.neighborhood || this.getHouseCityName(house)}`);
         const safeEnergyLabel = escapeHtml(house.energyLabel || '');
 
         // Build image gallery HTML
@@ -1987,7 +2023,7 @@ class FunDaApp {
         if (!viewingDate) { this.showToast('Vul eerst een bezichtigingsdatum in'); return; }
         const addr = cleanAddress(house?.address || '');
         const dateStr = viewingDate.replace(/-/g, '');
-        const locationStr = `${house?.address || ''}, ${house?.postalCode || ''} Amsterdam`;
+        const locationStr = this.buildHouseLocationText(house);
         const calUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
             '&text=' + encodeURIComponent('Bezichtiging ' + addr) +
             '&dates=' + dateStr + '/' + dateStr +
@@ -2216,9 +2252,9 @@ class FunDaApp {
             : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
 
         // Map button (in-app popup)
-        this._mapHouse = { latitude: house.latitude, longitude: house.longitude, address: house.address, postalCode: house.postalCode };
+        this._mapHouse = { latitude: house.latitude, longitude: house.longitude, address: house.address, postalCode: house.postalCode, city: this.getHouseCityName(house) };
         const hasMapData = house.latitude && house.longitude;
-        const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
+        const mapAddressQuery = this.buildHouseMapQuery(house);
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
             <button data-action="openMapModal" class="btn-secondary detail-action-btn">
                 ${this.t('detail.maps')}
@@ -2514,9 +2550,9 @@ class FunDaApp {
             : (house.latitude && house.longitude ? safeExternalUrl(`https://www.google.com/maps?q=${house.latitude},${house.longitude}`) : '#');
 
         // Map button (in-app popup)
-        this._mapHouse = { latitude: house.latitude, longitude: house.longitude, address: house.address, postalCode: house.postalCode };
+        this._mapHouse = { latitude: house.latitude, longitude: house.longitude, address: house.address, postalCode: house.postalCode, city: this.getHouseCityName(house) };
         const hasMapData = house.latitude && house.longitude;
-        const mapAddressQuery = `${house.address || ''} ${house.postalCode || ''} Amsterdam`.trim();
+        const mapAddressQuery = this.buildHouseMapQuery(house);
         const mapsLinkHtml = (hasMapData || mapAddressQuery) ? `
             <button data-action="openMapModal" class="btn-secondary detail-action-btn">
                 ${this.t('detail.maps')}
@@ -2970,7 +3006,7 @@ class FunDaApp {
         if (!h) return;
         const query = h.latitude && h.longitude
             ? `${h.latitude},${h.longitude}`
-            : encodeURIComponent(`${h.address || ''} ${h.postalCode || ''} Amsterdam`.trim());
+            : encodeURIComponent([h.address || '', h.postalCode || '', h.city || ''].filter(Boolean).join(' ').trim());
         const src = `https://maps.google.com/maps?q=${query}&output=embed&hl=nl`;
         document.getElementById('mapFrame').src = src;
         const title = h.address ? cleanAddress(h.address) : 'Locatie';
@@ -3701,7 +3737,7 @@ class FunDaApp {
         const safeImage  = escapeHtml(safeImageUrl(house.image));
         const safeAddr   = escapeHtml(cleanAddress(house.address));
         const safeNeigh  = escapeHtml(house.neighborhood || '');
-        const safeCity   = escapeHtml(house.city || 'Amsterdam');
+        const safeCity   = escapeHtml(this.getHouseCityName(house));
         const safePostal = escapeHtml(house.postalCode || '');
         const safeType   = escapeHtml(house.houseType || house.propertyType || '');
         const isFav      = this.favorites.some(f => String(f.id) === String(house.id));

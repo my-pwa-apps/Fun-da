@@ -811,6 +811,11 @@ body {
     color: var(--dark);
 }
 
+.btn-confirm-danger {
+    background: var(--danger) !important;
+    color: var(--white) !important;
+}
+
 .clear-data-wrapper {
     margin-bottom: 1rem;
 }
@@ -1254,6 +1259,10 @@ body {
     text-decoration: none;
     cursor: pointer;
     border: 1px solid var(--gray-lighter);
+}
+
+.input-full-spaced {
+    margin-top: 0.4rem;
 }
 
 .detail-action-muted {
@@ -2849,6 +2858,11 @@ body {
     display: none;
 }
 
+.browse-filter-badge-inline {
+    position: static;
+    margin-left: 0.3rem;
+}
+
 .browse-sort-wrap {
     flex-shrink: 0;
 }
@@ -3398,7 +3412,6 @@ body {
     padding: 0.3rem;
     background: #111;
     overflow-x: auto;
-    scrollbar-width: none;
 }
 
 .detail-thumbs::-webkit-scrollbar {
@@ -3771,7 +3784,6 @@ textarea.bid-input {
 
 #lightboxOverlay .lb-img-wrap {
     overflow: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 #lightboxOverlay .lb-img.zoomed {
@@ -3863,9 +3875,8 @@ textarea.bid-input {
     height: auto;
     object-fit: contain;
     display: block;
-    user-select: none;
     -webkit-user-select: none;
-    -webkit-user-drag: none;
+    user-select: none;
 }
 
 .lb-nav {

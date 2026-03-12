@@ -7,7 +7,7 @@
         ".read": true,
         "metadata": {
           ".read": true,
-          ".write": "!data.exists()",
+          ".write": "auth != null && !data.exists()",
           "createdAt": {
             ".validate": "newData.isNumber()"
           },
@@ -24,12 +24,18 @@
         "members": {
           "$userId": {
             ".read": true,
-            ".write": "$userId.matches(/^user-[a-f0-9]{16}$/)",
+            ".write": "auth != null && $userId.matches(/^user-[a-f0-9]{16}$/) && (((!data.exists()) && newData.child('userId').val() == $userId && newData.child('authUid').val() == auth.uid) || (data.exists() && data.child('authUid').val() == auth.uid))",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
             },
             "userId": {
               ".validate": "newData.isString() && newData.val().matches(/^user-[a-f0-9]{16}$/)"
+            },
+            "authUid": {
+              ".validate": "newData.isString() && auth != null && newData.val() == auth.uid"
+            },
+            "photoURL": {
+              ".validate": "newData.isString() && newData.val().length <= 2000"
             },
             "favorites": {
               "$item": {
@@ -47,9 +53,16 @@
             }
           }
         },
+        "writers": {
+          ".read": false,
+          "$authUid": {
+            ".write": "auth != null && $authUid == auth.uid",
+            ".validate": "newData.val() == true || !newData.exists()"
+          }
+        },
         "favoriteMeta": {
           ".read": true,
-          ".write": true,
+          ".write": "auth != null && root.child('families').child($familyCode).child('writers').child(auth.uid).val() == true",
           "$houseId": {
             ".validate": "newData.isString() || newData.hasChildren()",
             "$field": {
@@ -59,7 +72,7 @@
         },
         "houses": {
           ".read": true,
-          ".write": true,
+          ".write": "auth != null && root.child('families').child($familyCode).child('writers').child(auth.uid).val() == true",
           "$houseId": {
             ".validate": "newData.hasChildren(['id'])",
             "$field": {
@@ -79,6 +92,12 @@
         "settings": {
           "daysBack": {
             ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 90"
+          },
+          "searchArea": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "viewMode": {
+            ".validate": "newData.isString() && (newData.val() == 'browse' || newData.val() == 'swipe')"
           },
           "browseFilters": {
             "$field": {
