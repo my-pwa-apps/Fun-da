@@ -834,10 +834,6 @@ class FunDaApp {
                     const wasActive = optBtn.classList.contains('active');
                     group.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
                     if (!wasActive) optBtn.classList.add('active');
-                    // Auto-apply on mobile too (don't require "Filters toepassen" tap)
-                    if (group.closest('.browse-sidebar')) {
-                        setTimeout(() => this.applyBrowseFilters(), 50);
-                    }
                     return;
                 }
             }
