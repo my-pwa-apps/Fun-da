@@ -3239,19 +3239,16 @@ a.btn-secondary {
     width: 30px;
     height: 30px;
     border: none;
-    background: rgba(255,255,255,0.92);
+    background: #fff;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s, background 0.15s, color 0.15s;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    transition: transform 0.15s;
     z-index: 2;
     line-height: 1;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .bt-fav svg {
@@ -3262,8 +3259,7 @@ a.btn-secondary {
 }
 
 .bt-fav.active {
-    background: rgba(255,255,255,0.92);
-    color: #e53e3e;
+    background: #fff;
 }
 
 .bt-fav.active svg {
@@ -3282,7 +3278,7 @@ a.btn-secondary {
 }
 
 .bt-fav.active:hover {
-    background: rgba(255,255,255,0.95);
+    background: #fff;
 }
 
 /* ---- Info area ---- */
