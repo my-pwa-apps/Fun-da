@@ -124,6 +124,7 @@ class FundaScraper {
                 features: [],
                 isNew: false,
                 fromMobileAPI: true,
+                availability: source.availability || 'available',
             };
         });
     }

@@ -99,6 +99,8 @@ class FunDaApp {
             maxDaysOnMarket: null,
             propertyType: null,
             minRooms: null,
+            statusAvailable: true,
+            statusNegotiations: false,
         };
         
         // Backward compatibility getters
@@ -157,6 +159,9 @@ class FunDaApp {
 
         // Start progress animation immediately
         this.startProgressAnimation();
+
+        // Apply saved theme (before rendering to avoid flash)
+        this.initTheme();
 
         // Apply saved language preference to static HTML
         this.applyTranslations();
@@ -739,9 +744,19 @@ class FunDaApp {
             this.saveSettingsToFirebase();
         });
 
-        // Settings: Google login / logout
-        document.getElementById('googleLoginBtn').addEventListener('click', () => this.loginWithGoogle());
-        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+        // Settings: Google login / logout (profile dropdown)
+        document.getElementById('profileBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleProfileDropdown();
+        });
+        document.getElementById('profileLoginBtn').addEventListener('click', () => { this.closeProfileDropdown(); this.loginWithGoogle(); });
+        document.getElementById('profileLogoutBtn').addEventListener('click', () => { this.closeProfileDropdown(); this.logout(); });
+        document.getElementById('profileThemeToggle').addEventListener('click', () => this.toggleTheme());
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#profileDropdown') && !e.target.closest('#profileBtn')) {
+                this.closeProfileDropdown();
+            }
+        });
 
         // Settings: language toggle
         document.getElementById('langNl')?.addEventListener('click', () => this.setLang('nl'));
@@ -1027,22 +1042,27 @@ class FunDaApp {
     onAuthStateChanged(user) {
         this.currentUser = user;
         this.familySync.handleAuthStateChanged(user).catch(() => {});
-        const loggedOutEl = document.getElementById('settingsLoggedOut');
-        const loggedInEl = document.getElementById('settingsLoggedIn');
-        const headerAvatar = document.getElementById('headerUserAvatar');
+        const profilePhoto = document.getElementById('profileUserPhoto');
+        const profileDefault = document.getElementById('profileDefaultAvatar');
+        const profileInfo = document.getElementById('profileInfo');
+        const profileDdPhoto = document.getElementById('profileDropdownPhoto');
+        const profileDdName = document.getElementById('profileDropdownName');
+        const profileNotLoggedIn = document.getElementById('profileNotLoggedIn');
+        const profileLoggedIn = document.getElementById('profileLoggedIn');
 
         if (user) {
-            if (loggedOutEl) loggedOutEl.classList.add('hidden');
-            if (loggedInEl) loggedInEl.classList.remove('hidden');
-            // Show avatar in header
-            if (headerAvatar) {
-                if (user.photoURL) {
-                    headerAvatar.src = user.photoURL;
-                    headerAvatar.classList.remove('hidden');
-                } else {
-                    headerAvatar.classList.add('hidden');
-                }
+            // Show user photo in header button
+            if (user.photoURL && profilePhoto) {
+                profilePhoto.src = user.photoURL;
+                profilePhoto.classList.remove('hidden');
+                if (profileDefault) profileDefault.classList.add('hidden');
             }
+            // Show user info in dropdown
+            if (profileInfo) profileInfo.classList.remove('hidden');
+            if (profileDdPhoto && user.photoURL) profileDdPhoto.src = user.photoURL;
+            if (profileDdName) profileDdName.textContent = user.displayName || user.email || '';
+            if (profileNotLoggedIn) profileNotLoggedIn.classList.add('hidden');
+            if (profileLoggedIn) profileLoggedIn.classList.remove('hidden');
             // Update family member photo if in a family
             this.familySync.photoURL = user.photoURL || '';
             if (this.familySync.isInFamily()) {
@@ -1051,9 +1071,11 @@ class FunDaApp {
             // Load settings from Firebase for this user
             this.loadSettingsFromFirebase();
         } else {
-            if (loggedOutEl) loggedOutEl.classList.remove('hidden');
-            if (loggedInEl) loggedInEl.classList.add('hidden');
-            if (headerAvatar) headerAvatar.classList.add('hidden');
+            if (profilePhoto) profilePhoto.classList.add('hidden');
+            if (profileDefault) profileDefault.classList.remove('hidden');
+            if (profileInfo) profileInfo.classList.add('hidden');
+            if (profileNotLoggedIn) profileNotLoggedIn.classList.remove('hidden');
+            if (profileLoggedIn) profileLoggedIn.classList.add('hidden');
             this.familySync.photoURL = '';
         }
     }
@@ -1094,6 +1116,64 @@ class FunDaApp {
         } catch (e) {
             console.error('Logout error:', e);
         }
+    }
+
+    // ==========================================
+    // THEME (light/dark mode)
+    // ==========================================
+
+    initTheme() {
+        const saved = localStorage.getItem('funda-theme');
+        if (saved === 'dark' || saved === 'light') {
+            this._setTheme(saved);
+        } else {
+            // Follow system preference
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            this._setTheme(prefersDark ? 'dark' : 'light');
+        }
+        // Listen for system changes (when user hasn't explicitly set a preference)
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('funda-theme')) {
+                this._setTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+    }
+
+    _setTheme(theme) {
+        this.theme = theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        // Update toggle label + icons
+        const label = document.getElementById('themeToggleLabel');
+        const sunIcon = document.getElementById('themeIconSun');
+        const moonIcon = document.getElementById('themeIconMoon');
+        if (label) label.textContent = theme === 'dark'
+            ? (this.lang === 'en' ? 'Light mode' : 'Licht thema')
+            : (this.lang === 'en' ? 'Dark mode' : 'Donker thema');
+        if (sunIcon) sunIcon.classList.toggle('hidden', theme === 'dark');
+        if (moonIcon) moonIcon.classList.toggle('hidden', theme !== 'dark');
+        // Update meta theme-color
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = theme === 'dark' ? '#111827' : '#FF6B35';
+    }
+
+    toggleTheme() {
+        const next = this.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('funda-theme', next);
+        this._setTheme(next);
+    }
+
+    // ==========================================
+    // PROFILE DROPDOWN
+    // ==========================================
+
+    toggleProfileDropdown() {
+        const dd = document.getElementById('profileDropdown');
+        if (dd) dd.classList.toggle('hidden');
+    }
+
+    closeProfileDropdown() {
+        const dd = document.getElementById('profileDropdown');
+        if (dd) dd.classList.add('hidden');
     }
 
     async saveSettingsToFirebase() {
@@ -1190,6 +1270,8 @@ class FunDaApp {
         setChk('bfIsMonument', f.isMonument);
         setChk('bfIsAuction', f.isAuction);
         setChk('bfIsFixer', f.isFixer);
+        setChk('bfStatusAvailable', f.statusAvailable !== false); // default true
+        setChk('bfStatusNegotiations', !!f.statusNegotiations);
         if (f.minBedrooms) {
             document.querySelectorAll('#bfBedroomsGroup .btn-option').forEach(b => {
                 b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minBedrooms);
@@ -1734,6 +1816,15 @@ class FunDaApp {
             if (f.isMonument && !house.isMonument) return false;
             if (f.isAuction && !house.isAuction) return false;
             if (f.isFixer && !house.isFixerUpper && !house.isFixer) return false;
+            // Status filter (availability)
+            if (f.statusAvailable || f.statusNegotiations) {
+                const avail = house.availability || house.status || 'available';
+                const isAvailable = !avail || avail === 'available' || /beschikbaar/i.test(avail);
+                const isNego = avail === 'negotiations' || /onderhandeling/i.test(avail);
+                if (f.statusAvailable && !f.statusNegotiations && !isAvailable) return false;
+                if (!f.statusAvailable && f.statusNegotiations && !isNego) return false;
+                // Both checked = show all; neither checked = show all
+            }
             return true;
         });
     }
@@ -3402,6 +3493,14 @@ class FunDaApp {
             if (f.isMonument && !house.isMonument) return false;
             if (f.isAuction && !house.isAuction) return false;
             if (f.isFixer && !house.isFixerUpper && !house.isFixer) return false;
+            // Status filter (availability)
+            if (f.statusAvailable || f.statusNegotiations) {
+                const avail = house.availability || house.status || 'available';
+                const isAvailable = !avail || avail === 'available' || /beschikbaar/i.test(avail);
+                const isNego = avail === 'negotiations' || /onderhandeling/i.test(avail);
+                if (f.statusAvailable && !f.statusNegotiations && !isAvailable) return false;
+                if (!f.statusAvailable && f.statusNegotiations && !isNego) return false;
+            }
             return true;
         });
 
@@ -3477,6 +3576,8 @@ class FunDaApp {
         f.isMonument = document.getElementById('bfIsMonument').checked;
         f.isAuction  = document.getElementById('bfIsAuction').checked;
         f.isFixer    = document.getElementById('bfIsFixer').checked;
+        f.statusAvailable = document.getElementById('bfStatusAvailable').checked;
+        f.statusNegotiations = document.getElementById('bfStatusNegotiations').checked;
         // Min days: prefer preset button, fall back to typed value
         const activeDaysBtn = document.querySelector('#bfDaysOnMarketGroup .btn-option.active');
         const typedDays = parseInt(document.getElementById('bfMinDaysOnMarket').value, 10) || null;
@@ -3537,6 +3638,7 @@ class FunDaApp {
             excludedNeighborhoods: [],
             minDaysOnMarket: null, maxDaysOnMarket: null,
             propertyType: null, minRooms: null,
+            statusAvailable: true, statusNegotiations: false,
         };
 
         // Reset form controls
@@ -3547,6 +3649,8 @@ class FunDaApp {
         setField('bfNeighborhood', '');
         this._restoreExcludeNeighCheckboxes();
         ['bfHasTuin','bfHasBalcony','bfHasParking','bfHasSolar','bfIsMonument','bfIsAuction','bfIsFixer'].forEach(id => setCheck(id, false));
+        setCheck('bfStatusAvailable', true);
+        setCheck('bfStatusNegotiations', false);
         document.querySelectorAll('#browseSidebar .btn-option').forEach(b => b.classList.remove('active'));
 
         this.closeBrowseSidebarPanel();
@@ -3822,6 +3926,14 @@ class FunDaApp {
                 const neigh = house.neighborhood || house.city || '';
                 if (f.excludedNeighborhoods.includes(neigh)) return false;
             }
+            // Status filter
+            if (f.statusAvailable || f.statusNegotiations) {
+                const avail = house.availability || house.status || 'available';
+                const isAvailable = !avail || avail === 'available' || /beschikbaar/i.test(avail);
+                const isNego = avail === 'negotiations' || /onderhandeling/i.test(avail);
+                if (f.statusAvailable && !f.statusNegotiations && !isAvailable) return false;
+                if (!f.statusAvailable && f.statusNegotiations && !isNego) return false;
+            }
             return true;
         });
 
@@ -3856,7 +3968,7 @@ class FunDaApp {
         const badges = [];
         if (house.isNew || house.daysOnMarket === 0)
             badges.push(`<span class="bt-badge bt-badge-new">${this.t('badge.new')}</span>`);
-        if (house.status && /onderhandeling/i.test(house.status))
+        if (house.availability === 'negotiations' || (house.status && /onderhandeling/i.test(house.status)))
             badges.push(`<span class="bt-badge bt-badge-nego">${this.t('badge.nego')}</span>`);
         if (house.daysOnMarket >= 90)
             badges.push('<span class="bt-badge bt-badge-stale bt-badge-stale-long" title="Al meer dan 90 dagen te koop">90+ dagen</span>');

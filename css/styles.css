@@ -215,17 +215,122 @@ body {
     gap: 0.625rem;
 }
 
-.header-avatar {
+/* Profile button (always visible in header) */
+.profile-btn {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--primary);
+    border: 2px solid var(--gray-lighter);
+    background: var(--light);
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    position: relative;
 }
 
-.header-avatar.hidden {
+.profile-btn:hover {
+    border-color: var(--primary);
+}
+
+.profile-default-svg {
+    color: var(--text-muted);
+}
+
+.profile-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.profile-photo.hidden {
     display: none;
+}
+
+/* Profile dropdown */
+.profile-dropdown {
+    position: absolute;
+    top: 58px;
+    right: var(--app-padding);
+    width: 220px;
+    background: var(--white);
+    border: 1px solid var(--gray-lighter);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 500;
+    overflow: hidden;
+}
+
+.profile-dropdown.hidden {
+    display: none;
+}
+
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gray-lighter);
+}
+
+.profile-info.hidden {
+    display: none;
+}
+
+.profile-dd-photo {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.profile-dd-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-dd-section.hidden {
+    display: none;
+}
+
+.profile-dd-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--dark);
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+}
+
+.profile-dd-item:hover {
+    background: var(--light);
+}
+
+.profile-dd-item svg {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.profile-dd-divider {
+    height: 1px;
+    background: var(--gray-lighter);
+    margin: 0;
 }
 
 .btn-icon {
@@ -1589,85 +1694,79 @@ a.btn-secondary {
     }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --light: #1F2937;
-        --white: #111827;
-        --dark: #F9FAFB;
-        --dark-light: #E5E7EB;
-        --gray: #9CA3AF;
-        --gray-light: #6B7280;
-        --gray-lighter: #374151;
-        --text-primary: #F9FAFB;
-        --text-secondary: #D1D5DB;
-        --text-muted: #9CA3AF;
-    }
-    
-    body {
-        background: linear-gradient(180deg, #1F2937 0%, #111827 50%, #0F172A 100%);
-    }
-    
-    .house-card {
-        background: #1F2937;
-        border-color: #374151;
-    }
-    
-    .card-content {
-        background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
-    }
-    
-    .btn-icon {
-        background: #1F2937;
-        border-color: #374151;
-    }
-    
-    .btn-icon svg {
-        color: #E5E7EB;
-    }
-    
-    .feature svg {
-        color: var(--primary);
-    }
-    
-    .card-badge {
-        background: rgba(31, 41, 55, 0.95);
-        color: #F9FAFB;
-    }
-    
-    .stats-bar {
-        background: #1F2937;
-        border-color: #374151;
-    }
-    
-    .modal-content {
-        background: #1F2937;
-    }
-    
-    .modal-header {
-        background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
-        border-color: #374151;
-    }
-    
-    .range-inputs input,
-    .filter-group select,
-    .btn-option,
-    .input-full {
-        background: #111827;
-        border-color: #374151;
-        color: #F9FAFB;
-    }
-    
-    .favorite-item,
-    .detail-item {
-        background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
-        border-color: #374151;
-    }
-    
-    .import-status {
-        background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
-        border-color: #10B981;
-    }
+/* Dark mode — activated by data-theme="dark" on <html> */
+[data-theme="dark"] {
+    --light: #1F2937;
+    --white: #111827;
+    --dark: #F9FAFB;
+    --dark-light: #E5E7EB;
+    --gray: #9CA3AF;
+    --gray-light: #6B7280;
+    --gray-lighter: #374151;
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --text-muted: #9CA3AF;
+}
+
+[data-theme="dark"] body {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 50%, #0F172A 100%);
+}
+
+[data-theme="dark"] .house-card {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .card-content {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
+}
+
+[data-theme="dark"] .btn-icon {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .btn-icon svg {
+    color: #E5E7EB;
+}
+
+[data-theme="dark"] .card-badge {
+    background: rgba(31, 41, 55, 0.95);
+    color: #F9FAFB;
+}
+
+[data-theme="dark"] .stats-bar {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .modal-content {
+    background: #1F2937;
+}
+
+[data-theme="dark"] .modal-header {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
+    border-color: #374151;
+}
+
+[data-theme="dark"] .range-inputs input,
+[data-theme="dark"] .filter-group select,
+[data-theme="dark"] .btn-option,
+[data-theme="dark"] .input-full {
+    background: #111827;
+    border-color: #374151;
+    color: #F9FAFB;
+}
+
+[data-theme="dark"] .favorite-item,
+[data-theme="dark"] .detail-item {
+    background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+    border-color: #374151;
+}
+
+[data-theme="dark"] .import-status {
+    background: linear-gradient(135deg, #064E3B 0%, #065F46 100%);
+    border-color: #10B981;
 }
 
 /* Print styles */
