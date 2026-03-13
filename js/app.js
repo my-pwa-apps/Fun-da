@@ -1179,6 +1179,20 @@ class FunDaApp {
         if (dd) dd.classList.add('hidden');
     }
 
+    renderFamilyInviteMarkup(code, compact = false) {
+        const safeCode = escapeHtml(code || '');
+        const wrapperClass = compact ? 'family-invite-card family-invite-card-compact' : 'family-invite-card';
+        const hint = compact
+            ? (this.lang === 'en' ? 'Share this code with your family' : 'Deel deze code met je familie')
+            : (this.lang === 'en' ? 'Enter this code on another device to join the family' : 'Voer deze code op een ander apparaat in om de familie te joinen');
+        return `
+            <div class="${wrapperClass}">
+                <div class="family-invite-code">${safeCode}</div>
+                <p class="family-invite-hint">${hint}</p>
+            </div>
+        `;
+    }
+
     async saveSettingsToFirebase() {
         // Always persist to localStorage so non-signed-in users keep their filters
         try {
@@ -1462,41 +1476,11 @@ class FunDaApp {
         
         const qrModal = document.getElementById('qrModal');
         const qrDisplay = document.getElementById('qrCodeDisplay');
-        
-        // Show loading state
-        qrDisplay.innerHTML = '<p>QR code laden...</p>';
-        
+
+        qrDisplay.innerHTML = this.renderFamilyInviteMarkup(code);
+
         // Open modal first
         this.openModal(qrModal);
-        
-        // Generate QR code URL that will be parsed when scanned
-        const qrData = `funda-family:${code}`;
-        const encoded = encodeURIComponent(qrData);
-
-        const tryLoad = (src, next) => {
-            const img = document.createElement('img');
-            img.alt = 'QR Code';
-            img.style.cssText = 'width:200px;height:200px;display:block;margin:0 auto;';
-            img.onload = () => {
-                qrDisplay.innerHTML = '';
-                qrDisplay.appendChild(img);
-            };
-            img.onerror = () => {
-                if (next) next();
-                else qrDisplay.innerHTML = `<p style="text-align:center">QR code kon niet laden.<br><strong>${escapeHtml(code)}</strong></p>`;
-            };
-            img.src = src;
-        };
-
-        tryLoad(
-            `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`,
-            () => tryLoad(
-                `https://quickchart.io/qr?size=200&text=${encoded}`,
-                () => {
-                    qrDisplay.innerHTML = `<p style="text-align:center;padding:1rem;">Deel deze code:<br><br><strong style="font-size:1.1rem;letter-spacing:0.05em;">${escapeHtml(code)}</strong></p>`;
-                }
-            )
-        );
     }
     
     async startQRScanner() {
@@ -1602,15 +1586,14 @@ class FunDaApp {
             // Render QR code inline so family members can scan directly
             const inlineQR = document.getElementById('inlineQRContainer');
             if (inlineQR) {
-                const qrData = encodeURIComponent(`funda-family:${this.familySync.getFamilyCode()}`);
-                inlineQR.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrData}" class="inline-qr-img" width="180" height="180" alt="QR Code" loading="lazy">`;
+                inlineQR.innerHTML = this.renderFamilyInviteMarkup(this.familySync.getFamilyCode(), true);
             }
 
             // Show members
             const members = this.familySync.getMembersList();
             membersList.innerHTML = members.map(m => {
                 const avatarHtml = m.photoURL
-                    ? `<img class="member-avatar-img" src="${escapeHtml(m.photoURL)}" alt="${escapeHtml(m.name)}">`
+                    ? `<img class="member-avatar-img" src="${escapeHtml(safeImageUrl(m.photoURL))}" alt="${escapeHtml(m.name)}">`
                     : `<div class="member-avatar">${escapeHtml(m.name.charAt(0).toUpperCase())}</div>`;
                 return `
                 <div class="member-item ${m.isCurrentUser ? 'current-user' : ''}">
@@ -2383,7 +2366,7 @@ class FunDaApp {
             // Action buttons
             const btns = [];
             if (contactUrl) {
-                btns.push(`<a href="${contactUrl}" target="_blank" rel="noopener" class="btn-primary detail-action-btn">${this.lang === 'en' ? 'Request viewing' : 'Bezichtiging aanvragen'}</a>`);
+                btns.push(`<a href="${escapeHtml(contactUrl)}" target="_blank" rel="noopener" class="btn-primary detail-action-btn">${this.lang === 'en' ? 'Request viewing' : 'Bezichtiging aanvragen'}</a>`);
             }
             if (house.brokerPhone) {
                 btns.push(`<a href="tel:${escapeHtml(house.brokerPhone.replace(/\s/g,''))}" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'Call' : 'Bellen'}</a>`);
@@ -2392,7 +2375,7 @@ class FunDaApp {
                 btns.push(`<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'Email' : 'E-mail'}</a>`);
             }
             if (house.url && house.url !== '#') {
-                btns.push(`<a href="${safeExternalUrl(house.url)}" target="_blank" rel="noopener" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'View on Funda' : 'Bekijk op Funda'}</a>`);
+                btns.push(`<a href="${escapeHtml(safeExternalUrl(house.url))}" target="_blank" rel="noopener" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'View on Funda' : 'Bekijk op Funda'}</a>`);
             }
             if (btns.length > 0) {
                 parts.push(`<div class="detail-actions">${btns.join('')}</div>`);
@@ -3285,13 +3268,11 @@ class FunDaApp {
                         }
                         return;
                     }
+                    const existingIdsBeforeMerge = new Set(this.houses.map(h => String(h.id)));
                     const added = mergeFreshHouses(newHouses);
                     if (this.browseOpen && this.browseSort === 'default') {
-                        // Append only — avoid full re-render flash
-                        const existingIds = new Set(this.houses.map(h => String(h.id)));
-                        const newOnly = newHouses.filter(h => !existingIds.has(String(h.id)));
-                        // mergeFreshHouses already added them, just append tiles
-                        this._appendBrowseTiles(newHouses);
+                        const newOnly = newHouses.filter(h => !existingIdsBeforeMerge.has(String(h.id)));
+                        this._appendBrowseTiles(newOnly);
                     } else if (this.browseOpen) {
                         this.renderBrowseGrid();
                     }
@@ -3442,56 +3423,56 @@ class FunDaApp {
         return ranks[String(label || '').toUpperCase()] ?? 99;
     }
 
-    getBrowseHouses() {
+    _matchesBrowseFilters(house) {
         const f = this.browseFilters;
-        let houses = this.houses.filter(house => {
-            // Filter by street name if a specific street was selected
-            if (this.searchStreet) {
-                const addr = (house.address || '').toLowerCase();
-                const street = this.searchStreet.toLowerCase();
-                if (!addr.includes(street)) return false;
-            }
-            // Filter by search period (daysBack) — only show houses published within the selected period
-            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
-            if (f.minPrice && house.price < f.minPrice) return false;
-            if (f.maxPrice && house.price > f.maxPrice) return false;
-            if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
-            if (f.minSize && house.size < f.minSize) return false;
-            if (f.maxSize && house.size > f.maxSize) return false;
-            if (f.neighborhood && house.neighborhood !== f.neighborhood && house.city !== f.neighborhood) return false;
-            if (f.minYear && house.yearBuilt && house.yearBuilt < f.minYear) return false;
-            if (f.minEnergyLabel) {
-                const maxRank = this._energyRank(f.minEnergyLabel);
-                if (this._energyRank(house.energyLabel) > maxRank) return false;
-            }
-            if (f.hasTuin && !house.hasGarden) return false;
-            if (f.hasBalcony && !house.hasBalcony && !house.hasRoofTerrace) return false;
-            if (f.hasParking && !house.hasParking) return false;
-            if (f.hasSolar && !house.hasSolarPanels) return false;
-            if (f.excludedNeighborhoods && f.excludedNeighborhoods.length > 0) {
-                const neigh = house.neighborhood || house.city || '';
-                if (f.excludedNeighborhoods.includes(neigh)) return false;
-            }
-            if (f.minDaysOnMarket && (house.daysOnMarket || 0) < f.minDaysOnMarket) return false;
-            if (f.maxDaysOnMarket && house.daysOnMarket != null && house.daysOnMarket > f.maxDaysOnMarket) return false;
-            if (f.propertyType) {
-                const pt = (house.propertyType || house.houseType || '').toLowerCase();
-                if (!pt.includes(f.propertyType.toLowerCase())) return false;
-            }
-            if (f.minRooms && (house.rooms || house.bedrooms || 0) < f.minRooms) return false;
-            if (f.isMonument && !house.isMonument) return false;
-            if (f.isAuction && !house.isAuction) return false;
-            if (f.isFixer && !house.isFixerUpper && !house.isFixer) return false;
-            // Status filter (availability)
-            if (f.statusAvailable || f.statusNegotiations) {
-                const avail = house.availability || house.status || 'available';
-                const isAvailable = !avail || avail === 'available' || /beschikbaar/i.test(avail);
-                const isNego = avail === 'negotiations' || /onderhandeling/i.test(avail);
-                if (f.statusAvailable && !f.statusNegotiations && !isAvailable) return false;
-                if (!f.statusAvailable && f.statusNegotiations && !isNego) return false;
-            }
-            return true;
-        });
+
+        if (this.searchStreet) {
+            const addr = (house.address || '').toLowerCase();
+            const street = this.searchStreet.toLowerCase();
+            if (!addr.includes(street)) return false;
+        }
+        if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
+        if (f.minPrice && house.price < f.minPrice) return false;
+        if (f.maxPrice && house.price > f.maxPrice) return false;
+        if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
+        if (f.minSize && house.size < f.minSize) return false;
+        if (f.maxSize && house.size > f.maxSize) return false;
+        if (f.neighborhood && house.neighborhood !== f.neighborhood && house.city !== f.neighborhood) return false;
+        if (f.minYear && house.yearBuilt && house.yearBuilt < f.minYear) return false;
+        if (f.minEnergyLabel) {
+            const maxRank = this._energyRank(f.minEnergyLabel);
+            if (this._energyRank(house.energyLabel) > maxRank) return false;
+        }
+        if (f.hasTuin && !house.hasGarden) return false;
+        if (f.hasBalcony && !house.hasBalcony && !house.hasRoofTerrace) return false;
+        if (f.hasParking && !house.hasParking) return false;
+        if (f.hasSolar && !house.hasSolarPanels) return false;
+        if (f.excludedNeighborhoods && f.excludedNeighborhoods.length > 0) {
+            const neigh = house.neighborhood || house.city || '';
+            if (f.excludedNeighborhoods.includes(neigh)) return false;
+        }
+        if (f.minDaysOnMarket && (house.daysOnMarket || 0) < f.minDaysOnMarket) return false;
+        if (f.maxDaysOnMarket && house.daysOnMarket != null && house.daysOnMarket > f.maxDaysOnMarket) return false;
+        if (f.propertyType) {
+            const pt = (house.propertyType || house.houseType || '').toLowerCase();
+            if (!pt.includes(f.propertyType.toLowerCase())) return false;
+        }
+        if (f.minRooms && (house.rooms || house.bedrooms || 0) < f.minRooms) return false;
+        if (f.isMonument && !house.isMonument) return false;
+        if (f.isAuction && !house.isAuction) return false;
+        if (f.isFixer && !house.isFixerUpper && !house.isFixer) return false;
+        if (f.statusAvailable || f.statusNegotiations) {
+            const avail = house.availability || house.status || 'available';
+            const isAvailable = !avail || avail === 'available' || /beschikbaar/i.test(avail);
+            const isNego = avail === 'negotiations' || /onderhandeling/i.test(avail);
+            if (f.statusAvailable && !f.statusNegotiations && !isAvailable) return false;
+            if (!f.statusAvailable && f.statusNegotiations && !isNego) return false;
+        }
+        return true;
+    }
+
+    getBrowseHouses() {
+        let houses = this.houses.filter(house => this._matchesBrowseFilters(house));
 
         // Sort
         switch (this.browseSort) {
@@ -3893,37 +3874,10 @@ class FunDaApp {
         const empty = document.getElementById('browseEmpty');
         if (!grid) return;
 
-        // Filter through getBrowseHouses logic for the new houses only
-        const f = this.browseFilters;
-        const filtered = newHouses.filter(house => {
-            if (this.searchStreet) {
-                const addr = (house.address || '').toLowerCase();
-                if (!addr.includes(this.searchStreet.toLowerCase())) return false;
-            }
-            if (this.daysBack && house.daysOnMarket != null && house.daysOnMarket > this.daysBack) return false;
-            if (f.minPrice && house.price < f.minPrice) return false;
-            if (f.maxPrice && house.price > f.maxPrice) return false;
-            if (f.minBedrooms && house.bedrooms < f.minBedrooms) return false;
-            if (f.minSize && house.size < f.minSize) return false;
-            if (f.maxSize && house.size > f.maxSize) return false;
-            if (f.propertyType) {
-                const pt = (house.propertyType || house.houseType || '').toLowerCase();
-                if (!pt.includes(f.propertyType.toLowerCase())) return false;
-            }
-            if (f.excludedNeighborhoods?.length > 0) {
-                const neigh = house.neighborhood || house.city || '';
-                if (f.excludedNeighborhoods.includes(neigh)) return false;
-            }
-            // Status filter
-            if (f.statusAvailable || f.statusNegotiations) {
-                const avail = house.availability || house.status || 'available';
-                const isAvailable = !avail || avail === 'available' || /beschikbaar/i.test(avail);
-                const isNego = avail === 'negotiations' || /onderhandeling/i.test(avail);
-                if (f.statusAvailable && !f.statusNegotiations && !isAvailable) return false;
-                if (!f.statusAvailable && f.statusNegotiations && !isNego) return false;
-            }
-            return true;
-        });
+        const existingIds = new Set(
+            [...grid.querySelectorAll('.browse-tile[data-id]')].map(tile => tile.dataset.id)
+        );
+        const filtered = newHouses.filter(house => this._matchesBrowseFilters(house) && !existingIds.has(String(house.id)));
 
         if (filtered.length === 0) return;
 

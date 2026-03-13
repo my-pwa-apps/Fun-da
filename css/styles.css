@@ -1113,6 +1113,11 @@ a.btn-secondary {
     box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
+.range-inputs input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .filter-group select {
     width: 100%;
     padding: 0.65rem 0.75rem;
@@ -1129,6 +1134,11 @@ a.btn-secondary {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+.filter-group select:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 .btn-group {
@@ -1952,6 +1962,11 @@ a.btn-secondary {
     border-color: var(--primary);
     background: var(--white);
     box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+.input-full:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 .input-full::placeholder {
@@ -3152,6 +3167,11 @@ a.btn-secondary {
     border-color: var(--primary);
 }
 
+.browse-sort:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 .browse-count {
     flex: 1;
     font-size: 0.72rem;
@@ -3418,6 +3438,12 @@ a.btn-secondary {
 .bt-fav:active {
     outline: none;
     box-shadow: none;
+}
+
+.bt-fav:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
 .bt-fav:hover {
@@ -3909,6 +3935,45 @@ a.btn-secondary {
 .bid-input:focus {
     outline: none;
     border-color: var(--primary);
+}
+
+.bid-input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.family-invite-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--gray-lighter);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    text-align: center;
+}
+
+.family-invite-card-compact {
+    padding: 0.85rem;
+}
+
+.family-invite-code {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--primary);
+    background: var(--light);
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.family-invite-hint {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
 }
 
 textarea.bid-input {
