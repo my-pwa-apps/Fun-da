@@ -3251,12 +3251,14 @@ a.btn-secondary {
     z-index: 2;
     line-height: 1;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    color: var(--text-muted);
+    color: #fff;
 }
 
 .bt-fav svg {
     width: 16px;
     height: 16px;
+    stroke: #ccc;
+    fill: none;
 }
 
 .bt-fav.active {
@@ -3280,7 +3282,7 @@ a.btn-secondary {
 }
 
 .bt-fav.active:hover {
-    background: var(--white);
+    background: rgba(255,255,255,0.95);
 }
 
 /* ---- Info area ---- */
