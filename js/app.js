@@ -834,6 +834,10 @@ class FunDaApp {
                     const wasActive = optBtn.classList.contains('active');
                     group.querySelectorAll('.btn-option').forEach(b => b.classList.remove('active'));
                     if (!wasActive) optBtn.classList.add('active');
+                    // Auto-apply on mobile too (don't require "Filters toepassen" tap)
+                    if (group.closest('.browse-sidebar')) {
+                        setTimeout(() => this.applyBrowseFilters(), 50);
+                    }
                     return;
                 }
             }
@@ -1272,26 +1276,18 @@ class FunDaApp {
         setChk('bfIsFixer', f.isFixer);
         setChk('bfStatusAvailable', f.statusAvailable !== false); // default true
         setChk('bfStatusNegotiations', !!f.statusNegotiations);
-        if (f.minBedrooms) {
-            document.querySelectorAll('#bfBedroomsGroup .btn-option').forEach(b => {
-                b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minBedrooms);
-            });
-        }
-        if (f.minEnergyLabel) {
-            document.querySelectorAll('#bfEnergyGroup .btn-option').forEach(b => {
-                b.classList.toggle('active', b.dataset.value === f.minEnergyLabel);
-            });
-        }
-        if (f.propertyType) {
-            document.querySelectorAll('#bfPropertyTypeGroup .btn-option').forEach(b => {
-                b.classList.toggle('active', b.dataset.value === f.propertyType);
-            });
-        }
-        if (f.minRooms) {
-            document.querySelectorAll('#bfRoomsGroup .btn-option').forEach(b => {
-                b.classList.toggle('active', parseInt(b.dataset.value, 10) === f.minRooms);
-            });
-        }
+        document.querySelectorAll('#bfBedroomsGroup .btn-option').forEach(b => {
+            b.classList.toggle('active', f.minBedrooms != null && parseInt(b.dataset.value, 10) === f.minBedrooms);
+        });
+        document.querySelectorAll('#bfEnergyGroup .btn-option').forEach(b => {
+            b.classList.toggle('active', f.minEnergyLabel != null && b.dataset.value === f.minEnergyLabel);
+        });
+        document.querySelectorAll('#bfPropertyTypeGroup .btn-option').forEach(b => {
+            b.classList.toggle('active', f.propertyType != null && b.dataset.value === f.propertyType);
+        });
+        document.querySelectorAll('#bfRoomsGroup .btn-option').forEach(b => {
+            b.classList.toggle('active', f.minRooms != null && parseInt(b.dataset.value, 10) === f.minRooms);
+        });
         this._restoreExcludeNeighCheckboxes();
         this.updateViewModeUi();
     }
