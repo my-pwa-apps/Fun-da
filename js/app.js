@@ -772,10 +772,13 @@ class FunDaApp {
         document.getElementById('leaveFamilyBtn').addEventListener('click', () => this.leaveFamily());
         document.getElementById('copyFamilyCode').addEventListener('click', () => this.copyFamilyCode());
         document.getElementById('showQRCode')?.addEventListener('click', () => this.showQRCode());
-        document.getElementById('scanQRBtn').addEventListener('click', () => this.startQRScanner());
-        document.getElementById('closeQRModal').addEventListener('click', () => this.closeModal(document.getElementById('qrModal')));
-        document.getElementById('closeQRScannerModal').addEventListener('click', () => this.stopQRScanner());
-        document.getElementById('closeMapModal').addEventListener('click', () => this.closeMapModal());
+        document.getElementById('scanQRBtn')?.addEventListener('click', () => this.startQRScanner());
+        document.getElementById('closeQRModal')?.addEventListener('click', () => {
+            const m = document.getElementById('qrModal');
+            if (m) this.closeModal(m);
+        });
+        document.getElementById('closeQRScannerModal')?.addEventListener('click', () => this.stopQRScanner());
+        document.getElementById('closeMapModal')?.addEventListener('click', () => this.closeMapModal());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
@@ -1662,12 +1665,6 @@ class FunDaApp {
             dashboard.classList.add('hidden');
             this.elements.familyMatchCount.classList.remove('show');
         }
-    }
-
-    getAvatarEmoji(name) {
-        const emojis = ['👨', '👩', '👦', '👧', '🧑', '👴', '👵', '🐕', '🐱'];
-        const hash = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-        return emojis[hash % emojis.length];
     }
 
     findHouseById(houseId) {
@@ -3982,7 +3979,7 @@ class FunDaApp {
         // Spec icons (text-only, single-color)
         const specs = [];
         if (house.size)      specs.push(`<span class="bt-spec">${house.size}\u00a0m²</span>`);
-        if (house.plotArea && house.plotArea > house.size)
+        if (house.plotArea && house.size && house.plotArea > house.size)
                              specs.push(`<span class="bt-spec">${house.plotArea}\u00a0m² perceel</span>`);
         if (house.bedrooms)  specs.push(`<span class="bt-spec">${house.bedrooms} slpk</span>`);
         if (house.bathrooms && house.bathrooms > 0)

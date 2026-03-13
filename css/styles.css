@@ -1769,6 +1769,153 @@ a.btn-secondary {
     border-color: #10B981;
 }
 
+/* Dark mode — additional component overrides */
+[data-theme="dark"] .splash {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 50%, #0F172A 100%);
+}
+
+[data-theme="dark"] .splash-logo .logo-fun {
+    color: var(--primary);
+}
+
+[data-theme="dark"] .profile-dropdown {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .profile-dd-item:hover {
+    background: #111827;
+}
+
+[data-theme="dark"] .area-suggestions {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .area-suggestion:hover,
+[data-theme="dark"] .area-suggestion.active {
+    background: #111827;
+}
+
+[data-theme="dark"] .browse-tile {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .browse-toolbar {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .browse-toolbar-btn,
+[data-theme="dark"] .browse-layout-btn {
+    background: #111827;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .browse-sort {
+    background: #111827;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .browse-sidebar {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .browse-sidebar-head {
+    border-color: #374151;
+}
+
+[data-theme="dark"] .browse-sidebar-actions {
+    border-color: #374151;
+}
+
+[data-theme="dark"] .preset-btn {
+    background: #111827;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .preset-btn.active,
+[data-theme="dark"] .btn-option.active,
+[data-theme="dark"] .browse-layout-btn.active,
+[data-theme="dark"] .browse-toolbar-btn:hover,
+[data-theme="dark"] .browse-layout-btn:hover {
+    background: rgba(255, 107, 53, 0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+[data-theme="dark"] .bid-input {
+    background: #111827;
+    border-color: #374151;
+    color: #F9FAFB;
+}
+
+[data-theme="dark"] .bid-status-btn {
+    background: #111827;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .bid-status-btn.active,
+[data-theme="dark"] .bid-status-btn:hover {
+    background: rgba(255, 107, 53, 0.15);
+}
+
+[data-theme="dark"] .neigh-ms-trigger {
+    background: #111827;
+    border-color: #374151;
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .neigh-ms-dropdown {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .neigh-ms-item:hover {
+    background: #111827;
+}
+
+[data-theme="dark"] .settings-install-card {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
+}
+
+[data-theme="dark"] .toast {
+    background: #1F2937;
+    color: #F9FAFB;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .toast-action {
+    background: #1F2937;
+}
+
+[data-theme="dark"] .check-label {
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .card-content {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
+}
+
+[data-theme="dark"] .modal-header {
+    background: linear-gradient(180deg, #1F2937 0%, #111827 100%);
+}
+
+[data-theme="dark"] .btn-clear-data {
+    background: #111827;
+    color: #D1D5DB;
+}
+
+[data-theme="dark"] .settings-divider {
+    border-color: #374151;
+}
+
 /* Print styles */
 @media print {
     .splash,
