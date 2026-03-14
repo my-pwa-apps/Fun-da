@@ -1391,6 +1391,27 @@ class FunDaApp {
         return (house?.city || house?.municipality || '').trim();
     }
 
+    _translatePropertyType(type) {
+        if (!type || this.lang === 'nl') return type;
+        const map = {
+            'appartement': 'Apartment', 'woning': 'House',
+            'eengezinswoning': 'Detached house', 'tussenwoning': 'Terraced house',
+            'hoekwoning': 'Corner house', 'bovenwoning': 'Upper floor apartment',
+            'benedenwoning': 'Ground floor apartment', 'maisonnette': 'Maisonette',
+            'penthouse': 'Penthouse', 'grachtenpand': 'Canal house',
+            'herenhuis': 'Townhouse', 'villa': 'Villa', 'bungalow': 'Bungalow',
+            'landgoed': 'Estate', 'landhuis': 'Country house',
+            'parkeerplaats': 'Parking space', 'bouwgrond': 'Building plot',
+            'geschakelde woning': 'Semi-detached house',
+            'twee-onder-een-kap': 'Semi-detached',
+            'vrijstaande woning': 'Detached house',
+            'portiekwoning': 'Stairwell apartment',
+            'galerijwoning': 'Gallery apartment',
+            'dubbele bovenwoning': 'Double upper apartment',
+        };
+        return map[type.toLowerCase()] || type;
+    }
+
     buildHouseLocationText(house) {
         return [house?.address || '', house?.postalCode || '', this.getHouseCityName(house)].filter(Boolean).join(', ');
     }
@@ -2359,8 +2380,8 @@ class FunDaApp {
         
         // Build extra details section
         const extraDetails = [];
-        if (house.houseType) extraDetails.push(`<span>${escapeHtml(house.houseType)}</span>`);
-        else if (house.propertyType) extraDetails.push(`<span>${escapeHtml(house.propertyType)}</span>`);
+        if (house.houseType) extraDetails.push(`<span>${escapeHtml(this._translatePropertyType(house.houseType))}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>${escapeHtml(this._translatePropertyType(house.propertyType))}</span>`);
         if (house.plotArea) extraDetails.push(`<span>${this.t('label.plot')}: ${house.plotArea}m²</span>`);
         if (house.plotSize) extraDetails.push(`<span>${this.t('label.plot')}: ${house.plotSize}m²</span>`);
         if (house.hasGarden) extraDetails.push(`<span>${house.gardenType || this.t('feat.garden')}</span>`);
@@ -2676,8 +2697,8 @@ class FunDaApp {
 
         // Extra features
         const extraDetails = [];
-        if (house.houseType) extraDetails.push(`<span>${escapeHtml(house.houseType)}</span>`);
-        else if (house.propertyType) extraDetails.push(`<span>${escapeHtml(house.propertyType)}</span>`);
+        if (house.houseType) extraDetails.push(`<span>${escapeHtml(this._translatePropertyType(house.houseType))}</span>`);
+        else if (house.propertyType) extraDetails.push(`<span>${escapeHtml(this._translatePropertyType(house.propertyType))}</span>`);
         if (house.plotArea || house.plotSize) extraDetails.push(`<span>${this.t('label.plot')}: ${house.plotArea || house.plotSize}m²</span>`);
         if (house.hasGarden) extraDetails.push(`<span>${this.t('feat.garden')}</span>`);
         if (house.hasBalcony) extraDetails.push(`<span>${this.t('feat.balcony')}</span>`);
@@ -3961,7 +3982,7 @@ class FunDaApp {
         const safeNeigh  = escapeHtml(house.neighborhood || '');
         const safeCity   = escapeHtml(this.getHouseCityName(house));
         const safePostal = escapeHtml(house.postalCode || '');
-        const safeType   = escapeHtml(house.houseType || house.propertyType || '');
+        const safeType   = escapeHtml(this._translatePropertyType(house.houseType || house.propertyType || ''));
         const isFav      = this.favorites.some(f => String(f.id) === String(house.id));
         const favIcon    = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
         const favClass   = isFav ? 'bt-fav active' : 'bt-fav';
