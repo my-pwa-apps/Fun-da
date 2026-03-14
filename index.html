@@ -177,19 +177,19 @@
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.type">Type woning</h4>
                         <div class="btn-group" id="bfPropertyTypeGroup">
-                            <button class="btn-option" data-value="Woning">Woning</button>
-                            <button class="btn-option" data-value="Appartement">Appartement</button>
+                            <button class="btn-option" data-value="Woning" data-i18n="proptype.house">Woning</button>
+                            <button class="btn-option" data-value="Appartement" data-i18n="proptype.apartment">Appartement</button>
                         </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.period">Zoekperiode</h4>
                         <p class="bfs-hint" data-i18n="filters.period_hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
                         <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren" aria-label="Zoekperiode selecteren">
-                            <option value="1">Vandaag</option>
-                            <option value="3" selected>Laatste 3 dagen</option>
-                            <option value="7">Laatste week</option>
-                            <option value="14">Laatste 2 weken</option>
-                            <option value="30">Laatste maand</option>
+                            <option value="1" data-i18n="period.today">Vandaag</option>
+                            <option value="3" selected data-i18n="period.3days">Laatste 3 dagen</option>
+                            <option value="7" data-i18n="period.week">Laatste week</option>
+                            <option value="14" data-i18n="period.2weeks">Laatste 2 weken</option>
+                            <option value="30" data-i18n="period.month">Laatste maand</option>
                         </select>
                     </div>
                     <div class="bfs">
@@ -273,20 +273,20 @@
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.status">Status</h4>
                         <div class="feature-checks">
-                            <label class="check-label"><input type="checkbox" id="bfStatusAvailable" checked> Beschikbaar</label>
-                            <label class="check-label"><input type="checkbox" id="bfStatusNegotiations"> In onderhandeling</label>
+                            <label class="check-label"><input type="checkbox" id="bfStatusAvailable" checked> <span data-i18n="status.available">Beschikbaar</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfStatusNegotiations"> <span data-i18n="badge.nego">In onderhandeling</span></label>
                         </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.features">Kenmerken</h4>
                         <div class="feature-checks">
-                            <label class="check-label"><input type="checkbox" id="bfHasTuin"> Tuin</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> Balkon / dakterras</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasParking"> Parkeren</label>
-                            <label class="check-label"><input type="checkbox" id="bfHasSolar"> Zonnepanelen</label>
-                            <label class="check-label"><input type="checkbox" id="bfIsMonument"> Monument</label>
-                            <label class="check-label"><input type="checkbox" id="bfIsAuction"> Veiling</label>
-                            <label class="check-label"><input type="checkbox" id="bfIsFixer"> Kluswoning</label>
+                            <label class="check-label"><input type="checkbox" id="bfHasTuin"> <span data-i18n="feat.garden">Tuin</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfHasBalcony"> <span data-i18n="feat.balcony">Balkon / dakterras</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfHasParking"> <span data-i18n="feat.parking">Parkeren</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfHasSolar"> <span data-i18n="feat.solar">Zonnepanelen</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfIsMonument"> <span data-i18n="feat.monument">Monument</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfIsAuction"> <span data-i18n="feat.auction">Veiling</span></label>
+                            <label class="check-label"><input type="checkbox" id="bfIsFixer"> <span data-i18n="feat.fixer">Kluswoning</span></label>
                         </div>
                     </div>
                 </div>
@@ -578,7 +578,7 @@
     </div>
 
     <!-- Offline Banner -->
-    <div id="offlineBanner" class="offline-banner hidden" role="alert" aria-live="assertive">Geen internetverbinding — opgeslagen woningen zijn beschikbaar</div>
+    <div id="offlineBanner" class="offline-banner hidden" role="alert" aria-live="assertive"><span data-i18n="offline.banner">Geen internetverbinding — opgeslagen woningen zijn beschikbaar</span></div>
 
     <!-- Confetti Container -->
     <div id="confetti" class="confetti-container" aria-hidden="true"></div>
