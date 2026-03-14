@@ -1965,26 +1965,26 @@ class FunDaApp {
                     ${matchMembers?.length || 0} matches
                 </div>
             ` : ''}
-            <div class="swipe-indicator like">Ja!</div>
-            <div class="swipe-indicator nope">✕ Nee</div>
+            <div class="swipe-indicator like">${this.t('swipe.like')}</div>
+            <div class="swipe-indicator nope">${this.t('swipe.nope')}</div>
             <div class="card-content">
                 <div class="card-price">${formatPrice(house.price)}</div>
                 <div class="card-address">${safeAddress}</div>
                 <div class="card-neighborhood">${safeNeighborhood}</div>
                 <div class="card-features">
                     <span class="feature">${house.size || '?'}m²</span>
-                    <span class="feature">${house.bedrooms || '?'} slpk</span>
+                    <span class="feature">${house.bedrooms || '?'} ${this.t('tile.beds')}</span>
                     ${house.yearBuilt ? `<span class="feature">${house.yearBuilt}</span>` : ''}
                     ${house.energyLabel ? `<span class="feature feature-energy" data-label="${safeEnergyLabel}">${safeEnergyLabel}</span>` : ''}
                 </div>
                 ${(house.hasGarden || house.hasBalcony || house.hasSolarPanels || house.hasHeatPump || house.hasRoofTerrace || house.hasParking) ? `
                 <div class="card-icons">
-                    ${house.hasGarden ? '<span class="card-icon-tag" title="Tuin">Tuin</span>' : ''}
-                    ${house.hasBalcony ? '<span class="card-icon-tag" title="Balkon">Balkon</span>' : ''}
-                    ${house.hasRoofTerrace ? '<span class="card-icon-tag" title="Dakterras">Dakterras</span>' : ''}
-                    ${house.hasSolarPanels ? '<span class="card-icon-tag" title="Zonnepanelen">Zon</span>' : ''}
-                    ${house.hasHeatPump ? '<span class="card-icon-tag" title="Warmtepomp">WP</span>' : ''}
-                    ${house.hasParking ? '<span class="card-icon-tag" title="Parkeren">P</span>' : ''}
+                    ${house.hasGarden ? `<span class="card-icon-tag" title="${this.t('feat.garden')}">${this.t('feat.garden')}</span>` : ''}
+                    ${house.hasBalcony ? `<span class="card-icon-tag" title="${this.t('feat.balcony')}">${this.t('feat.balcony')}</span>` : ''}
+                    ${house.hasRoofTerrace ? `<span class="card-icon-tag" title="${this.t('feat.roofterrace')}">${this.t('feat.roofterrace')}</span>` : ''}
+                    ${house.hasSolarPanels ? `<span class="card-icon-tag" title="${this.t('feat.solar')}">${this.t('feat.solar')}</span>` : ''}
+                    ${house.hasHeatPump ? `<span class="card-icon-tag" title="${this.t('feat.heatpump')}">${this.t('feat.heatpump')}</span>` : ''}
+                    ${house.hasParking ? `<span class="card-icon-tag" title="${this.t('feat.parking')}">${this.t('feat.parking')}</span>` : ''}
                 </div>` : ''}
             </div>
         `;
@@ -2251,18 +2251,18 @@ class FunDaApp {
     async shareHouse() {
         const house = this._detailHouse;
         if (!house) return;
-        const title = cleanAddress(house.address) || 'Woning op Funda';
+        const title = cleanAddress(house.address) || this.t('share.title');
         const url = house.url || window.location.href;
         const price = house.price ? formatPrice(house.price) + ' · ' : '';
         const size = house.size ? house.size + 'm² · ' : '';
-        const beds = house.bedrooms ? house.bedrooms + ' slpk. · ' : '';
+        const beds = house.bedrooms ? house.bedrooms + ' ' + this.t('tile.beds') + '. · ' : '';
         const neigh = house.neighborhood || house.city || '';
         const text = `${price}${size}${beds}${neigh}`.replace(/ · $/, '');
         if (navigator.share) {
             try {
                 await navigator.share({ title, text, url });
             } catch (e) {
-                if (e.name !== 'AbortError') this.showToast('Delen mislukt');
+                if (e.name !== 'AbortError') this.showToast(this.t('share.failed'));
             }
         } else {
             try {
@@ -2637,12 +2637,12 @@ class FunDaApp {
                 const escapedId = escapeHtml(String(house.id));
                 const safeImage = escapeHtml(safeImageUrl(house.image));
                 const safeAddress = escapeHtml(cleanAddress(house.address));
-                const safeFeatures = escapeHtml(`${house.bedrooms || '?'} slpk · ${house.size || '?'}m² · ${house.neighborhood || house.city || ''}`);
+                const safeFeatures = escapeHtml(`${house.bedrooms || '?'} ${this.t('tile.beds')} · ${house.size || '?'}m² · ${house.neighborhood || house.city || ''}`);
                 const meta = this.favoriteMeta[String(house.id)] || {};
-                const statusLabels = { interested: 'Interessant', viewing: 'Bezichtiging', bid: 'Bod uitgebracht', accepted: 'Geaccepteerd', rejected: 'Afgewezen' };
+                const statusLabels = { interested: this.t('status.interested'), viewing: this.t('status.viewing'), bid: this.t('status.bid'), accepted: this.t('status.accepted'), rejected: this.t('status.rejected') };
                 const statusBadge = meta.status ? `<span class="fav-meta-badge">${escapeHtml(statusLabels[meta.status] || meta.status)}</span>` : '';
                 const deadlineBadge = meta.bidDeadline ? `<span class="fav-meta-badge fav-meta-bid">${escapeHtml(meta.bidDeadline.split('T')[0])}</span>` : '';
-                const daysStr = house.daysOnMarket != null ? (house.daysOnMarket === 0 ? ' · Nieuw' : ` · ${house.daysOnMarket}d`) : '';
+                const daysStr = house.daysOnMarket != null ? (house.daysOnMarket === 0 ? ` · ${this.t('badge.new')}` : ` · ${house.daysOnMarket}d`) : '';
                 return `
                 <div class="favorite-item" data-action="showFavoriteDetail" data-id="${escapedId}">
                     <img class="favorite-image" src="${safeImage}" alt="${safeAddress}">
@@ -3973,9 +3973,9 @@ class FunDaApp {
         if (house.availability === 'negotiations' || (house.status && /onderhandeling/i.test(house.status)))
             badges.push(`<span class="bt-badge bt-badge-nego">${this.t('badge.nego')}</span>`);
         if (house.daysOnMarket >= 90)
-            badges.push('<span class="bt-badge bt-badge-stale bt-badge-stale-long" title="Al meer dan 90 dagen te koop">90+ dagen</span>');
+            badges.push(`<span class="bt-badge bt-badge-stale bt-badge-stale-long" title="${this.t('tile.stale_title_90')}">${this.t('tile.stale_90')}</span>`);
         else if (house.daysOnMarket >= 30)
-            badges.push(`<span class="bt-badge bt-badge-stale" title="Al ${house.daysOnMarket} dagen te koop">${house.daysOnMarket}d</span>`);
+            badges.push(`<span class="bt-badge bt-badge-stale" title="${this.t('tile.stale_title', house.daysOnMarket)}">${house.daysOnMarket}d</span>`);
 
         // Price per m²
         const ppm2 = (house.price && house.size)
@@ -3994,10 +3994,10 @@ class FunDaApp {
         const specs = [];
         if (house.size)      specs.push(`<span class="bt-spec">${house.size}\u00a0m²</span>`);
         if (house.plotArea && house.size && house.plotArea > house.size)
-                             specs.push(`<span class="bt-spec">${house.plotArea}\u00a0m² perceel</span>`);
-        if (house.bedrooms)  specs.push(`<span class="bt-spec">${house.bedrooms} slpk</span>`);
+                             specs.push(`<span class="bt-spec">${house.plotArea}\u00a0m² ${this.t('tile.plot')}</span>`);
+        if (house.bedrooms)  specs.push(`<span class="bt-spec">${house.bedrooms} ${this.t('tile.beds')}</span>`);
         if (house.bathrooms && house.bathrooms > 0)
-                             specs.push(`<span class="bt-spec">${house.bathrooms} badk</span>`);
+                             specs.push(`<span class="bt-spec">${house.bathrooms} ${this.t('tile.baths')}</span>`);
         if (house.yearBuilt) specs.push(`<span class="bt-spec">${house.yearBuilt}</span>`);
 
         // Feature pills (text-only)
@@ -4033,7 +4033,7 @@ class FunDaApp {
                 ${badges.length ? `<div class="bt-badges">${badges.join('')}</div>` : ''}
                 ${photoCount ? `<div class="bt-photo-count-wrap">${photoCount}</div>` : ''}
                 <button class="${favClass}" data-action="browseAddFavorite" data-id="${escapedId}"
-                    title="${isFav ? 'Verwijder favoriet' : 'Voeg toe aan favorieten'}">${favIcon}</button>
+                    title="${isFav ? this.t('tile.fav_remove') : this.t('tile.fav_add')}">${favIcon}</button>
             </div>
             <div class="bt-info">
                 ${safeType ? `<div class="bt-type">${safeType}</div>` : ''}
@@ -4060,11 +4060,11 @@ class FunDaApp {
         if (isFav) {
             this.removeFromFavorites(houseId);
             btn.classList.remove('active');
-            btn.title = 'Voeg toe aan favorieten';
+            btn.title = this.t('tile.fav_add');
         } else {
             this.addToFavorites(house);
             btn.classList.add('active');
-            btn.title = 'Verwijder favoriet';
+            btn.title = this.t('tile.fav_remove');
         }
         this.updateStats();
         this.saveToStorage();

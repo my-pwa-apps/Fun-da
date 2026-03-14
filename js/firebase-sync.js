@@ -87,6 +87,8 @@ class FamilySync {
 
         await this.registerWriterAccess();
         await this.startRealtimeSync();
+        // Keep the member profile's photoURL in sync with the Google account
+        await this.updateMemberProfile({ photoURL: this.photoURL || '', name: this.userName });
     }
 
     async registerWriterAccess() {
