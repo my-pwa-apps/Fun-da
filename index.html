@@ -108,7 +108,7 @@
         <div class="stats-bar hidden">
             <div class="stat">
                 <span class="stat-value" id="housesViewed">0</span>
-                <span class="stat-label">Bekeken</span>
+                <span class="stat-label" data-i18n="stats.viewed">Bekeken</span>
             </div>
             <div class="stat">
                 <span class="stat-value" id="matchScore">0%</span>
@@ -116,7 +116,7 @@
             </div>
             <div class="stat">
                 <span class="stat-value" id="housesLeft">0</span>
-                <span class="stat-label">Te gaan</span>
+                <span class="stat-label" data-i18n="stats.remaining">Te gaan</span>
             </div>
         </div>
 
@@ -129,9 +129,9 @@
             <!-- Empty State -->
             <div id="emptyState" class="empty-state hidden">
                 <div class="empty-emoji"></div>
-                <h2 id="emptyStateTitle">Alle huizen bekeken!</h2>
-                <p id="emptyStateText">Je hebt alle beschikbare woningen gezien.</p>
-                <button class="btn-primary" id="resetBtn">Opnieuw beginnen</button>
+                <h2 id="emptyStateTitle" data-i18n="empty.title">Alle huizen bekeken!</h2>
+                <p id="emptyStateText" data-i18n="empty.text">Je hebt alle beschikbare woningen gezien.</p>
+                <button class="btn-primary" id="resetBtn" data-i18n="empty.reset">Opnieuw beginnen</button>
             </div>
         </main>
 
@@ -158,7 +158,7 @@
             <!-- Filter Sidebar (always visible on desktop, slide-in on mobile) -->
             <aside class="browse-sidebar" id="browseSidebar" aria-label="Filters">
                 <div class="browse-sidebar-head">
-                    <span class="browse-sidebar-title">Filters</span>
+                    <span class="browse-sidebar-title" data-i18n="filters.title">Filters</span>
                     <button class="browse-sidebar-close" id="closeBrowseSidebar" aria-label="Sluit filters">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
                             <path d="M18 6L6 18M6 6l12 12"/>
@@ -167,23 +167,23 @@
                 </div>
                 <div class="browse-sidebar-body">
                     <div class="bfs">
-                        <h4 class="bfs-title">Zoekgebied</h4>
-                        <p class="bfs-hint">Stad, straat, of postcode</p>
+                        <h4 class="bfs-title" data-i18n="filters.area">Zoekgebied</h4>
+                        <p class="bfs-hint" data-i18n="filters.area_hint">Stad, straat, of postcode</p>
                         <div class="area-autocomplete" id="areaAutocomplete">
                             <input type="text" id="bfSearchArea" class="input-full" placeholder="bijv. Amsterdam, Victorieplein, 1071" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Zoekgebied">
                             <ul class="area-suggestions hidden" id="areaSuggestions"></ul>
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Type woning</h4>
+                        <h4 class="bfs-title" data-i18n="filters.type">Type woning</h4>
                         <div class="btn-group" id="bfPropertyTypeGroup">
                             <button class="btn-option" data-value="Woning">Woning</button>
                             <button class="btn-option" data-value="Appartement">Appartement</button>
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Zoekperiode</h4>
-                        <p class="bfs-hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
+                        <h4 class="bfs-title" data-i18n="filters.period">Zoekperiode</h4>
+                        <p class="bfs-hint" data-i18n="filters.period_hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
                         <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren" aria-label="Zoekperiode selecteren">
                             <option value="1">Vandaag</option>
                             <option value="3" selected>Laatste 3 dagen</option>
@@ -193,7 +193,7 @@
                         </select>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Prijs</h4>
+                        <h4 class="bfs-title" data-i18n="filters.price">Prijs</h4>
                         <div class="range-inputs">
                             <input type="number" id="bfMinPrice" placeholder="Min €" step="25000" min="0" aria-label="Minimum prijs">
                             <span>—</span>
@@ -201,7 +201,7 @@
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Woonoppervlak (m²)</h4>
+                        <h4 class="bfs-title" data-i18n="filters.size">Woonoppervlak (m²)</h4>
                         <div class="range-inputs">
                             <input type="number" id="bfMinSize" placeholder="Min" step="10" min="0" aria-label="Minimum woonoppervlak">
                             <span>—</span>
@@ -209,7 +209,7 @@
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Slaapkamers</h4>
+                        <h4 class="bfs-title" data-i18n="filters.bedrooms">Slaapkamers</h4>
                         <div class="btn-group" id="bfBedroomsGroup">
                             <button class="btn-option" data-value="1">1+</button>
                             <button class="btn-option" data-value="2">2+</button>
@@ -218,7 +218,7 @@
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Min. energielabel</h4>
+                        <h4 class="bfs-title" data-i18n="filters.energy">Min. energielabel</h4>
                         <div class="btn-group" id="bfEnergyGroup">
                             <button class="btn-option" data-value="A">A</button>
                             <button class="btn-option" data-value="B">B</button>
@@ -227,13 +227,13 @@
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Buurt</h4>
+                        <h4 class="bfs-title" data-i18n="filters.neighborhood">Buurt</h4>
                         <select id="bfNeighborhood" title="Kies een buurt" class="input-full" aria-label="Kies een buurt">
                             <option value="">Alle buurten</option>
                         </select>
                     </div>
                     <div class="bfs" id="bfsExcludeNeigh">
-                        <h4 class="bfs-title">Buurten uitsluiten</h4>
+                        <h4 class="bfs-title" data-i18n="filters.exclude_neigh">Buurten uitsluiten</h4>
                         <div class="neigh-multiselect" id="neighMultiselect">
                             <button type="button" class="neigh-ms-trigger" id="neighMsTrigger">
                                 <span id="neighMsLabel">Alle buurten</span>
@@ -243,12 +243,12 @@
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Bouwjaar vanaf</h4>
+                        <h4 class="bfs-title" data-i18n="filters.year">Bouwjaar vanaf</h4>
                         <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full" aria-label="Bouwjaar vanaf">
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Op de markt (min. dagen)</h4>
-                        <p class="bfs-hint">Langer op de markt = meer ruimte voor een lager bod</p>
+                        <h4 class="bfs-title" data-i18n="filters.days_min">Op de markt (min. dagen)</h4>
+                        <p class="bfs-hint" data-i18n="filters.days_min_hint">Langer op de markt = meer ruimte voor een lager bod</p>
                         <div class="btn-group" id="bfDaysOnMarketGroup">
                             <button class="btn-option" data-value="14">14+</button>
                             <button class="btn-option" data-value="30">30+</button>
@@ -258,11 +258,11 @@
                         <input type="number" id="bfMinDaysOnMarket" placeholder="of typ eigen getal" min="0" step="1" class="input-full input-full-spaced" aria-label="Minimum dagen op de markt">
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Op de markt (max. dagen)</h4>
+                        <h4 class="bfs-title" data-i18n="filters.days_max">Op de markt (max. dagen)</h4>
                         <input type="number" id="bfMaxDaysOnMarket" placeholder="bijv. 14" min="0" step="1" class="input-full" aria-label="Maximum dagen op de markt">
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Kamers (min.)</h4>
+                        <h4 class="bfs-title" data-i18n="filters.rooms">Kamers (min.)</h4>
                         <div class="btn-group" id="bfRoomsGroup">
                             <button class="btn-option" data-value="2">2+</button>
                             <button class="btn-option" data-value="3">3+</button>
@@ -271,14 +271,14 @@
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Status</h4>
+                        <h4 class="bfs-title" data-i18n="filters.status">Status</h4>
                         <div class="feature-checks">
                             <label class="check-label"><input type="checkbox" id="bfStatusAvailable" checked> Beschikbaar</label>
                             <label class="check-label"><input type="checkbox" id="bfStatusNegotiations"> In onderhandeling</label>
                         </div>
                     </div>
                     <div class="bfs">
-                        <h4 class="bfs-title">Kenmerken</h4>
+                        <h4 class="bfs-title" data-i18n="filters.features">Kenmerken</h4>
                         <div class="feature-checks">
                             <label class="check-label"><input type="checkbox" id="bfHasTuin"> Tuin</label>
                             <label class="check-label"><input type="checkbox" id="bfHasBalcony"> Balkon / dakterras</label>
@@ -291,8 +291,8 @@
                     </div>
                 </div>
                 <div class="browse-sidebar-actions">
-                    <button class="btn-primary btn-full" id="applyBrowseFilters">Filters toepassen</button>
-                    <button class="browse-reset-link" id="resetBrowseFilters">Wis alle filters</button>
+                    <button class="btn-primary btn-full" id="applyBrowseFilters" data-i18n="filters.apply">Filters toepassen</button>
+                    <button class="browse-reset-link" id="resetBrowseFilters" data-i18n="filters.reset">Wis alle filters</button>
                 </div>
             </aside>
 
@@ -351,8 +351,8 @@
 
                 <div id="browseEmpty" class="browse-empty hidden">
                     <div class="empty-emoji"></div>
-                    <p id="browseEmptyText">Geen woningen gevonden met deze filters.</p>
-                    <button class="btn-secondary" id="clearBrowseFiltersBtn">Wis filters</button>
+                    <p id="browseEmptyText" data-i18n="browse.empty">Geen woningen gevonden met deze filters.</p>
+                    <button class="btn-secondary" id="clearBrowseFiltersBtn" data-i18n="filters.reset">Wis filters</button>
                 </div>
             </div>
         </div>
@@ -362,7 +362,7 @@
     <div id="favoritesModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Mijn Favorieten</h2>
+                <h2 data-i18n="fav.title">Mijn Favorieten</h2>
                 <button class="btn-close" id="closeFavModal" aria-label="Sluit favorieten">&times;</button>
             </div>
             <div class="modal-body">
@@ -370,8 +370,8 @@
                     <!-- Favorites will be dynamically inserted here -->
                 </div>
                 <div id="noFavorites" class="no-favorites">
-                    <p>Nog geen favorieten!</p>
-                    <p>Swipe naar rechts of druk op het hartje om huizen toe te voegen.</p>
+                    <p data-i18n="fav.empty1">Nog geen favorieten!</p>
+                    <p data-i18n="fav.empty2">Swipe naar rechts of druk op het hartje om huizen toe te voegen.</p>
                 </div>
             </div>
         </div>
@@ -413,11 +413,11 @@
                 <hr class="settings-divider">
 
                 <!-- View mode -->
-                <h3 class="settings-section-title">Startweergave</h3>
+                <h3 class="settings-section-title" data-i18n="settings.view_mode">Startweergave</h3>
                 <div class="filter-group">
                     <div class="preset-group settings-view-mode-group">
-                        <button id="settingsViewBrowse" class="preset-btn active">Bladeren</button>
-                        <button id="settingsViewSwipe" class="preset-btn">Swipen</button>
+                        <button id="settingsViewBrowse" class="preset-btn active" data-i18n="nav.browse">Bladeren</button>
+                        <button id="settingsViewSwipe" class="preset-btn" data-i18n="nav.swipe">Swipen</button>
                     </div>
                 </div>
 
@@ -425,16 +425,16 @@
 
                 <!-- Install app -->
                 <div id="installSection" class="settings-install-card hidden">
-                    <h3 class="settings-section-title">App installeren</h3>
+                    <h3 class="settings-section-title" data-i18n="settings.install">App installeren</h3>
                     <p id="installStatus" class="modal-description">Controleer installatie-opties...</p>
                     <button id="installAppBtn" class="btn-primary settings-install-btn">Installeer app</button>
                     <hr class="settings-divider">
                 </div>
 
                 <!-- Discard bin -->
-                <h3 class="settings-section-title">Prullenbak</h3>
-                <p class="modal-description" id="discardBinDesc">Weggeswipete woningen worden 7 dagen bewaard.</p>
-                <button id="openDiscardBinBtn" class="btn-secondary detail-action-btn">Prullenbak openen <span id="discardBinCount" class="browse-filter-badge browse-filter-badge-inline hidden">0</span></button>
+                <h3 class="settings-section-title" data-i18n="settings.bin">Prullenbak</h3>
+                <p class="modal-description" id="discardBinDesc" data-i18n="settings.bin_desc">Weggeswipete woningen worden 7 dagen bewaard.</p>
+                <button id="openDiscardBinBtn" class="btn-secondary detail-action-btn"><span data-i18n="settings.bin_open">Prullenbak openen</span> <span id="discardBinCount" class="browse-filter-badge browse-filter-badge-inline hidden">0</span></button>
 
                 <hr class="settings-divider">
 
@@ -451,13 +451,13 @@
     <div id="discardBinModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Prullenbak</h2>
+                <h2 data-i18n="settings.bin">Prullenbak</h2>
                 <button class="btn-close" id="closeDiscardBinModal" aria-label="Sluit prullenbak">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="discardBinList" class="favorites-list"></div>
                 <div id="discardBinEmpty" class="no-favorites">
-                    <p>De prullenbak is leeg.</p>
+                    <p data-i18n="settings.bin_empty">De prullenbak is leeg.</p>
                 </div>
             </div>
         </div>
@@ -467,36 +467,36 @@
     <div id="familyModal" class="modal hidden">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Familie Modus</h2>
+                <h2 data-i18n="family.title">Familie Modus</h2>
                 <button class="btn-close" id="closeFamilyModal" aria-label="Sluit familie modus">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Not in family -->
                 <div id="familySetup" class="family-section">
-                    <p class="modal-description">Zoek samen met je gezin naar jullie droomhuis! 
+                    <p class="modal-description" data-i18n="family.intro">Zoek samen met je gezin naar jullie droomhuis! 
                     Als meerdere familieleden hetzelfde huis liken, wordt het een <strong>Familie Match</strong>!</p>
                     
                     <div class="filter-group">
-                        <label>Jouw naam</label>
+                        <label data-i18n="family.your_name">Jouw naam</label>
                         <input type="text" id="familyUserName" placeholder="Bijv. Papa, Mama, Sophie..." class="input-full" aria-label="Jouw naam">
                     </div>
 
                     <div class="family-options">
                         <div class="family-option">
-                            <h3>Nieuwe familie starten</h3>
-                            <p>Maak een nieuwe familie aan en deel de code met je gezinsleden.</p>
-                            <button class="btn-primary" id="createFamilyBtn">Familie aanmaken</button>
+                            <h3 data-i18n="family.start_new">Nieuwe familie starten</h3>
+                            <p data-i18n="family.start_desc">Maak een nieuwe familie aan en deel de code met je gezinsleden.</p>
+                            <button class="btn-primary" id="createFamilyBtn" data-i18n="family.create">Familie aanmaken</button>
                         </div>
                         
-                        <div class="family-divider">of</div>
+                        <div class="family-divider" data-i18n="family.or">of</div>
                         
                         <div class="family-option">
-                            <h3>Bestaande familie joinen</h3>
+                            <h3 data-i18n="family.join_existing">Bestaande familie joinen</h3>
                             <div class="filter-group">
                                 <input type="text" id="joinFamilyCode" placeholder="bijv. fd-1a2b-3c4d-5e6f-7a8b-9c0d" class="input-full" aria-label="Familiecode">
                             </div>
-                            <button class="btn-secondary" id="joinFamilyBtn">Familie joinen</button>
-                            <button class="btn-secondary btn-secondary-mt" id="scanQRBtn">QR Code scannen</button>
+                            <button class="btn-secondary" id="joinFamilyBtn" data-i18n="family.join">Familie joinen</button>
+                            <button class="btn-secondary btn-secondary-mt" id="scanQRBtn" data-i18n="family.scan_qr">QR Code scannen</button>
                         </div>
                     </div>
                 </div>
@@ -504,33 +504,33 @@
                 <!-- In family -->
                 <div id="familyDashboard" class="family-section hidden">
                     <div class="family-code-display">
-                        <p>Jullie familie code:</p>
+                        <p data-i18n="family.your_code">Jullie familie code:</p>
                         <div class="family-code" id="displayFamilyCode">---</div>
                         <div class="family-btn-group">
-                            <button class="btn-small" id="copyFamilyCode">Kopieer</button>
+                            <button class="btn-small" id="copyFamilyCode" data-i18n="family.copy">Kopieer</button>
                         </div>
                         <div id="inlineQRContainer" class="inline-qr-container"></div>
                     </div>
 
                     <div class="family-members">
-                        <h3>Gezinsleden</h3>
+                        <h3 data-i18n="family.members">Gezinsleden</h3>
                         <div id="familyMembersList" class="members-list">
                             <!-- Members will be inserted here -->
                         </div>
                     </div>
 
                     <div class="family-matches-section">
-                        <h3>Familie Matches</h3>
-                        <p class="matches-description">Woningen die door meerdere gezinsleden zijn geliked:</p>
+                        <h3 data-i18n="family.matches">Familie Matches</h3>
+                        <p class="matches-description" data-i18n="family.matches_desc">Woningen die door meerdere gezinsleden zijn geliked:</p>
                         <div id="familyMatchesList" class="matches-list">
                             <!-- Matches will be inserted here -->
                         </div>
                         <div id="noFamilyMatches" class="no-matches">
-                            <p>Nog geen matches! Blijf swipen en kijk of jullie dezelfde smaak hebben.</p>
+                            <p data-i18n="family.no_matches">Nog geen matches! Blijf swipen en kijk of jullie dezelfde smaak hebben.</p>
                         </div>
                     </div>
 
-                    <button class="btn-danger btn-full" id="leaveFamilyBtn">Familie verlaten</button>
+                    <button class="btn-danger btn-full" id="leaveFamilyBtn" data-i18n="family.leave">Familie verlaten</button>
                 </div>
             </div>
         </div>
@@ -540,12 +540,12 @@
     <div id="qrModal" class="modal hidden">
         <div class="modal-content modal-qr">
             <div class="modal-header">
-                <h2>QR Code</h2>
+                <h2 data-i18n="family.share_code">Deelcode</h2>
                 <button class="btn-close" id="closeQRModal" aria-label="Sluit deelcode">&times;</button>
             </div>
             <div class="modal-body qr-modal-body">
                 <div id="qrCodeDisplay" class="qr-code-display"></div>
-                <p class="qr-hint">Deel deze code veilig met je familie om te joinen</p>
+                <p class="qr-hint" data-i18n="family.share_hint">Deel deze code veilig met je familie om te joinen</p>
             </div>
         </div>
     </div>

@@ -706,7 +706,9 @@ class FunDaApp {
         this.lang = lang;
         localStorage.setItem('funda-lang', lang);
         document.documentElement.lang = lang;
+        this.scraper._wantEnglishDesc = (lang === 'en');
         this.applyTranslations();
+        this._updateSortDropdownLabels();
         if (this.browseOpen) this.renderBrowseGrid();
         this.renderCards();
     }
@@ -715,12 +717,29 @@ class FunDaApp {
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.dataset.i18n;
             const text = this.t(key);
-            if (text && text !== key) el.textContent = text;
+            if (text && text !== key) {
+                // Use innerHTML for keys that intentionally contain HTML
+                if (key === 'family.intro') {
+                    el.innerHTML = text;
+                } else {
+                    el.textContent = text;
+                }
+            }
         });
         const langNl = document.getElementById('langNl');
         const langEn = document.getElementById('langEn');
         if (langNl) langNl.classList.toggle('active', this.lang === 'nl');
         if (langEn) langEn.classList.toggle('active', this.lang === 'en');
+    }
+
+    _updateSortDropdownLabels() {
+        const sel = document.getElementById('browseSortBy');
+        if (!sel) return;
+        const keys = ['sort.newest', 'sort.price_asc', 'sort.price_desc', 'sort.ppm2_asc', 'sort.size_desc', 'sort.bedrooms_desc', 'sort.oldest'];
+        const opts = sel.options;
+        for (let i = 0; i < opts.length && i < keys.length; i++) {
+            opts[i].textContent = this.t(keys[i]);
+        }
     }
 
     setupEventListeners() {
@@ -2286,6 +2305,7 @@ class FunDaApp {
             this.openModal(this.detailModal);
 
             try {
+                this.scraper._wantEnglishDesc = (this.lang === 'en');
                 const detail = await this.scraper.fetchFundaMobileDetail(house.url);
                 if (detail) {
                     const merged = { ...house, ...detail, id: house.id, address: detail.address || house.address };
