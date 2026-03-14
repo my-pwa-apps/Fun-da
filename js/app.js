@@ -49,6 +49,7 @@ class FunDaApp {
             matchScore: $('matchScore'),
             housesLeft: $('housesLeft'),
             favCount: $('favCount'),
+            familyBtn: $('familyBtn'),
             familyMatchCount: $('familyMatchCount'),
             // Modals
             favoritesModal: $('favoritesModal'),
@@ -153,6 +154,7 @@ class FunDaApp {
         // Don't render old cards yet - wait for fresh data
         // Only update stats and family UI
         this.updateStats();
+        this.updateFamilyAccessUI();
         this.updateFamilyUI();
 
         // Show Firebase status
@@ -1118,6 +1120,7 @@ class FunDaApp {
     onAuthStateChanged(user) {
         this.currentUser = user;
         this.familySync.handleAuthStateChanged(user).catch(handledAsyncError('Family auth state sync failed'));
+        this.updateFamilyAccessUI();
         const profilePhoto = document.getElementById('profileUserPhoto');
         const profileDefault = document.getElementById('profileDefaultAvatar');
         const profileInfo = document.getElementById('profileInfo');
@@ -1156,6 +1159,20 @@ class FunDaApp {
             if (profileNotLoggedIn) profileNotLoggedIn.classList.remove('hidden');
             if (profileLoggedIn) profileLoggedIn.classList.add('hidden');
             this.familySync.photoURL = '';
+        }
+    }
+
+    updateFamilyAccessUI() {
+        const familyBtn = this.elements.familyBtn;
+        const isLoggedIn = Boolean(this.currentUser);
+        if (familyBtn) {
+            familyBtn.classList.toggle('hidden', !isLoggedIn);
+        }
+        if (!isLoggedIn) {
+            this.elements.familyMatchCount.classList.remove('show');
+            if (this.familyModal && !this.familyModal.classList.contains('hidden')) {
+                this.closeModal(this.familyModal);
+            }
         }
     }
 
@@ -1798,6 +1815,10 @@ class FunDaApp {
     }
 
     openFamilyModal() {
+        if (!this.currentUser) {
+            this.showToast(this.t('toast.login_required'));
+            return;
+        }
         this.updateFamilyUI();
         this.openModal(this.familyModal);
     }
