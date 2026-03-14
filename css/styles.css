@@ -3240,7 +3240,8 @@ a.btn-secondary {
     flex-direction: column;
     gap: 0;
     overflow-y: auto;
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-height: 0;
 }
 
 /* LIST MODE — full-width horizontal cards */
@@ -3306,7 +3307,7 @@ a.btn-secondary {
 .browse-layout-grid .browse-tile {
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: auto;
 }
 
 /* ---- Photo area ---- */
