@@ -3052,6 +3052,8 @@ a.btn-secondary {
     border-bottom: 1px solid var(--gray-lighter);
     flex-shrink: 0;
     z-index: 10;
+    flex-wrap: nowrap;
+    overflow: hidden;
 }
 
 /* Type quick-filter pills in the toolbar */
@@ -3151,7 +3153,9 @@ a.btn-secondary {
 }
 
 .browse-sort-wrap {
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .browse-sort {
@@ -3197,6 +3201,7 @@ a.btn-secondary {
     display: flex;
     gap: 0.15rem;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 .browse-layout-btn {

@@ -1629,6 +1629,12 @@ class FunDaApp {
         const previousMatchCount = this.familyMatches.size;
         this.familyMatches = matches;
 
+        // Sync local favorites to Firebase so member favorite count stays accurate
+        if (this.familySync.isInFamily() && this.favorites.length > 0) {
+            const favIds = this.favorites.map(h => String(h.id));
+            this.familySync.syncAllFavorites(favIds).catch(() => {});
+        }
+
         // Check for new matches
         if (matches.size > previousMatchCount) {
             this.celebrateFamilyMatch();
@@ -2169,15 +2175,19 @@ class FunDaApp {
     }
 
     showFamilyMatchNotification(house, memberNames) {
-        const addr = cleanAddress(house.address) || 'dit huis';
+        const addr = cleanAddress(house.address) || (this.lang === 'en' ? 'this house' : 'dit huis');
         const banner = document.createElement('div');
         banner.className = 'family-match-banner';
+        const matchTitle = this.lang === 'en' ? 'Family match!' : 'Familie match!';
+        const matchText = this.lang === 'en'
+            ? `${escapeHtml(memberNames)} also liked <em>${escapeHtml(addr)}</em>!`
+            : `${escapeHtml(memberNames)} vond <em>${escapeHtml(addr)}</em> ook leuk!`;
         banner.innerHTML = `
             <div class="fmb-inner">
                 <span class="fmb-icon"></span>
                 <div class="fmb-text">
-                    <strong>Familie match!</strong>
-                    <span>${escapeHtml(memberNames)} vond <em>${escapeHtml(addr)}</em> ook leuk!</span>
+                    <strong>${matchTitle}</strong>
+                    <span>${matchText}</span>
                 </div>
                 <button class="fmb-close" aria-label="Sluiten">✕</button>
             </div>`;

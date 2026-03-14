@@ -381,6 +381,22 @@ class FamilySync {
         }
     }
 
+    /** Overwrite the member's full favorites list in Firebase to keep it in sync with local state. */
+    async syncAllFavorites(favoriteIds) {
+        if (!this.familyCode || !this.canUseFamilySync()) return;
+        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        const userKey = this.sanitizeForFirebase(this.userId);
+        try {
+            const memberRef = this.db.ref(`families/${sanitizedCode}/members/${userKey}`);
+            await memberRef.update({
+                favorites: favoriteIds,
+                lastSeen: firebase.database.ServerValue.TIMESTAMP,
+            });
+        } catch (e) {
+            console.error('Error syncing favorites:', e);
+        }
+    }
+
     async removeFavorite(houseId) {
         if (!this.familyCode || !this.canUseFamilySync()) return;
 
