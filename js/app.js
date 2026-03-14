@@ -172,7 +172,7 @@ class FunDaApp {
                 this.autoLoadNewListings();
             }, 300);
         } else {
-            this.updateSplashStatus('Kies eerst een zoekgebied om woningen op te halen.');
+            this.updateSplashStatus(this.t('splash.choose_area'));
             this.hideSplashScreen();
         }
 
@@ -258,13 +258,13 @@ class FunDaApp {
         };
 
         if (!isSplashVisible) {
-            this.showBrowseLoading('Verbinden met Funda...');
+            this.showBrowseLoading(this.t('splash.connecting'));
         }
 
         console.log('🚀 Auto-loading nieuwe woningen van vandaag...');
         
         try {
-            this.updateSplashStatus('Verbinden met Funda...');
+            this.updateSplashStatus(this.t('splash.connecting'));
             
             // Tell scraper whether to fetch English descriptions
             this.scraper._wantEnglishDesc = (this.lang === 'en');
@@ -282,7 +282,7 @@ class FunDaApp {
                             if (this.browseOpen) this.renderBrowseGrid();
                             this.updateStats();
                             this._populateBrowseNeighborhoods();
-                            updateProgress(`${cached.length} woningen uit cache, verversen...`, 25);
+                            updateProgress(this.t('splash.cache_loading', cached.length), 25);
                         }
                     }
                 } catch (e) { /* cache unavailable, continue to API */ }
@@ -330,7 +330,7 @@ class FunDaApp {
             });
             
             if (houses.length > 0) {
-                this.updateSplashStatus('Woningen opslaan...');
+                this.updateSplashStatus(this.t('splash.saving'));
                 this.updateSplashProgress(90);
                 
                 // Add import timestamp
@@ -395,13 +395,13 @@ class FunDaApp {
                     }).catch(() => {});
                 }
                 
-                this.updateSplashStatus(`${this.houses.length} woningen geladen${this._bgLoading ? ' (meer laden...)' : ''}`);
+                this.updateSplashStatus(this.t('splash.loaded', this.houses.length, this._bgLoading));
                 this.updateSplashProgress(100);
                 
                 // Small delay to show success message
                 await new Promise(r => setTimeout(r, 300));
             } else {
-                this.updateSplashStatus('Geen woningen gevonden');
+                this.updateSplashStatus(this.t('splash.none'));
                 this.updateSplashProgress(100);
                 // Fallback to cached data if available
                 if (this.houses.length > 0) {
@@ -411,7 +411,7 @@ class FunDaApp {
             }
         } catch (error) {
             console.error('Auto-load error:', error);
-            this.updateSplashStatus('Cache laden...');
+            this.updateSplashStatus(this.t('splash.cache'));
             this.updateSplashProgress(100);
             // Fallback to cached data
             if (this.houses.length > 0) {
@@ -529,7 +529,7 @@ class FunDaApp {
             this.installPromptDismissedRecently = false;
             localStorage.removeItem('pwa-install-dismissed');
             this.updateInstallUi();
-            this.showToast('Fun-da is geïnstalleerd!');
+            this.showToast(this.t('toast.installed'));
         });
 
         this.updateInstallUi();
@@ -849,7 +849,7 @@ class FunDaApp {
 
         // Logo click - easter egg
         document.querySelector('.logo').addEventListener('click', () => {
-            this.showToast('Fun-da - Huizenjacht was nog nooit zo leuk!');
+            this.showToast(this.t('toast.easter'));
         });
 
         // Online / offline indicator
@@ -858,7 +858,7 @@ class FunDaApp {
         });
         window.addEventListener('online', () => {
             document.getElementById('offlineBanner').classList.add('hidden');
-            this.showToast('Internetverbinding hersteld');
+            this.showToast(this.t('toast.online'));
         });
         // Show banner immediately if already offline on load
         if (!navigator.onLine) {
@@ -1013,7 +1013,7 @@ class FunDaApp {
             setTimeout(() => {
                 this._clearDataPending = false;
                 if (btn) {
-                    btn.textContent = btn.dataset.origText || 'Alle data wissen';
+                    btn.textContent = btn.dataset.origText || this.t('settings.clear');
                     btn.classList.remove('btn-confirm-danger');
                     delete btn.dataset.origText;
                 }
@@ -1022,7 +1022,7 @@ class FunDaApp {
         }
         this._clearDataPending = false;
         if (btn) {
-            btn.textContent = btn.dataset.origText || 'Alle data wissen';
+            btn.textContent = btn.dataset.origText || this.t('settings.clear');
             btn.classList.remove('btn-confirm-danger');
             delete btn.dataset.origText;
         }
@@ -1059,7 +1059,7 @@ class FunDaApp {
             this.updateFamilyUI();
             this._updateDiscardBinBadge();
             
-            this.showToast('Alle data gewist!');
+            this.showToast(this.t('toast.cleared'));
         }
     }
 
@@ -1141,7 +1141,7 @@ class FunDaApp {
     async loginWithGoogle() {
         try {
             if (typeof firebase === 'undefined' || !firebase.auth) {
-                this.showToast('Firebase Auth niet beschikbaar');
+                this.showToast(this.t('toast.no_auth'));
                 return;
             }
             const provider = new firebase.auth.GoogleAuthProvider();
@@ -1151,10 +1151,10 @@ class FunDaApp {
             } else {
                 await firebase.auth().signInWithPopup(provider);
             }
-            this.showToast('Ingelogd!');
+            this.showToast(this.t('toast.logged_in'));
         } catch (e) {
             console.error('Google login error:', e);
-            this.showToast('Inloggen mislukt: ' + (e.message || 'onbekende fout'));
+            this.showToast(this.t('toast.login_fail') + ': ' + (e.message || ''));
         }
     }
 
@@ -1163,7 +1163,7 @@ class FunDaApp {
             if (typeof firebase !== 'undefined' && firebase.auth) {
                 await firebase.auth().signOut();
             }
-            this.showToast('Uitgelogd');
+            this.showToast(this.t('toast.logged_out'));
         } catch (e) {
             console.error('Logout error:', e);
         }
@@ -1367,23 +1367,23 @@ class FunDaApp {
         const browseButton = document.getElementById('clearBrowseFiltersBtn');
 
         if (emptyTitle) {
-            emptyTitle.textContent = noAreaSelected ? 'Kies eerst een zoekgebied' : 'Alle huizen bekeken!';
+            emptyTitle.textContent = noAreaSelected ? this.t('empty.no_area') : this.t('empty.title');
         }
         if (emptyText) {
             emptyText.textContent = noAreaSelected
-                ? 'Open filters en kies een stad of regio voordat woningen worden opgehaald.'
-                : 'Je hebt alle beschikbare woningen gezien.';
+                ? this.t('empty.no_area_text')
+                : this.t('empty.text');
         }
         if (emptyButton) {
-            emptyButton.textContent = noAreaSelected ? 'Open filters' : 'Opnieuw beginnen';
+            emptyButton.textContent = noAreaSelected ? this.t('empty.open_filters') : this.t('empty.reset');
         }
         if (browseText) {
             browseText.textContent = noAreaSelected
-                ? 'Kies eerst een zoekgebied in de filters voordat woningen worden opgehaald.'
-                : 'Geen woningen gevonden met deze filters.';
+                ? this.t('empty.no_area_browse')
+                : this.t('browse.empty');
         }
         if (browseButton) {
-            browseButton.textContent = noAreaSelected ? 'Open filters' : 'Wis filters';
+            browseButton.textContent = noAreaSelected ? this.t('empty.open_filters') : this.t('filters.reset');
         }
     }
 
@@ -1405,7 +1405,7 @@ class FunDaApp {
 
     async createFamily() {
         if (!this.currentUser) {
-            this.showToast('Log eerst in met Google om familie sync te gebruiken');
+            this.showToast(this.t('toast.login_required'));
             return;
         }
 
@@ -1413,27 +1413,27 @@ class FunDaApp {
         const name = nameInput.value.trim();
 
         if (!name) {
-            this.showToast('Vul eerst je naam in');
+            this.showToast(this.t('toast.name_required'));
             return;
         }
 
         try {
             const code = await this.familySync.createFamily(name);
             if (!code) {
-                this.showToast('Familie aanmaken mislukt. Probeer het opnieuw.');
+                this.showToast(this.t('toast.family_fail'));
                 return;
             }
-            this.showToast(`Familie aangemaakt! Code: ${code}`);
+            this.showToast(this.t('toast.family_created', code));
             this.updateFamilyUI();
         } catch (e) {
             console.error('createFamily error:', e);
-            this.showToast('Familie aanmaken mislukt. Controleer je internetverbinding.');
+            this.showToast(this.t('toast.family_net_fail'));
         }
     }
 
     async joinFamily() {
         if (!this.currentUser) {
-            this.showToast('Log eerst in met Google om familie sync te gebruiken');
+            this.showToast(this.t('toast.login_required'));
             return;
         }
 
@@ -1443,32 +1443,32 @@ class FunDaApp {
         const code = codeInput.value.trim();
 
         if (!name) {
-            this.showToast('Vul eerst je naam in');
+            this.showToast(this.t('toast.name_required'));
             return;
         }
 
         if (!code) {
-            this.showToast('Vul de familie code in');
+            this.showToast(this.t('toast.code_required'));
             return;
         }
 
         try {
             const joined = await this.familySync.joinFamily(code, name);
             if (!joined) {
-                this.showToast('Familie niet gevonden. Controleer de code.');
+                this.showToast(this.t('toast.family_not_found'));
                 return;
             }
-            this.showToast(`Je bent nu lid van familie ${code}!`);
+            this.showToast(this.t('toast.family_joined', code));
             this.updateFamilyUI();
         } catch (e) {
             console.error('joinFamily error:', e);
-            this.showToast('Familie joinen mislukt. Controleer de code en je internetverbinding.');
+            this.showToast(this.t('toast.family_join_fail'));
         }
     }
 
     leaveFamily() {
         if (!this.currentUser) {
-            this.showToast('Log eerst in met Google om familie sync te beheren');
+            this.showToast(this.t('toast.login_required'));
             return;
         }
 
@@ -1483,7 +1483,7 @@ class FunDaApp {
             setTimeout(() => {
                 this._leaveFamilyPending = false;
                 if (btn) {
-                    btn.textContent = btn.dataset.origText || 'Familie verlaten';
+                    btn.textContent = btn.dataset.origText || this.t('family.leave');
                     btn.classList.remove('btn-confirm-danger');
                     delete btn.dataset.origText;
                 }
@@ -1492,14 +1492,14 @@ class FunDaApp {
         }
         this._leaveFamilyPending = false;
         if (btn) {
-            btn.textContent = btn.dataset.origText || 'Familie verlaten';
+            btn.textContent = btn.dataset.origText || this.t('family.leave');
             btn.classList.remove('btn-confirm-danger');
             delete btn.dataset.origText;
         }
         {
             this.familySync.leaveFamily();
             this.familyMatches.clear();
-            this.showToast('Je hebt de familie verlaten');
+            this.showToast(this.t('toast.family_left'));
             this.updateFamilyUI();
         }
     }
@@ -1508,7 +1508,7 @@ class FunDaApp {
         const code = this.familySync.getFamilyCode();
         if (code) {
             navigator.clipboard.writeText(code).then(() => {
-                this.showToast('Code gekopieerd!');
+                this.showToast(this.t('toast.code_copied'));
             }).catch(() => {
                 this.showToast(`Code: ${code}`);
             });
@@ -1518,7 +1518,7 @@ class FunDaApp {
     showQRCode() {
         const code = this.familySync.getFamilyCode();
         if (!code) {
-            this.showToast('Geen familie code gevonden');
+            this.showToast(this.t('toast.no_code'));
             return;
         }
         
@@ -1715,8 +1715,8 @@ class FunDaApp {
         overlay.innerHTML = `
             <div class="celebration-content">
                 <div class="celebration-emoji">Familie Match!</div>
-                <div class="celebration-title">FAMILIE MATCH!</div>
-                <div class="celebration-subtitle">Jullie hebben dezelfde woning geliked!</div>
+                <div class="celebration-title">${this.t('celebration.title')}</div>
+                <div class="celebration-subtitle">${this.t('celebration.subtitle')}</div>
             </div>
         `;
         
@@ -1751,11 +1751,11 @@ class FunDaApp {
         const safeImage = escapeHtml(safeImageUrl(house.image));
         const safeFundaUrl = safeExternalUrl(house.url);
         
-        document.getElementById('detailTitle').textContent = 'Familie Match!';
+        document.getElementById('detailTitle').textContent = this.t('celebration.title');
         document.getElementById('detailContent').innerHTML = `
             <div style="background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(78, 205, 196, 0.2)); 
                         padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; text-align: center;">
-                <p style="font-weight: 600; margin-bottom: 0.5rem;">Deze woning is geliked door:</p>
+                <p style="font-weight: 600; margin-bottom: 0.5rem;">${this.t('match.liked_by')}</p>
                 <div style="display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
                     ${memberNames ? memberNames.map(n => `<span class="match-member-badge">${escapeHtml(n)}</span>`).join('') : ''}
                 </div>
@@ -2161,7 +2161,7 @@ class FunDaApp {
         if (this.familySync.isInFamily()) {
             this.familySync.saveFavoriteMetaInDB(houseId, meta);
         }
-        this.showToast('Notities opgeslagen');
+        this.showToast(this.t('toast.notes_saved'));
     }
 
     addViewingToCalendar(houseId) {
@@ -2540,7 +2540,7 @@ class FunDaApp {
                          data-action="switchDetailPhoto"
                          data-src="${escapeHtml(safeImageUrl(img))}"
                          data-index="${i}"
-                         loading="lazy" alt="Foto ${i + 1}">
+                         loading="lazy" alt="${this.t('detail.photo')} ${i + 1}">
                 `).join('')}
             </div>` : '';
 
@@ -2549,10 +2549,10 @@ class FunDaApp {
             <div class="detail-layout">
             <div class="detail-gallery-col">
                 <div class="detail-gallery">
-                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="Vorige foto">&#8249;</button>` : ''}
-                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}" data-action="openLightbox" data-index="0" style="cursor:zoom-in" title="Vergroot foto">
-                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="Volgende foto">&#8250;</button>` : ''}
-                    ${hasMultiplePhotos ? `<button class="detail-lightbox-btn" data-action="openLightbox" data-index="0" aria-label="Volledig scherm">⛶</button>` : ''}
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="${this.t('detail.prev_photo')}">&#8249;</button>` : ''}
+                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}" data-action="openLightbox" data-index="0" style="cursor:zoom-in" title="${this.t('detail.zoom')}">
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="${this.t('detail.next_photo')}">&#8250;</button>` : ''}
+                    ${hasMultiplePhotos ? `<button class="detail-lightbox-btn" data-action="openLightbox" data-index="0" aria-label="${this.t('detail.fullscreen')}">⛶</button>` : ''}
                     ${galleryThumbsHtml}
                 </div>
             </div>
@@ -2725,17 +2725,17 @@ class FunDaApp {
                          data-action="switchDetailPhoto"
                          data-src="${escapeHtml(safeImageUrl(img))}"
                          data-index="${i}"
-                         loading="lazy" alt="Foto ${i + 1}">
+                         loading="lazy" alt="${this.t('detail.photo')} ${i + 1}">
                 `).join('')}
             </div>` : '';
 
         // Bid status options
         const statusOptions = [
-            { key: 'interested', label: 'Interessant' },
-            { key: 'viewing', label: 'Bezichtiging' },
-            { key: 'bid', label: 'Bod' },
-            { key: 'accepted', label: 'Geaccepteerd' },
-            { key: 'rejected', label: 'Afgewezen' },
+            { key: 'interested', label: this.t('status.interested') },
+            { key: 'viewing', label: this.t('bid.viewing') },
+            { key: 'bid', label: this.t('bid.bid') },
+            { key: 'accepted', label: this.t('status.accepted') },
+            { key: 'rejected', label: this.t('status.rejected') },
         ];
 
         document.getElementById('detailTitle').textContent = cleanAddress(house.address);
@@ -2743,10 +2743,10 @@ class FunDaApp {
             <div class="detail-layout">
             <div class="detail-gallery-col">
                 <div class="detail-gallery">
-                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="Vorige foto">&#8249;</button>` : ''}
-                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}" data-action="openLightbox" data-index="0" style="cursor:zoom-in" title="Vergroot foto">
-                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="Volgende foto">&#8250;</button>` : ''}
-                    ${hasMultiplePhotos ? `<button class="detail-lightbox-btn" data-action="openLightbox" data-index="0" aria-label="Volledig scherm">⛶</button>` : ''}
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-prev" data-action="detailNavPrev" aria-label="${this.t('detail.prev_photo')}">&#8249;</button>` : ''}
+                    <img id="detailMainImg" class="detail-main-image" src="${safeImage}" alt="${safeAddress}" data-action="openLightbox" data-index="0" style="cursor:zoom-in" title="${this.t('detail.zoom')}">
+                    ${hasMultiplePhotos ? `<button class="detail-nav-btn detail-nav-next" data-action="detailNavNext" aria-label="${this.t('detail.next_photo')}">&#8250;</button>` : ''}
+                    ${hasMultiplePhotos ? `<button class="detail-lightbox-btn" data-action="openLightbox" data-index="0" aria-label="${this.t('detail.fullscreen')}">⛶</button>` : ''}
                     ${galleryThumbsHtml}
                 </div>
             </div>
@@ -2795,7 +2795,7 @@ class FunDaApp {
             })()}
 
             <div class="detail-section bid-panel" id="bidPanel" data-house-id="${escapeHtml(String(houseId))}">
-                <h3>Notities &amp; Bieding</h3>
+                <h3>${this.t('bid.title')}</h3>
                 <div class="bid-fields">
                     <div class="bid-field">
                         <label class="bid-label">Status</label>
@@ -3201,7 +3201,7 @@ class FunDaApp {
         this.renderCards();
         if (this.browseOpen) this.renderBrowseGrid();
         this.updateStats();
-        this.showToast(this.lang === 'en' ? 'House hidden' : 'Woning verborgen');
+        this.showToast(this.t('toast.hidden'));
     }
 
     openDiscardBin() {
@@ -3259,7 +3259,7 @@ class FunDaApp {
         if (this.browseOpen) this.renderBrowseGrid();
         this.updateStats();
         this.openDiscardBin(); // Re-render the bin
-        this.showToast(this.lang === 'en' ? 'House restored' : 'Woning hersteld');
+        this.showToast(this.t('toast.restored'));
     }
 
     _updateDiscardBinBadge() {
@@ -3280,7 +3280,7 @@ class FunDaApp {
         if (daysEl) this.daysBack = parseInt(daysEl.value, 10) || this.daysBack;
 
         // Show loading state but keep existing houses visible
-        this.showBrowseLoading('Nieuwe woningen ophalen...');
+        this.showBrowseLoading(this.t('browse.refresh'));
 
         try {
             this.scraper._wantEnglishDesc = (this.lang === 'en');
@@ -3349,15 +3349,15 @@ class FunDaApp {
                 this._populateBrowseNeighborhoods();
 
                 const msg = added > 0
-                    ? (this.lang === 'en' ? `${added} new listings added` : `${added} nieuwe woningen toegevoegd`)
-                    : (this.lang === 'en' ? 'Listings updated' : 'Woningen bijgewerkt');
+                    ? this.t('toast.added', added)
+                    : this.t('toast.updated');
                 this.showToast(this._bgLoading ? msg + (this.lang === 'en' ? ' (loading more...)' : ' (meer laden...)') : msg);
             } else {
-                this.showToast(this.lang === 'en' ? 'No new listings found' : 'Geen nieuwe woningen gevonden');
+                this.showToast(this.t('toast.no_new'));
             }
         } catch (e) {
             console.error('Refresh error:', e);
-            this.showToast(this.lang === 'en' ? 'Refresh failed' : 'Vernieuwen mislukt');
+            this.showToast(this.t('toast.refresh_fail'));
         }
 
         this.hideBrowseLoading();
@@ -3441,7 +3441,7 @@ class FunDaApp {
     _updateExcludeNeighLabel() {
         const n = this.browseFilters.excludedNeighborhoods.length;
         const lbl = document.getElementById('neighMsLabel');
-        if (lbl) lbl.textContent = n === 0 ? 'Alle buurten' : `${n} buurt${n === 1 ? '' : 'en'} uitgesloten`;
+        if (lbl) lbl.textContent = n === 0 ? this.t('filters.neighborhood') : (this.lang === 'en' ? `${n} neighborhood${n === 1 ? '' : 's'} excluded` : `${n} buurt${n === 1 ? '' : 'en'} uitgesloten`);
     }
 
     _restoreExcludeNeighCheckboxes() {
@@ -3733,7 +3733,7 @@ class FunDaApp {
         const empty = document.getElementById('browseEmpty');
         if (el) el.classList.remove('hidden');
         if (fill) { fill.style.width = '0%'; fill.classList.add('indeterminate'); }
-        if (textEl) textEl.textContent = text || 'Woningen ophalen...';
+        if (textEl) textEl.textContent = text || this.t('browse.loading');
         if (grid) grid.classList.add('hidden');
         if (empty) empty.classList.add('hidden');
     }
@@ -3908,7 +3908,7 @@ class FunDaApp {
             badge.classList.add('hidden');
         }
 
-        count.textContent = `${houses.length} woning${houses.length !== 1 ? 'en' : ''}${this._bgLoading ? ' (laden...)' : ''}`;
+        count.textContent = this.t('browse.count', houses.length, this._bgLoading);
 
         // Keep layout class in sync
         grid.classList.toggle('browse-layout-list', this.browseLayout === 'list');
