@@ -350,7 +350,7 @@ class FunDaApp {
                     if (existingMap.has(id)) {
                         const existing = existingMap.get(id);
                         if (existing.hasDetailData) {
-                            Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate });
+                            Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate, apiSortIndex: fresh.apiSortIndex });
                         } else {
                             existingMap.set(id, { ...existing, ...fresh });
                         }
@@ -3386,7 +3386,7 @@ class FunDaApp {
                     if (existingIds.has(id)) {
                         const existing = existingIds.get(id);
                         if (existing.hasDetailData) {
-                            Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate });
+                            Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate, apiSortIndex: fresh.apiSortIndex });
                         } else {
                             existingIds.set(id, { ...existing, ...fresh });
                         }
@@ -3637,7 +3637,7 @@ class FunDaApp {
             case 'size-desc':      houses.sort((a, b) => (b.size || 0) - (a.size || 0)); break;
             case 'bedrooms-desc':  houses.sort((a, b) => (b.bedrooms || 0) - (a.bedrooms || 0)); break;
             case 'oldest':         houses.sort((a, b) => (b.daysOnMarket ?? -1) - (a.daysOnMarket ?? -1)); break;
-            default:               houses.sort((a, b) => (a.daysOnMarket ?? 9999) - (b.daysOnMarket ?? 9999)); break;
+            default:               houses.sort((a, b) => (a.apiSortIndex ?? 9999) - (b.apiSortIndex ?? 9999)); break;
         }
         return houses;
     }

@@ -66,19 +66,19 @@ class FundaScraper {
                         JSON.stringify({ id: 'search_result_20250805', params: searchParams }) + '\n';
 
         console.log('Funda API request:', { area, days: params.days, from: params.from, size: params.size });
-        return this.parseMobileSearchResults(await this.fetchViaProxyPost(this.FUNDA_API_SEARCH, ndjson));
+        return this.parseMobileSearchResults(await this.fetchViaProxyPost(this.FUNDA_API_SEARCH, ndjson), params.from || 0);
     }
 
     // ==========================================
     // SEARCH RESULTS PARSER
     // ==========================================
 
-    parseMobileSearchResults(data) {
+    parseMobileSearchResults(data, fromOffset = 0) {
         const hitsObj = data?.responses?.[0]?.hits || {};
         const hits = hitsObj.hits || [];
         this._lastMobileTotal = hitsObj.total?.value || hits.length;
 
-        return hits.map(hit => {
+        return hits.map((hit, idx) => {
             const source = hit._source || {};
             const addr = source.address || {};
             const price = source.price?.selling_price?.[0] || source.price?.rent_price?.[0] || null;
@@ -125,6 +125,7 @@ class FundaScraper {
                 isNew: false,
                 fromMobileAPI: true,
                 availability: source.availability || 'available',
+                apiSortIndex: fromOffset + idx,
             };
         });
     }
