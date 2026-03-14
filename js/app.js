@@ -1394,14 +1394,16 @@ class FunDaApp {
     _translatePropertyType(type) {
         if (!type || this.lang === 'nl') return type;
         const map = {
-            'appartement': 'Apartment', 'woning': 'House',
+            'appartement': 'Apartment', 'apartment': 'Apartment',
+            'woning': 'House', 'house': 'House',
             'eengezinswoning': 'Detached house', 'tussenwoning': 'Terraced house',
             'hoekwoning': 'Corner house', 'bovenwoning': 'Upper floor apartment',
             'benedenwoning': 'Ground floor apartment', 'maisonnette': 'Maisonette',
             'penthouse': 'Penthouse', 'grachtenpand': 'Canal house',
             'herenhuis': 'Townhouse', 'villa': 'Villa', 'bungalow': 'Bungalow',
             'landgoed': 'Estate', 'landhuis': 'Country house',
-            'parkeerplaats': 'Parking space', 'bouwgrond': 'Building plot',
+            'parkeerplaats': 'Parking space', 'parking_space': 'Parking space',
+            'bouwgrond': 'Building plot', 'building_plot': 'Building plot',
             'geschakelde woning': 'Semi-detached house',
             'twee-onder-een-kap': 'Semi-detached',
             'vrijstaande woning': 'Detached house',
