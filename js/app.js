@@ -1233,8 +1233,10 @@ class FunDaApp {
         const hint = compact
             ? (this.lang === 'en' ? 'Share this code with your family' : 'Deel deze code met je familie')
             : (this.lang === 'en' ? 'Enter this code on another device to join the family' : 'Voer deze code op een ander apparaat in om de familie te joinen');
+        const qrSvg = code ? QRCode.toSVG(`funda-family:${code}`, compact ? 140 : 180) : '';
         return `
             <div class="${wrapperClass}">
+                ${qrSvg ? `<div class="family-invite-qr">${qrSvg}</div>` : ''}
                 <div class="family-invite-code">${safeCode}</div>
                 <p class="family-invite-hint">${hint}</p>
             </div>
@@ -1663,15 +1665,21 @@ class FunDaApp {
             // Show members
             const members = this.familySync.getMembersList();
             membersList.innerHTML = members.map(m => {
-                const avatarHtml = m.photoURL
-                    ? `<img class="member-avatar-img" src="${escapeHtml(safeImageUrl(m.photoURL))}" alt="${escapeHtml(m.name)}">`
+                // For current user, always use the live Google photo URL
+                const photoURL = m.isCurrentUser && this.currentUser?.photoURL
+                    ? this.currentUser.photoURL
+                    : m.photoURL;
+                const avatarHtml = photoURL
+                    ? `<img class="member-avatar-img" src="${escapeHtml(photoURL)}" alt="${escapeHtml(m.name)}">`
                     : `<div class="member-avatar">${escapeHtml(m.name.charAt(0).toUpperCase())}</div>`;
+                const youLabel = this.lang === 'en' ? 'You' : 'Jij';
+                const favLabel = this.lang === 'en' ? 'favorites' : 'favorieten';
                 return `
                 <div class="member-item ${m.isCurrentUser ? 'current-user' : ''}">
                     ${avatarHtml}
                     <div class="member-info">
-                        <div class="member-name">${escapeHtml(m.name)} ${m.isCurrentUser ? '<span class="member-badge">Jij</span>' : ''}</div>
-                        <div class="member-stats">${escapeHtml(String(m.favoriteCount))} favorieten</div>
+                        <div class="member-name">${escapeHtml(m.name)} ${m.isCurrentUser ? `<span class="member-badge">${youLabel}</span>` : ''}</div>
+                        <div class="member-stats">${escapeHtml(String(m.favoriteCount))} ${favLabel}</div>
                     </div>
                 </div>`;
             }).join('');

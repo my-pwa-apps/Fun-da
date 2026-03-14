@@ -3967,6 +3967,20 @@ a.btn-secondary {
     padding: 0.85rem;
 }
 
+.family-invite-qr {
+    display: flex;
+    justify-content: center;
+}
+
+.family-invite-qr svg {
+    border-radius: 8px;
+}
+
+.family-invite-card-compact .family-invite-qr svg {
+    width: 140px;
+    height: 140px;
+}
+
 .family-invite-code {
     font-size: 1.05rem;
     font-weight: 700;
