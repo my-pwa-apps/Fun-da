@@ -179,6 +179,13 @@ body {
     transition: opacity 0.5s var(--ease-out);
 }
 
+/* In browse mode on mobile, lock to viewport and let only the grid scroll */
+.app--browse {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
 .app.hidden {
     opacity: 0;
 }
@@ -189,6 +196,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 1.25rem 0;
+    flex-shrink: 0;
 }
 
 .logo {
@@ -3043,6 +3051,7 @@ a.btn-secondary {
     background: var(--white);
     border-bottom: 1px solid var(--gray-lighter);
     flex-shrink: 0;
+    z-index: 10;
 }
 
 /* Type quick-filter pills in the toolbar */

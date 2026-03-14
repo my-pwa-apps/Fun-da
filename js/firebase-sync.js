@@ -470,14 +470,15 @@ class FamilySync {
     // ==========================================
 
     async saveHousesToDB(houses) {
-        if (!this.familyCode || !this.canUseFamilySync() || !houses.length) return;
-        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+        if (!this.canUseFamilySync() || !houses.length) return;
         const updates = {};
         for (const house of houses) {
-            const key = this.sanitizeForFirebase(String(house.id));
-            updates[`families/${sanitizedCode}/houses/${key}`] = {
+            // Use globalId as canonical key; fall back to sanitized id
+            const gid = house.globalId || '';
+            const key = gid ? this.sanitizeForFirebase(String(gid)) : this.sanitizeForFirebase(String(house.id));
+            updates[`houses/${key}`] = {
                 id: house.id,
-                globalId: house.globalId || '',
+                globalId: gid,
                 price: house.price || 0,
                 address: house.address || '',
                 postalCode: house.postalCode || '',
@@ -501,6 +502,7 @@ class FamilySync {
                 hasParking: house.hasParking || false,
                 daysOnMarket: house.daysOnMarket || null,
                 pricePerM2: house.pricePerM2 || null,
+                availability: house.availability || 'available',
                 importedAt: house.importedAt || Date.now(),
                 savedAt: firebase.database.ServerValue.TIMESTAMP,
             };
@@ -512,11 +514,15 @@ class FamilySync {
         }
     }
 
-    async loadHousesFromDB() {
-        if (!this.familyCode || !this.canUseFamilySync()) return [];
-        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
+    async loadHousesFromDB(area) {
+        if (!this.canUseFamilySync()) return [];
         try {
-            const snapshot = await this.db.ref(`families/${sanitizedCode}/houses`).once('value');
+            // Load from global shared houses node
+            const snapshot = await this.db.ref('houses')
+                .orderByChild('city')
+                .equalTo(area || '')
+                .limitToFirst(3000)
+                .once('value');
             const data = snapshot.val();
             return data ? Object.values(data) : [];
         } catch (e) {
@@ -526,14 +532,8 @@ class FamilySync {
     }
 
     async discardHouseInDB(houseId) {
-        if (!this.familyCode || !this.canUseFamilySync()) return;
-        const sanitizedCode = this.sanitizeForFirebase(this.familyCode);
-        const key = this.sanitizeForFirebase(String(houseId));
-        try {
-            await this.db.ref(`families/${sanitizedCode}/houses/${key}`).remove();
-        } catch (e) {
-            // silently ignore
-        }
+        // No-op: shared houses are not removed from the global store
+        // They simply won't appear if the user has discarded them locally
     }
 
     // ==========================================

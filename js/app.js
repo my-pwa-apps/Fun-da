@@ -279,8 +279,8 @@ class FunDaApp {
                     // Final full re-render to apply correct sort/filter with all data
                     if (this.browseOpen) this.renderBrowseGrid();
                     this.updateStats();
-                    // Save all houses to Firebase
-                    if (this.familySync.isInFamily()) {
+                    // Save all houses to shared Firebase store
+                    if (this.familySync.canUseFamilySync()) {
                         this.familySync.saveHousesToDB(this.houses).catch(() => {});
                     }
                     return;
@@ -319,29 +319,37 @@ class FunDaApp {
                     h.importedAt = Date.now();
                 });
 
-                // Merge with Firebase houses (previously found, not yet discarded)
-                // Only merge houses that belong to the same search area and match the time period
-                let allHouses = [...houses];
-                if (this.familySync.isInFamily()) {
+                // Merge fresh houses into any existing cached houses (never replace)
+                const existingMap = new Map(this.houses.map(h => [String(h.id), h]));
+                for (const fresh of houses) {
+                    const id = String(fresh.id);
+                    if (existingMap.has(id)) {
+                        const existing = existingMap.get(id);
+                        if (existing.hasDetailData) {
+                            Object.assign(existing, { price: fresh.price, daysOnMarket: fresh.daysOnMarket, publicationDate: fresh.publicationDate });
+                        } else {
+                            existingMap.set(id, { ...existing, ...fresh });
+                        }
+                    } else {
+                        existingMap.set(id, fresh);
+                    }
+                }
+
+                // Also merge Firebase shared houses
+                if (this.familySync.canUseFamilySync()) {
                     try {
-                        const firebaseHouses = await this.familySync.loadHousesFromDB();
-                        const freshIds = new Set(houses.map(h => String(h.id)));
-                        const currentArea = (this.searchArea || '').toLowerCase();
+                        const firebaseHouses = await this.familySync.loadHousesFromDB((this.searchArea || '').toLowerCase());
                         const maxDays = this.daysBack || 30;
-                        const extraFromFirebase = firebaseHouses.filter(h => {
-                            if (freshIds.has(String(h.id))) return false;
-                            const houseCity = (h.city || '').toLowerCase();
-                            if (currentArea && houseCity && houseCity !== currentArea) return false;
-                            // Filter by publication period
-                            if (h.daysOnMarket != null && h.daysOnMarket > maxDays) return false;
-                            return true;
-                        });
-                        allHouses = [...houses, ...extraFromFirebase];
+                        for (const fbh of firebaseHouses) {
+                            const id = String(fbh.id);
+                            if (existingMap.has(id)) continue;
+                            if (fbh.daysOnMarket != null && fbh.daysOnMarket > maxDays) continue;
+                            existingMap.set(id, fbh);
+                        }
                     } catch (e) { /* ignore if Firebase unavailable */ }
                 }
 
-                // Replace all houses with merged data
-                this.houses = allHouses;
+                this.houses = Array.from(existingMap.values());
                 this.currentIndex = 0;
                 this.viewed = 0;
                 this._loadedArea = this.searchArea;
@@ -352,8 +360,8 @@ class FunDaApp {
                 this.renderCards();
                 this.updateStats();
 
-                // Save first batch to Firebase (background batches saved when done)
-                if (this.familySync.isInFamily() && !this._bgLoading) {
+                // Save first batch to shared Firebase store (background batches saved when done)
+                if (this.familySync.canUseFamilySync() && !this._bgLoading) {
                     this.familySync.saveHousesToDB(houses).catch(() => {});
                 }
                 // Load favoriteMeta from Firebase
@@ -366,7 +374,7 @@ class FunDaApp {
                     }).catch(() => {});
                 }
                 
-                this.updateSplashStatus(`${allHouses.length} woningen geladen${this._bgLoading ? ' (meer laden...)' : ''}`);
+                this.updateSplashStatus(`${this.houses.length} woningen geladen${this._bgLoading ? ' (meer laden...)' : ''}`);
                 this.updateSplashProgress(100);
                 
                 // Small delay to show success message
@@ -2445,7 +2453,7 @@ class FunDaApp {
         // Description — show only the active language, fall back to the other if empty
         const descNL = house.description || '';
         const descEN = house.descriptionEN || '';
-        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : (descNL || descEN);
+        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : descNL;
         const descHtml = primaryDesc ? `
             <div class="detail-section">
                 <h3>${this.t('detail.desc')}</h3>
@@ -2725,7 +2733,7 @@ class FunDaApp {
             ${(() => {
                 const favDescNL = house.description || '';
                 const favDescEN = house.descriptionEN || '';
-                const favDesc = this.lang === 'en' ? (favDescEN || favDescNL) : (favDescNL || favDescEN);
+                const favDesc = this.lang === 'en' ? (favDescEN || favDescNL) : favDescNL;
                 return favDesc ? `
                 <div class="detail-section">
                     <h3>${this.t('detail.desc_alt')}</h3>
@@ -3263,7 +3271,7 @@ class FunDaApp {
                         this._populateBrowseNeighborhoods();
                         if (this.browseOpen) this.renderBrowseGrid();
                         this.updateStats();
-                        if (this.familySync.isInFamily()) {
+                        if (this.familySync.canUseFamilySync()) {
                             this.familySync.saveHousesToDB(this.houses).catch(() => {});
                         }
                         return;

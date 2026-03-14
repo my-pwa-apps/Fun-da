@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fun-da-v203';
+const CACHE_NAME = 'fun-da-v204';
 const swDebug = () => {};
 const ASSETS_TO_CACHE = [
     './',
