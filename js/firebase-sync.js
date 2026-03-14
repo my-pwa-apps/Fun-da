@@ -471,9 +471,9 @@ class FamilySync {
 
     async saveHousesToDB(houses) {
         if (!this.canUseFamilySync() || !houses.length) return;
+        const now = Date.now();
         const updates = {};
         for (const house of houses) {
-            // Use globalId as canonical key; fall back to sanitized id
             const gid = house.globalId || '';
             const key = gid ? this.sanitizeForFirebase(String(gid)) : this.sanitizeForFirebase(String(house.id));
             updates[`houses/${key}`] = {
@@ -503,7 +503,8 @@ class FamilySync {
                 daysOnMarket: house.daysOnMarket || null,
                 pricePerM2: house.pricePerM2 || null,
                 availability: house.availability || 'available',
-                importedAt: house.importedAt || Date.now(),
+                importedAt: house.importedAt || now,
+                lastSeenAt: now,
                 savedAt: firebase.database.ServerValue.TIMESTAMP,
             };
         }
@@ -517,7 +518,6 @@ class FamilySync {
     async loadHousesFromDB(area) {
         if (!this.canUseFamilySync()) return [];
         try {
-            // Load from global shared houses node
             const snapshot = await this.db.ref('houses')
                 .orderByChild('city')
                 .equalTo(area || '')
@@ -531,9 +531,47 @@ class FamilySync {
         }
     }
 
+    async removeHouseFromDB(houseId, globalId) {
+        if (!this.canUseFamilySync()) return;
+        const gid = globalId || '';
+        const key = gid ? this.sanitizeForFirebase(String(gid)) : this.sanitizeForFirebase(String(houseId));
+        try {
+            await this.db.ref(`houses/${key}`).remove();
+        } catch (e) { /* silently ignore */ }
+    }
+
+    /** Remove houses not seen in API results for more than maxAgeDays. */
+    async cleanupStaleHouses(area, maxAgeDays = 30) {
+        if (!this.canUseFamilySync()) return 0;
+        const cutoff = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
+        try {
+            const snapshot = await this.db.ref('houses')
+                .orderByChild('city')
+                .equalTo(area || '')
+                .once('value');
+            const data = snapshot.val();
+            if (!data) return 0;
+            const removals = {};
+            let count = 0;
+            for (const [key, house] of Object.entries(data)) {
+                const lastSeen = house.lastSeenAt || house.importedAt || 0;
+                if (lastSeen < cutoff) {
+                    removals[`houses/${key}`] = null;
+                    count++;
+                }
+            }
+            if (count > 0) {
+                await this.db.ref().update(removals);
+            }
+            return count;
+        } catch (e) {
+            console.error('Cleanup stale houses error:', e);
+            return 0;
+        }
+    }
+
     async discardHouseInDB(houseId) {
-        // No-op: shared houses are not removed from the global store
-        // They simply won't appear if the user has discarded them locally
+        // No-op: shared houses are not removed by user discard
     }
 
     // ==========================================

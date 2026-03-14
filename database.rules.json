@@ -77,7 +77,7 @@
     },
     "houses": {
       ".read": "auth != null",
-      ".indexOn": ["city"],
+      ".indexOn": ["city", "lastSeenAt"],
       "$houseId": {
         ".write": "auth != null",
         ".validate": "newData.hasChildren(['id'])",

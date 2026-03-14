@@ -269,6 +269,25 @@ class FunDaApp {
             // Tell scraper whether to fetch English descriptions
             this.scraper._wantEnglishDesc = (this.lang === 'en');
 
+            // --- Cache-first: show Firebase-cached houses immediately while API loads ---
+            if (this.familySync.canUseFamilySync() && this.houses.length === 0) {
+                try {
+                    const cachedHouses = await this.familySync.loadHousesFromDB((this.searchArea || '').toLowerCase());
+                    if (cachedHouses.length > 0) {
+                        const maxDays = this.daysBack || 30;
+                        const cached = cachedHouses.filter(h => h.daysOnMarket == null || h.daysOnMarket <= maxDays);
+                        if (cached.length > 0) {
+                            this.houses = cached;
+                            this.renderCards();
+                            if (this.browseOpen) this.renderBrowseGrid();
+                            this.updateStats();
+                            this._populateBrowseNeighborhoods();
+                            updateProgress(`${cached.length} woningen uit cache, verversen...`, 25);
+                        }
+                    }
+                } catch (e) { /* cache unavailable, continue to API */ }
+            }
+
             // Handler for background batches arriving after the initial render
             const handleBatch = (newHouses, info) => {
                 if (!newHouses) {
@@ -363,6 +382,8 @@ class FunDaApp {
                 // Save first batch to shared Firebase store (background batches saved when done)
                 if (this.familySync.canUseFamilySync() && !this._bgLoading) {
                     this.familySync.saveHousesToDB(houses).catch(() => {});
+                    // Cleanup stale houses that haven't been seen in 30+ days
+                    this.familySync.cleanupStaleHouses((this.searchArea || '').toLowerCase(), 30).catch(() => {});
                 }
                 // Load favoriteMeta from Firebase
                 if (this.familySync.isInFamily()) {
@@ -2315,6 +2336,9 @@ class FunDaApp {
                     this._detailHouse = house;
                     this._renderDetailContent(house);
                     this.saveToStorage();
+                } else {
+                    // detail is null — house may be sold/rented; remove from shared cache
+                    this.familySync.removeHouseFromDB(house.id, house.globalId).catch(() => {});
                 }
             } catch (e) {
                 console.error('Detail fetch failed:', e);
