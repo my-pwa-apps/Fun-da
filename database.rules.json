@@ -4,9 +4,9 @@
     ".write": false,
     "families": {
       "$familyCode": {
-        ".read": true,
+        ".read": false,
         "metadata": {
-          ".read": true,
+          ".read": "auth != null",
           ".write": "auth != null && !data.exists()",
           "createdAt": {
             ".validate": "newData.isNumber()"
@@ -23,7 +23,7 @@
         },
         "members": {
           "$userId": {
-            ".read": true,
+            ".read": "auth != null && root.child('families').child($familyCode).child('writers').child(auth.uid).val() == true",
             ".write": "auth != null && $userId.matches(/^user-[a-f0-9]{16}$/) && (((!data.exists()) && newData.child('userId').val() == $userId && newData.child('authUid').val() == auth.uid) || (data.exists() && data.child('authUid').val() == auth.uid))",
             "name": {
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 100"
@@ -61,7 +61,7 @@
           }
         },
         "favoriteMeta": {
-          ".read": true,
+          ".read": "auth != null && root.child('families').child($familyCode).child('writers').child(auth.uid).val() == true",
           ".write": "auth != null && root.child('families').child($familyCode).child('writers').child(auth.uid).val() == true",
           "$houseId": {
             ".validate": "newData.isString() || newData.hasChildren()",

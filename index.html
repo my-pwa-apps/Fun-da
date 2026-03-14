@@ -48,13 +48,13 @@
         <header class="header">
             <h1 class="logo"><span class="logo-fun">Fun</span><span class="logo-da">da</span></h1>
             <div class="header-actions">
-                <button class="btn-icon" id="settingsBtn" aria-label="Instellingen" title="Instellingen">
+                <button class="btn-icon" id="settingsBtn" aria-label="Instellingen" title="Instellingen" data-i18n-aria-label="a11y.settings" data-i18n-title="a11y.settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
                 </button>
-                <button class="btn-icon" id="familyBtn" aria-label="Familie" title="Familie Matches">
+                <button class="btn-icon" id="familyBtn" aria-label="Familie" title="Familie Matches" data-i18n-aria-label="a11y.family_matches" data-i18n-title="a11y.family_matches">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                         <circle cx="9" cy="7" r="4"/>
@@ -63,13 +63,13 @@
                     </svg>
                     <span class="badge family-badge" id="familyMatchCount">0</span>
                 </button>
-                <button class="btn-icon" id="favoritesBtn" aria-label="Favorieten">
+                <button class="btn-icon" id="favoritesBtn" aria-label="Favorieten" data-i18n-aria-label="a11y.favorites">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
                     <span class="badge" id="favCount">0</span>
                 </button>
-                <button class="profile-btn" id="profileBtn" aria-label="Profiel" title="Profiel">
+                <button class="profile-btn" id="profileBtn" aria-label="Profiel" title="Profiel" data-i18n-aria-label="a11y.profile" data-i18n-title="a11y.profile">
                     <svg id="profileDefaultAvatar" class="profile-default-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
                         <circle cx="12" cy="8" r="4"/>
                         <path d="M20 21a8 8 0 1 0-16 0"/>
@@ -112,7 +112,7 @@
             </div>
             <div class="stat">
                 <span class="stat-value" id="matchScore">0%</span>
-                <span class="stat-label">Match Score</span>
+                <span class="stat-label" data-i18n="stats.match_score">Match Score</span>
             </div>
             <div class="stat">
                 <span class="stat-value" id="housesLeft">0</span>
@@ -137,15 +137,15 @@
 
         <!-- Action Buttons -->
         <div class="actions hidden" id="swipeActions">
-            <button class="action-btn action-nope" id="nopeBtn" aria-label="Nee">
+            <button class="action-btn action-nope" id="nopeBtn" aria-label="Nee" data-i18n-aria-label="a11y.nope">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                     <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
             </button>
-            <button class="action-btn action-info" id="infoBtn" aria-label="Meer info">
+            <button class="action-btn action-info" id="infoBtn" aria-label="Meer info" data-i18n-aria-label="a11y.more_info">
                 <span class="action-info-icon">i</span>
             </button>
-            <button class="action-btn action-like" id="likeBtn" aria-label="Ja!">
+            <button class="action-btn action-like" id="likeBtn" aria-label="Ja!" data-i18n-aria-label="a11y.like">
                 <svg viewBox="0 0 24 24" fill="currentColor">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
@@ -156,10 +156,10 @@
         <div id="browseView" class="browse-view">
 
             <!-- Filter Sidebar (always visible on desktop, slide-in on mobile) -->
-            <aside class="browse-sidebar" id="browseSidebar" aria-label="Filters">
+            <aside class="browse-sidebar" id="browseSidebar" aria-label="Filters" data-i18n-aria-label="a11y.filters">
                 <div class="browse-sidebar-head">
                     <span class="browse-sidebar-title" data-i18n="filters.title">Filters</span>
-                    <button class="browse-sidebar-close" id="closeBrowseSidebar" aria-label="Sluit filters">
+                    <button class="browse-sidebar-close" id="closeBrowseSidebar" aria-label="Sluit filters" data-i18n-aria-label="a11y.close_filters">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
                             <path d="M18 6L6 18M6 6l12 12"/>
                         </svg>
@@ -170,7 +170,7 @@
                         <h4 class="bfs-title" data-i18n="filters.area">Zoekgebied</h4>
                         <p class="bfs-hint" data-i18n="filters.area_hint">Stad, straat, of postcode</p>
                         <div class="area-autocomplete" id="areaAutocomplete">
-                            <input type="text" id="bfSearchArea" class="input-full" placeholder="bijv. Amsterdam, Victorieplein, 1071" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Zoekgebied">
+                            <input type="text" id="bfSearchArea" class="input-full" placeholder="bijv. Amsterdam, Victorieplein, 1071" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Zoekgebied" data-i18n-placeholder="placeholder.search_area" data-i18n-aria-label="filters.area">
                             <ul class="area-suggestions hidden" id="areaSuggestions"></ul>
                         </div>
                     </div>
@@ -184,7 +184,7 @@
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.period">Zoekperiode</h4>
                         <p class="bfs-hint" data-i18n="filters.period_hint">Hoeveel dagen terug worden nieuwe woningen opgehaald</p>
-                        <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren" aria-label="Zoekperiode selecteren">
+                        <select id="bfDaysBack" class="input-full" title="Zoekperiode selecteren" aria-label="Zoekperiode selecteren" data-i18n-title="a11y.select_period" data-i18n-aria-label="a11y.select_period">
                             <option value="1" data-i18n="period.today">Vandaag</option>
                             <option value="3" selected data-i18n="period.3days">Laatste 3 dagen</option>
                             <option value="7" data-i18n="period.week">Laatste week</option>
@@ -195,17 +195,17 @@
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.price">Prijs</h4>
                         <div class="range-inputs">
-                            <input type="number" id="bfMinPrice" placeholder="Min €" step="25000" min="0" aria-label="Minimum prijs">
+                            <input type="number" id="bfMinPrice" placeholder="Min €" step="25000" min="0" aria-label="Minimum prijs" data-i18n-placeholder="placeholder.min_price" data-i18n-aria-label="a11y.min_price">
                             <span>—</span>
-                            <input type="number" id="bfMaxPrice" placeholder="Max €" step="25000" min="0" aria-label="Maximum prijs">
+                            <input type="number" id="bfMaxPrice" placeholder="Max €" step="25000" min="0" aria-label="Maximum prijs" data-i18n-placeholder="placeholder.max_price" data-i18n-aria-label="a11y.max_price">
                         </div>
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.size">Woonoppervlak (m²)</h4>
                         <div class="range-inputs">
-                            <input type="number" id="bfMinSize" placeholder="Min" step="10" min="0" aria-label="Minimum woonoppervlak">
+                            <input type="number" id="bfMinSize" placeholder="Min" step="10" min="0" aria-label="Minimum woonoppervlak" data-i18n-placeholder="placeholder.min_size" data-i18n-aria-label="a11y.min_size">
                             <span>—</span>
-                            <input type="number" id="bfMaxSize" placeholder="Max" step="10" min="0" aria-label="Maximum woonoppervlak">
+                            <input type="number" id="bfMaxSize" placeholder="Max" step="10" min="0" aria-label="Maximum woonoppervlak" data-i18n-placeholder="placeholder.max_size" data-i18n-aria-label="a11y.max_size">
                         </div>
                     </div>
                     <div class="bfs">
@@ -228,8 +228,8 @@
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.neighborhood">Buurt</h4>
-                        <select id="bfNeighborhood" title="Kies een buurt" class="input-full" aria-label="Kies een buurt">
-                            <option value="">Alle buurten</option>
+                        <select id="bfNeighborhood" title="Kies een buurt" class="input-full" aria-label="Kies een buurt" data-i18n-title="a11y.choose_neighborhood" data-i18n-aria-label="a11y.choose_neighborhood">
+                            <option value="" data-i18n="filters.all_neighborhoods">Alle buurten</option>
                         </select>
                     </div>
                     <div class="bfs" id="bfsExcludeNeigh">
@@ -244,7 +244,7 @@
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.year">Bouwjaar vanaf</h4>
-                        <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full" aria-label="Bouwjaar vanaf">
+                        <input type="number" id="bfMinYear" placeholder="bijv. 1990" min="1800" max="2030" step="1" class="input-full" aria-label="Bouwjaar vanaf" data-i18n-placeholder="placeholder.min_year" data-i18n-aria-label="a11y.min_year">
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.days_min">Op de markt (min. dagen)</h4>
@@ -255,11 +255,11 @@
                             <button class="btn-option" data-value="60">60+</button>
                             <button class="btn-option" data-value="90">90+</button>
                         </div>
-                        <input type="number" id="bfMinDaysOnMarket" placeholder="of typ eigen getal" min="0" step="1" class="input-full input-full-spaced" aria-label="Minimum dagen op de markt">
+                        <input type="number" id="bfMinDaysOnMarket" placeholder="of typ eigen getal" min="0" step="1" class="input-full input-full-spaced" aria-label="Minimum dagen op de markt" data-i18n-placeholder="placeholder.min_days_custom" data-i18n-aria-label="a11y.min_days_on_market">
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.days_max">Op de markt (max. dagen)</h4>
-                        <input type="number" id="bfMaxDaysOnMarket" placeholder="bijv. 14" min="0" step="1" class="input-full" aria-label="Maximum dagen op de markt">
+                        <input type="number" id="bfMaxDaysOnMarket" placeholder="bijv. 14" min="0" step="1" class="input-full" aria-label="Maximum dagen op de markt" data-i18n-placeholder="placeholder.max_days_example" data-i18n-aria-label="a11y.max_days_on_market">
                     </div>
                     <div class="bfs">
                         <h4 class="bfs-title" data-i18n="filters.rooms">Kamers (min.)</h4>
@@ -302,13 +302,13 @@
             <!-- Results column -->
             <div class="browse-main">
                 <div class="browse-toolbar">
-                    <button class="browse-toolbar-btn" id="browseFilterToggleBtn" title="Filters" aria-label="Filters">
+                    <button class="browse-toolbar-btn" id="browseFilterToggleBtn" title="Filters" aria-label="Filters" data-i18n-title="a11y.filters" data-i18n-aria-label="a11y.filters">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
                         </svg>
                         <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
                     </button>
-                    <button class="browse-toolbar-btn" id="browseRefreshBtn" title="Ververs woningen" aria-label="Ververs woningen">
+                    <button class="browse-toolbar-btn" id="browseRefreshBtn" title="Ververs woningen" aria-label="Ververs woningen" data-i18n-title="a11y.refresh_listings" data-i18n-aria-label="a11y.refresh_listings">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
                             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -316,7 +316,7 @@
                     </button>
                     <span id="browseCount" class="browse-count">0 woningen</span>
                     <div class="browse-sort-wrap">
-                        <select id="browseSortBy" class="browse-sort" title="Sorteer op">
+                        <select id="browseSortBy" class="browse-sort" title="Sorteer op" data-i18n-title="a11y.sort_by" data-i18n-aria-label="a11y.sort_by">
                             <option value="default">Nieuwste</option>
                             <option value="price-asc">Prijs ↑</option>
                             <option value="price-desc">Prijs ↓</option>
@@ -327,13 +327,13 @@
                         </select>
                     </div>
                     <div class="browse-layout-toggle">
-                        <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst" aria-label="Lijst">
+                        <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst" aria-label="Lijst" data-i18n-title="a11y.list_layout" data-i18n-aria-label="a11y.list_layout">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                                 <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
                                 <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
                             </svg>
                         </button>
-                        <button class="browse-layout-btn" id="browseLayoutGrid" title="Raster" aria-label="Raster">
+                        <button class="browse-layout-btn" id="browseLayoutGrid" title="Raster" aria-label="Raster" data-i18n-title="a11y.grid_layout" data-i18n-aria-label="a11y.grid_layout">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                                 <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                                 <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
@@ -344,7 +344,7 @@
 
                 <div id="browseLoading" class="browse-loading hidden">
                     <div class="browse-loading-bar"><div class="browse-loading-fill" id="browseLoadingFill"></div></div>
-                    <p id="browseLoadingText" class="browse-loading-text">Woningen ophalen...</p>
+                    <p id="browseLoadingText" class="browse-loading-text" data-i18n="browse.loading">Woningen ophalen...</p>
                 </div>
 
                 <div id="browseGrid" class="browse-grid browse-layout-list"></div>
@@ -363,7 +363,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 data-i18n="fav.title">Mijn Favorieten</h2>
-                <button class="btn-close" id="closeFavModal" aria-label="Sluit favorieten">&times;</button>
+                <button class="btn-close" id="closeFavModal" aria-label="Sluit favorieten" data-i18n-aria-label="a11y.close_favorites">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="favoritesList" class="favorites-list">
@@ -383,8 +383,8 @@
             <div class="modal-header">
                 <h2 id="detailTitle">Woning Details</h2>
                 <div class="modal-header-actions">
-                    <button class="btn-share" id="shareDetailBtn" data-action="shareHouse" aria-label="Delen" title="Delen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-                    <button class="btn-close" id="closeDetailModal" aria-label="Sluit details">&times;</button>
+                    <button class="btn-share" id="shareDetailBtn" data-action="shareHouse" aria-label="Delen" title="Delen" data-i18n-aria-label="a11y.share" data-i18n-title="a11y.share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+                    <button class="btn-close" id="closeDetailModal" aria-label="Sluit details" data-i18n-aria-label="a11y.close_details">&times;</button>
                 </div>
             </div>
             <div class="modal-body" id="detailContent">
@@ -398,7 +398,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 data-i18n="settings.title">Instellingen</h2>
-                <button class="btn-close" id="closeSettingsModal" aria-label="Sluit instellingen">&times;</button>
+                <button class="btn-close" id="closeSettingsModal" aria-label="Sluit instellingen" data-i18n-aria-label="a11y.close_settings">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Language -->
@@ -426,8 +426,8 @@
                 <!-- Install app -->
                 <div id="installSection" class="settings-install-card hidden">
                     <h3 class="settings-section-title" data-i18n="settings.install">App installeren</h3>
-                    <p id="installStatus" class="modal-description">Controleer installatie-opties...</p>
-                    <button id="installAppBtn" class="btn-primary settings-install-btn">Installeer app</button>
+                    <p id="installStatus" class="modal-description" data-i18n="install.status_pending">Controleer installatie-opties...</p>
+                    <button id="installAppBtn" class="btn-primary settings-install-btn" data-i18n="install.button">Installeer app</button>
                     <hr class="settings-divider">
                 </div>
 
@@ -452,7 +452,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 data-i18n="settings.bin">Prullenbak</h2>
-                <button class="btn-close" id="closeDiscardBinModal" aria-label="Sluit prullenbak">&times;</button>
+                <button class="btn-close" id="closeDiscardBinModal" aria-label="Sluit prullenbak" data-i18n-aria-label="a11y.close_bin">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="discardBinList" class="favorites-list"></div>
@@ -468,7 +468,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h2 data-i18n="family.title">Familie Modus</h2>
-                <button class="btn-close" id="closeFamilyModal" aria-label="Sluit familie modus">&times;</button>
+                <button class="btn-close" id="closeFamilyModal" aria-label="Sluit familie modus" data-i18n-aria-label="a11y.close_family">&times;</button>
             </div>
             <div class="modal-body">
                 <!-- Not in family -->
@@ -478,7 +478,7 @@
                     
                     <div class="filter-group">
                         <label data-i18n="family.your_name">Jouw naam</label>
-                        <input type="text" id="familyUserName" placeholder="Bijv. Papa, Mama, Sophie..." class="input-full" aria-label="Jouw naam">
+                        <input type="text" id="familyUserName" placeholder="Bijv. Papa, Mama, Sophie..." class="input-full" aria-label="Jouw naam" data-i18n-placeholder="placeholder.family_name" data-i18n-aria-label="a11y.family_name">
                     </div>
 
                     <div class="family-options">
@@ -493,7 +493,7 @@
                         <div class="family-option">
                             <h3 data-i18n="family.join_existing">Bestaande familie joinen</h3>
                             <div class="filter-group">
-                                <input type="text" id="joinFamilyCode" placeholder="bijv. fd-1a2b-3c4d-5e6f-7a8b-9c0d" class="input-full" aria-label="Familiecode">
+                                <input type="text" id="joinFamilyCode" placeholder="bijv. fd-1a2b-3c4d-5e6f-7a8b-9c0d" class="input-full" aria-label="Familiecode" data-i18n-placeholder="placeholder.family_code" data-i18n-aria-label="a11y.family_code">
                             </div>
                             <button class="btn-secondary" id="joinFamilyBtn" data-i18n="family.join">Familie joinen</button>
                             <button class="btn-secondary btn-secondary-mt" id="scanQRBtn" data-i18n="family.scan_qr">QR Code scannen</button>
@@ -541,7 +541,7 @@
         <div class="modal-content modal-qr">
             <div class="modal-header">
                 <h2 data-i18n="family.share_code">Deelcode</h2>
-                <button class="btn-close" id="closeQRModal" aria-label="Sluit deelcode">&times;</button>
+                <button class="btn-close" id="closeQRModal" aria-label="Sluit deelcode" data-i18n-aria-label="a11y.close_share_code">&times;</button>
             </div>
             <div class="modal-body qr-modal-body">
                 <div id="qrCodeDisplay" class="qr-code-display"></div>
@@ -554,12 +554,12 @@
     <div id="qrScannerModal" class="modal hidden">
         <div class="modal-content modal-qr-scanner">
             <div class="modal-header">
-                <h2>QR Code Scannen</h2>
-                <button class="btn-close" id="closeQRScannerModal" aria-label="Sluit QR scanner">&times;</button>
+                <h2 data-i18n="qr.modal_title">QR Code Scannen</h2>
+                <button class="btn-close" id="closeQRScannerModal" aria-label="Sluit QR scanner" data-i18n-aria-label="a11y.close_qr_scanner">&times;</button>
             </div>
             <div class="modal-body qr-scanner-body">
                 <video id="qrVideo" class="qr-video"></video>
-                <p id="qrScanStatus" class="qr-scan-status">Camera starten...</p>
+                <p id="qrScanStatus" class="qr-scan-status" data-i18n="qr.starting">Camera starten...</p>
             </div>
         </div>
     </div>
@@ -568,11 +568,11 @@
     <div id="mapModal" class="modal hidden">
         <div class="modal-content modal-map">
             <div class="modal-header">
-                <h2 id="mapModalTitle">Locatie</h2>
-                <button class="btn-close" id="closeMapModal" aria-label="Sluit kaart">&times;</button>
+                <h2 id="mapModalTitle" data-i18n="detail.maps">Locatie</h2>
+                <button class="btn-close" id="closeMapModal" aria-label="Sluit kaart" data-i18n-aria-label="a11y.close_map">&times;</button>
             </div>
             <div class="modal-body map-modal-body">
-                <iframe id="mapFrame" class="map-frame" src="" allowfullscreen loading="lazy" title="Kaart"></iframe>
+                <iframe id="mapFrame" class="map-frame" src="" allowfullscreen loading="lazy" title="Kaart" data-i18n-title="a11y.map"></iframe>
             </div>
         </div>
     </div>

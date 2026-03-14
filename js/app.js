@@ -9,6 +9,9 @@ if (!window.__FUNDA_DEBUG) {
 
 // Utility function
 const $ = (id) => document.getElementById(id);
+const handledAsyncError = (context) => (error) => {
+    console.warn(context, error || 'Unknown error');
+};
 
 class FunDaApp {
     constructor() {
@@ -300,7 +303,7 @@ class FunDaApp {
                     this.updateStats();
                     // Save all houses to shared Firebase store
                     if (this.familySync.canUseFamilySync()) {
-                        this.familySync.saveHousesToDB(this.houses).catch(() => {});
+                        this.familySync.saveHousesToDB(this.houses).catch(handledAsyncError('Saving background houses to Firebase failed'));
                     }
                     return;
                 }
@@ -381,9 +384,9 @@ class FunDaApp {
 
                 // Save first batch to shared Firebase store (background batches saved when done)
                 if (this.familySync.canUseFamilySync() && !this._bgLoading) {
-                    this.familySync.saveHousesToDB(houses).catch(() => {});
+                    this.familySync.saveHousesToDB(houses).catch(handledAsyncError('Saving houses to Firebase failed'));
                     // Cleanup stale houses that haven't been seen in 30+ days
-                    this.familySync.cleanupStaleHouses((this.searchArea || '').toLowerCase(), 30).catch(() => {});
+                    this.familySync.cleanupStaleHouses((this.searchArea || '').toLowerCase(), 30).catch(handledAsyncError('Cleaning stale Firebase houses failed'));
                 }
                 // Load favoriteMeta from Firebase
                 if (this.familySync.isInFamily()) {
@@ -392,7 +395,7 @@ class FunDaApp {
                             this.favoriteMeta = { ...meta, ...this.favoriteMeta };
                             this.saveToStorage();
                         }
-                    }).catch(() => {});
+                    }).catch(handledAsyncError('Loading family favorite metadata failed'));
                 }
                 
                 this.updateSplashStatus(this.t('splash.loaded', this.houses.length, this._bgLoading));
@@ -433,7 +436,7 @@ class FunDaApp {
                     console.log('🏠 Fun-da SW registered:', registration.scope);
                     
                     // Force update check on every page load
-                    registration.update().catch(() => {});
+                    registration.update().catch(handledAsyncError('Service worker update check failed'));
                     
                     // Check for updates
                     registration.addEventListener('updatefound', () => {
@@ -543,16 +546,16 @@ class FunDaApp {
         const isChrome = /Chrome\//.test(userAgent) && !isEdge;
 
         if (isIOS) {
-            return 'Gebruik Safari en kies Deel > Zet op beginscherm.';
+            return this.t('install.ios');
         }
         if (isAndroid && (isChrome || isEdge)) {
-            return 'Open het browsermenu en kies Installeer app of Toevoegen aan startscherm.';
+            return this.t('install.android');
         }
         if (isChrome || isEdge) {
-            return 'Gebruik het install-icoon in de adresbalk of kies Installeer app in het browsermenu.';
+            return this.t('install.desktop');
         }
 
-        return 'Gebruik de browseroptie Installeer app of Toevoegen aan startscherm.';
+        return this.t('install.generic');
     }
 
     updateInstallUi() {
@@ -572,11 +575,11 @@ class FunDaApp {
         section.classList.remove('hidden');
 
         if (this.deferredInstallPrompt) {
-            status.textContent = 'Fun-da kan op dit apparaat als app worden geïnstalleerd.';
-            button.textContent = 'Installeer app';
+            status.textContent = this.t('install.available');
+            button.textContent = this.t('install.button');
         } else {
             status.textContent = this.getManualInstallInstructions();
-            button.textContent = 'Installatie-hulp';
+            button.textContent = this.t('install.help');
         }
     }
 
@@ -600,8 +603,8 @@ class FunDaApp {
         const toast = document.createElement('div');
         toast.className = 'toast toast-action';
         toast.innerHTML = `
-            <span>Installeer Fun-da</span>
-            <button class="toast-btn" id="installBtn">Installeer</button>
+            <span>${this.t('install.toast_title')}</span>
+            <button class="toast-btn" id="installBtn">${this.t('install.button')}</button>
             <button class="toast-dismiss" id="installDismiss">✕</button>
         `;
         container.appendChild(toast);
@@ -729,6 +732,7 @@ class FunDaApp {
         document.documentElement.lang = lang;
         this.scraper._wantEnglishDesc = (lang === 'en');
         this.applyTranslations();
+        this.updateInstallUi();
         this._updateSortDropdownLabels();
         if (this.browseOpen) this.renderBrowseGrid();
         this.renderCards();
@@ -745,6 +749,27 @@ class FunDaApp {
                 } else {
                     el.textContent = text;
                 }
+            }
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.dataset.i18nPlaceholder;
+            const text = this.t(key);
+            if (text && text !== key) {
+                el.setAttribute('placeholder', text);
+            }
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.dataset.i18nTitle;
+            const text = this.t(key);
+            if (text && text !== key) {
+                el.setAttribute('title', text);
+            }
+        });
+        document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+            const key = el.dataset.i18nAriaLabel;
+            const text = this.t(key);
+            if (text && text !== key) {
+                el.setAttribute('aria-label', text);
             }
         });
         const langNl = document.getElementById('langNl');
@@ -1092,7 +1117,7 @@ class FunDaApp {
 
     onAuthStateChanged(user) {
         this.currentUser = user;
-        this.familySync.handleAuthStateChanged(user).catch(() => {});
+        this.familySync.handleAuthStateChanged(user).catch(handledAsyncError('Family auth state sync failed'));
         const profilePhoto = document.getElementById('profileUserPhoto');
         const profileDefault = document.getElementById('profileDefaultAvatar');
         const profileInfo = document.getElementById('profileInfo');
@@ -1120,7 +1145,7 @@ class FunDaApp {
                 this._updateFamilyMemberPhoto(user.photoURL);
                 // Sync local favorites to Firebase to keep counts accurate
                 const favIds = this.favorites.map(h => String(h.id));
-                this.familySync.syncAllFavorites(favIds).catch(() => {});
+                this.familySync.syncAllFavorites(favIds).catch(handledAsyncError('Initial favorites sync failed'));
             }
             // Load settings from Firebase for this user
             this.loadSettingsFromFirebase();
@@ -1565,6 +1590,13 @@ class FunDaApp {
         const status = document.getElementById('qrScanStatus');
         
         this.openModal(scannerModal);
+
+        if (!('BarcodeDetector' in window)) {
+            status.textContent = this.t('qr.manual_entry_required');
+            this.showToast(this.t('qr.manual_entry_required'));
+            return;
+        }
+
         status.textContent = this.t('qr.starting');
         
         try {
@@ -1588,27 +1620,23 @@ class FunDaApp {
     
     scanQRCode(video, status) {
         // Create BarcodeDetector once (not per frame)
-        const detector = ('BarcodeDetector' in window) 
-            ? new BarcodeDetector({ formats: ['qr_code'] }) 
-            : null;
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
         
         const scan = () => {
             if (!this.qrStream) return;
             
-            if (detector) {
-                detector.detect(video).then(barcodes => {
-                    if (barcodes.length > 0) {
-                        const data = barcodes[0].rawValue;
-                        if (data.startsWith('funda-family:')) {
-                            const code = data.replace('funda-family:', '');
-                            this.stopQRScanner();
-                            document.getElementById('joinFamilyCode').value = code;
-                            this.showToast(this.t('qr.recognized'));
-                            this.joinFamily();
-                        }
+            detector.detect(video).then(barcodes => {
+                if (barcodes.length > 0) {
+                    const data = barcodes[0].rawValue;
+                    if (data.startsWith('funda-family:')) {
+                        const code = data.replace('funda-family:', '');
+                        this.stopQRScanner();
+                        document.getElementById('joinFamilyCode').value = code;
+                        this.showToast(this.t('qr.recognized'));
+                        this.joinFamily();
                     }
-                }).catch(() => {});
-            }
+                }
+            }).catch(handledAsyncError('QR scan frame failed'));
             
             // Continue scanning
             if (this.qrStream) {
@@ -1670,8 +1698,8 @@ class FunDaApp {
             membersList.innerHTML = members.map(m => {
                 // For current user, always use the live Google photo URL and local favorite count
                 const photoURL = m.isCurrentUser && this.currentUser?.photoURL
-                    ? this.currentUser.photoURL
-                    : m.photoURL;
+                    ? safeImageUrl(this.currentUser.photoURL)
+                    : safeImageUrl(m.photoURL);
                 const favCount = m.isCurrentUser ? this.favorites.length : m.favoriteCount;
                 const avatarHtml = photoURL
                     ? `<img class="member-avatar-img" src="${escapeHtml(photoURL)}" alt="${escapeHtml(m.name)}">`
@@ -1749,7 +1777,7 @@ class FunDaApp {
         overlay.className = 'family-match-celebration';
         overlay.innerHTML = `
             <div class="celebration-content">
-                <div class="celebration-emoji">Familie Match!</div>
+                <div class="celebration-emoji">${this.t('celebration.title')}</div>
                 <div class="celebration-title">${this.t('celebration.title')}</div>
                 <div class="celebration-subtitle">${this.t('celebration.subtitle')}</div>
             </div>
@@ -1804,14 +1832,14 @@ class FunDaApp {
             </div>
 
             <div class="detail-section">
-                <h3>Kenmerken</h3>
+                <h3>${this.t('detail.features')}</h3>
                 <div class="detail-grid">
                     <div class="detail-item">
-                        <div class="detail-item-label">Oppervlakte</div>
+                        <div class="detail-item-label">${this.t('filters.size')}</div>
                         <div class="detail-item-value">${house.size} m²</div>
                     </div>
                     <div class="detail-item">
-                        <div class="detail-item-label">Slaapkamers</div>
+                        <div class="detail-item-label">${this.t('filters.bedrooms')}</div>
                         <div class="detail-item-value">${house.bedrooms}</div>
                     </div>
                 </div>
@@ -1819,7 +1847,7 @@ class FunDaApp {
 
             ${safeFundaUrl !== '#' ? `
                 <a href="${escapeHtml(safeFundaUrl)}" target="_blank" rel="noopener noreferrer" class="btn-primary btn-full">
-                    Bekijk op Funda
+                    ${this.t('detail.view_on_funda')}
                 </a>
             ` : ''}
         `;
@@ -2187,7 +2215,7 @@ class FunDaApp {
                     <strong>${matchTitle}</strong>
                     <span>${matchText}</span>
                 </div>
-                <button class="fmb-close" aria-label="Sluiten">✕</button>
+                <button class="fmb-close" aria-label="${this.t('a11y.close_details')}">✕</button>
             </div>`;
         banner.querySelector('.fmb-close').addEventListener('click', () => banner.remove());
         document.body.appendChild(banner);
@@ -2280,9 +2308,9 @@ class FunDaApp {
         const count = this.favorites.length + this.familyMatches.size;
         if ('setAppBadge' in navigator) {
             if (count > 0) {
-                navigator.setAppBadge(count).catch(() => {});
+                navigator.setAppBadge(count).catch(handledAsyncError('App badge update failed'));
             } else {
-                navigator.clearAppBadge?.().catch(() => {});
+                navigator.clearAppBadge?.().catch(handledAsyncError('App badge clear failed'));
             }
         }
     }
@@ -2306,7 +2334,7 @@ class FunDaApp {
         } else {
             try {
                 await navigator.clipboard.writeText(url);
-                this.showToast('Link gekopieerd!');
+                this.showToast(this.t('toast.link_copied'));
             } catch {
                 this.showToast(`${url}`);
             }
@@ -2377,7 +2405,7 @@ class FunDaApp {
                     this.saveToStorage();
                 } else {
                     // detail is null — house may be sold/rented; remove from shared cache
-                    this.familySync.removeHouseFromDB(house.id, house.globalId).catch(() => {});
+                    this.familySync.removeHouseFromDB(house.id, house.globalId).catch(handledAsyncError('Removing sold house from Firebase cache failed'));
                 }
             } catch (e) {
                 console.error('Detail fetch failed:', e);
@@ -2466,7 +2494,7 @@ class FunDaApp {
                 btns.push(`<a href="mailto:${escapeHtml(house.brokerEmail)}" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'Email' : 'E-mail'}</a>`);
             }
             if (house.url && house.url !== '#') {
-                btns.push(`<a href="${escapeHtml(safeExternalUrl(house.url))}" target="_blank" rel="noopener" class="btn-secondary detail-action-btn">${this.lang === 'en' ? 'View on Funda' : 'Bekijk op Funda'}</a>`);
+                btns.push(`<a href="${escapeHtml(safeExternalUrl(house.url))}" target="_blank" rel="noopener" class="btn-secondary detail-action-btn">${this.t('detail.view_on_funda')}</a>`);
             }
             if (btns.length > 0) {
                 parts.push(`<div class="detail-actions">${btns.join('')}</div>`);
@@ -3366,7 +3394,7 @@ class FunDaApp {
                         if (this.browseOpen) this.renderBrowseGrid();
                         this.updateStats();
                         if (this.familySync.canUseFamilySync()) {
-                            this.familySync.saveHousesToDB(this.houses).catch(() => {});
+                            this.familySync.saveHousesToDB(this.houses).catch(handledAsyncError('Saving refreshed browse houses to Firebase failed'));
                         }
                         return;
                     }
@@ -3990,7 +4018,7 @@ class FunDaApp {
         // Update count
         if (count) {
             const total = grid.querySelectorAll('.browse-tile').length;
-            count.textContent = `${total} woning${total !== 1 ? 'en' : ''}${this._bgLoading ? ' (laden...)' : ''}`;
+            count.textContent = this.t('browse.count', total, this._bgLoading);
         }
         if (empty) empty.classList.add('hidden');
         if (grid.classList.contains('hidden')) grid.classList.remove('hidden');
