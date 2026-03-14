@@ -101,6 +101,26 @@ function safeExternalUrl(url) {
     return sanitizeUrl(url, { fallback: '#' });
 }
 
+/**
+ * Split a Funda description that contains both Dutch and English text.
+ * Returns { nl, en }. If no separator is found, the full text goes into
+ * the 'primary' key and the other is empty.
+ */
+function splitDescription(text) {
+    if (!text) return { nl: '', en: '' };
+    // Common separator patterns brokers use between NL and EN sections.
+    // Matches lines like: --- , *** , === , ___ , ~~~~~~
+    // Or lines containing: ENGLISH, IN ENGLISH, ENGLISH BELOW, ENGLISH VERSION,
+    //   ENGLISH TRANSLATION, TRANSLATION, EN: , EN -, ENGLISH DESCRIPTION
+    const sepPattern = /\n\s*(?:[-=*_~]{3,}|\*{3,})\s*\n|\n\s*(?:(?:--+\s*)?(?:ENGLISH(?:\s+(?:BELOW|VERSION|TRANSLATION|DESCRIPTION|TEXT))?|IN\s+ENGLISH|TRANSLATION|EN\s*[:–—-])\s*(?:--+)?\s*)\s*\n/i;
+    const match = text.match(sepPattern);
+    if (!match) return { nl: text, en: '' };
+    const idx = match.index;
+    const nl = text.substring(0, idx).trim();
+    const en = text.substring(idx + match[0].length).trim();
+    return { nl, en };
+}
+
 function safeImageUrl(url) {
     return sanitizeUrl(url, {
         fallback: PLACEHOLDER_IMAGE,

@@ -2470,10 +2470,16 @@ class FunDaApp {
                 </div>
             </div>` : '';
 
-        // Description — show only the active language, fall back to the other if empty
-        const descNL = house.description || '';
-        const descEN = house.descriptionEN || '';
-        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : descNL;
+        // Description — show only the active language.
+        // Many Funda listings embed both NL and EN text in one field separated
+        // by --- or an "ENGLISH" header.  Split them apart so each language
+        // only sees its own half.  The /en/ API description is used as a
+        // fallback when the split doesn't yield an English section.
+        const rawDesc = house.description || '';
+        const splitDesc = splitDescription(rawDesc);
+        const descEN = house.descriptionEN || splitDesc.en;
+        const descNL = splitDesc.nl || rawDesc;
+        const primaryDesc = this.lang === 'en' ? (descEN || descNL) : (splitDesc.nl || (descEN && descNL === rawDesc && descNL.trim() === descEN.trim() ? '' : descNL));
         const descHtml = primaryDesc ? `
             <div class="detail-section">
                 <h3>${this.t('detail.desc')}</h3>
@@ -2751,9 +2757,11 @@ class FunDaApp {
             </div>
 
             ${(() => {
-                const favDescNL = house.description || '';
-                const favDescEN = house.descriptionEN || '';
-                const favDesc = this.lang === 'en' ? (favDescEN || favDescNL) : favDescNL;
+                const favRawDesc = house.description || '';
+                const favSplit = splitDescription(favRawDesc);
+                const favDescEN = house.descriptionEN || favSplit.en;
+                const favDescNL = favSplit.nl || favRawDesc;
+                const favDesc = this.lang === 'en' ? (favDescEN || favDescNL) : (favSplit.nl || (favDescEN && favDescNL === favRawDesc && favDescNL.trim() === favDescEN.trim() ? '' : favDescNL));
                 return favDesc ? `
                 <div class="detail-section">
                     <h3>${this.t('detail.desc_alt')}</h3>

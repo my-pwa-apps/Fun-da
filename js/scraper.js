@@ -145,10 +145,12 @@ class FundaScraper {
 
         const detailUrl = this.FUNDA_API_DETAIL_BASE + '/tinyId/' + tinyId;
         try {
-            const promises = [fetch(this.proxyUrl + encodeURIComponent(detailUrl))];
-            if (this._wantEnglishDesc) {
-                promises.push(fetch(this.proxyUrl + encodeURIComponent(detailUrl.replace('/nl/', '/en/'))));
-            }
+            // Always fetch both NL and EN descriptions so the app can show the correct one
+            const enDetailUrl = detailUrl.replace('/nl/', '/en/');
+            const promises = [
+                fetch(this.proxyUrl + encodeURIComponent(detailUrl)),
+                fetch(this.proxyUrl + encodeURIComponent(enDetailUrl)),
+            ];
 
             const responses = await Promise.all(promises);
             if (!responses[0].ok) return null;
@@ -159,7 +161,8 @@ class FundaScraper {
             const result = this.parseMobileDetail(raw);
             if (!result) return null;
 
-            if (this._wantEnglishDesc && responses[1]?.ok) {
+            // Store English description from the /en/ endpoint
+            if (responses[1]?.ok) {
                 try {
                     const enRaw = await responses[1].json();
                     result.descriptionEN = enRaw?.ListingDescription?.Description || '';
