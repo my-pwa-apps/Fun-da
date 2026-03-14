@@ -1118,6 +1118,9 @@ class FunDaApp {
             this.familySync.photoURL = user.photoURL || '';
             if (this.familySync.isInFamily()) {
                 this._updateFamilyMemberPhoto(user.photoURL);
+                // Sync local favorites to Firebase to keep counts accurate
+                const favIds = this.favorites.map(h => String(h.id));
+                this.familySync.syncAllFavorites(favIds).catch(() => {});
             }
             // Load settings from Firebase for this user
             this.loadSettingsFromFirebase();
@@ -1629,12 +1632,6 @@ class FunDaApp {
         const previousMatchCount = this.familyMatches.size;
         this.familyMatches = matches;
 
-        // Sync local favorites to Firebase so member favorite count stays accurate
-        if (this.familySync.isInFamily() && this.favorites.length > 0) {
-            const favIds = this.favorites.map(h => String(h.id));
-            this.familySync.syncAllFavorites(favIds).catch(() => {});
-        }
-
         // Check for new matches
         if (matches.size > previousMatchCount) {
             this.celebrateFamilyMatch();
@@ -1671,10 +1668,11 @@ class FunDaApp {
             // Show members
             const members = this.familySync.getMembersList();
             membersList.innerHTML = members.map(m => {
-                // For current user, always use the live Google photo URL
+                // For current user, always use the live Google photo URL and local favorite count
                 const photoURL = m.isCurrentUser && this.currentUser?.photoURL
                     ? this.currentUser.photoURL
                     : m.photoURL;
+                const favCount = m.isCurrentUser ? this.favorites.length : m.favoriteCount;
                 const avatarHtml = photoURL
                     ? `<img class="member-avatar-img" src="${escapeHtml(photoURL)}" alt="${escapeHtml(m.name)}">`
                     : `<div class="member-avatar">${escapeHtml(m.name.charAt(0).toUpperCase())}</div>`;
@@ -1685,7 +1683,7 @@ class FunDaApp {
                     ${avatarHtml}
                     <div class="member-info">
                         <div class="member-name">${escapeHtml(m.name)} ${m.isCurrentUser ? `<span class="member-badge">${youLabel}</span>` : ''}</div>
-                        <div class="member-stats">${escapeHtml(String(m.favoriteCount))} ${favLabel}</div>
+                        <div class="member-stats">${escapeHtml(String(favCount))} ${favLabel}</div>
                     </div>
                 </div>`;
             }).join('');
