@@ -187,7 +187,7 @@ const QRCode = (() => {
         const maxDataLen = blockSize + (longBlocks > 0 ? 1 : 0);
         for (let i = 0; i < maxDataLen; i++)
             for (const block of dataBlocks)
-                if (i < block.length) push.call(null, block[i], 8) || allBits.push(...toBits(block[i]));
+                if (i < block.length) allBits.push(...toBits(block[i]));
         for (let i = 0; i < ecCw; i++)
             for (const block of ecBlocks)
                 allBits.push(...toBits(block[i]));
@@ -539,6 +539,27 @@ const TRANSLATIONS = {
         'celebration.title': 'FAMILIE MATCH!',
         'celebration.subtitle': 'Jullie hebben dezelfde woning geliked!',
         'match.liked_by': 'Deze woning is geliked door:',
+        'toast.update_available': 'Nieuwe versie beschikbaar!',
+        'toast.update_now': 'Updaten',
+        'install.ios': 'Gebruik Safari en kies Deel > Zet op beginscherm.',
+        'install.android': 'Open het browsermenu en kies Installeer app of Toevoegen aan startscherm.',
+        'install.desktop': 'Gebruik het install-icoon in de adresbalk of kies Installeer app in het browsermenu.',
+        'install.generic': 'Gebruik de browseroptie Installeer app of Toevoegen aan startscherm.',
+        'install.available': 'Fun-da kan op dit apparaat als app worden ge\u00efnstalleerd.',
+        'install.button': 'Installeer app',
+        'install.help': 'Installatie-hulp',
+        'confirm.click_again': 'Klik nogmaals om te bevestigen',
+        'bid.viewing_date': 'Bezichtigingsdatum',
+        'bid.deadline': 'Bieddeadline makelaar',
+        'bid.notes': 'Notities',
+        'bid.notes_placeholder': 'Aantekeningen over dit huis...',
+        'bid.save': 'Notities opslaan',
+        'bid.remove_fav': 'Verwijderen uit favorieten',
+        'toast.viewing_date': 'Vul eerst een bezichtigingsdatum in',
+        'qr.starting': 'Camera starten...',
+        'qr.scanning': 'Richt de camera op de QR code...',
+        'qr.unavailable': 'Camera niet beschikbaar. Voer de code handmatig in.',
+        'qr.recognized': 'QR code herkend!',
     },
     en: {
         'nav.swipe': 'Swipe',
@@ -720,6 +741,27 @@ const TRANSLATIONS = {
         'celebration.title': 'FAMILY MATCH!',
         'celebration.subtitle': 'You liked the same house!',
         'match.liked_by': 'This house was liked by:',
+        'toast.update_available': 'New version available!',
+        'toast.update_now': 'Update',
+        'install.ios': 'Use Safari and choose Share > Add to Home Screen.',
+        'install.android': 'Open the browser menu and choose Install app or Add to Home Screen.',
+        'install.desktop': 'Use the install icon in the address bar or choose Install app from the browser menu.',
+        'install.generic': 'Use the browser option Install app or Add to Home Screen.',
+        'install.available': 'Fun-da can be installed as an app on this device.',
+        'install.button': 'Install app',
+        'install.help': 'Install help',
+        'confirm.click_again': 'Click again to confirm',
+        'bid.viewing_date': 'Viewing date',
+        'bid.deadline': 'Bid deadline agent',
+        'bid.notes': 'Notes',
+        'bid.notes_placeholder': 'Notes about this house...',
+        'bid.save': 'Save notes',
+        'bid.remove_fav': 'Remove from favorites',
+        'toast.viewing_date': 'Enter a viewing date first',
+        'qr.starting': 'Starting camera...',
+        'qr.scanning': 'Point the camera at the QR code...',
+        'qr.unavailable': 'Camera not available. Enter the code manually.',
+        'qr.recognized': 'QR code recognized!',
     },
 };
 

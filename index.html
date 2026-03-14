@@ -302,13 +302,13 @@
             <!-- Results column -->
             <div class="browse-main">
                 <div class="browse-toolbar">
-                    <button class="browse-toolbar-btn" id="browseFilterToggleBtn" title="Filters">
+                    <button class="browse-toolbar-btn" id="browseFilterToggleBtn" title="Filters" aria-label="Filters">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
                         </svg>
                         <span class="browse-filter-badge hidden" id="browseFilterBadge">0</span>
                     </button>
-                    <button class="browse-toolbar-btn" id="browseRefreshBtn" title="Ververs woningen">
+                    <button class="browse-toolbar-btn" id="browseRefreshBtn" title="Ververs woningen" aria-label="Ververs woningen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                             <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
                             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -327,13 +327,13 @@
                         </select>
                     </div>
                     <div class="browse-layout-toggle">
-                        <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst">
+                        <button class="browse-layout-btn active" id="browseLayoutList" title="Lijst" aria-label="Lijst">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                                 <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
                                 <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
                             </svg>
                         </button>
-                        <button class="browse-layout-btn" id="browseLayoutGrid" title="Raster">
+                        <button class="browse-layout-btn" id="browseLayoutGrid" title="Raster" aria-label="Raster">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                                 <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                                 <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
@@ -569,7 +569,7 @@
         <div class="modal-content modal-map">
             <div class="modal-header">
                 <h2 id="mapModalTitle">Locatie</h2>
-                <button class="btn-close" id="closeMapModal">&times;</button>
+                <button class="btn-close" id="closeMapModal" aria-label="Sluit kaart">&times;</button>
             </div>
             <div class="modal-body map-modal-body">
                 <iframe id="mapFrame" class="map-frame" src="" allowfullscreen loading="lazy" title="Kaart"></iframe>

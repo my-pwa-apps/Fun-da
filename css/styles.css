@@ -38,6 +38,7 @@
     --shadow-glow: 0 0 30px var(--primary-glow);
     
     /* Border Radius */
+    --radius: 16px;
     --radius-sm: 12px;
     --radius-md: 20px;
     --radius-lg: 28px;

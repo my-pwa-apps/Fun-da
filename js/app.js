@@ -475,8 +475,8 @@ class FunDaApp {
         const toast = document.createElement('div');
         toast.className = 'toast toast-action';
         toast.innerHTML = `
-            <span>Nieuwe versie beschikbaar!</span>
-            <button class="toast-btn" id="updateNowBtn">Updaten</button>
+            <span>${this.t('toast.update_available')}</span>
+            <button class="toast-btn" id="updateNowBtn">${this.t('toast.update_now')}</button>
         `;
         container.appendChild(toast);
         
@@ -1007,7 +1007,7 @@ class FunDaApp {
             this._clearDataPending = true;
             if (btn) {
                 btn.dataset.origText = btn.textContent;
-                btn.textContent = 'Klik nogmaals om te bevestigen';
+                btn.textContent = this.t('confirm.click_again');
                 btn.classList.add('btn-confirm-danger');
             }
             setTimeout(() => {
@@ -1104,13 +1104,13 @@ class FunDaApp {
         if (user) {
             // Show user photo in header button
             if (user.photoURL && profilePhoto) {
-                profilePhoto.src = user.photoURL;
+                profilePhoto.src = safeImageUrl(user.photoURL);
                 profilePhoto.classList.remove('hidden');
                 if (profileDefault) profileDefault.classList.add('hidden');
             }
             // Show user info in dropdown
             if (profileInfo) profileInfo.classList.remove('hidden');
-            if (profileDdPhoto && user.photoURL) profileDdPhoto.src = user.photoURL;
+            if (profileDdPhoto && user.photoURL) profileDdPhoto.src = safeImageUrl(user.photoURL);
             if (profileDdName) profileDdName.textContent = user.displayName || user.email || '';
             if (profileNotLoggedIn) profileNotLoggedIn.classList.add('hidden');
             if (profileLoggedIn) profileLoggedIn.classList.remove('hidden');
@@ -1505,7 +1505,7 @@ class FunDaApp {
             this._leaveFamilyPending = true;
             if (btn) {
                 btn.dataset.origText = btn.textContent;
-                btn.textContent = 'Klik nogmaals om te bevestigen';
+                btn.textContent = this.t('confirm.click_again');
                 btn.classList.add('btn-confirm-danger');
             }
             setTimeout(() => {
@@ -1565,7 +1565,7 @@ class FunDaApp {
         const status = document.getElementById('qrScanStatus');
         
         this.openModal(scannerModal);
-        status.textContent = 'Camera starten...';
+        status.textContent = this.t('qr.starting');
         
         try {
             // Request camera access
@@ -1576,13 +1576,13 @@ class FunDaApp {
             video.srcObject = this.qrStream;
             await video.play();
             
-            status.textContent = 'Richt de camera op de QR code...';
+            status.textContent = this.t('qr.scanning');
             
             // Start scanning
             this.scanQRCode(video, status);
         } catch (error) {
             console.error('Camera error:', error);
-            status.textContent = 'Camera niet beschikbaar. Voer de code handmatig in.';
+            status.textContent = this.t('qr.unavailable');
         }
     }
     
@@ -1603,7 +1603,7 @@ class FunDaApp {
                             const code = data.replace('funda-family:', '');
                             this.stopQRScanner();
                             document.getElementById('joinFamilyCode').value = code;
-                            this.showToast('QR code herkend!');
+                            this.showToast(this.t('qr.recognized'));
                             this.joinFamily();
                         }
                     }
@@ -2206,7 +2206,7 @@ class FunDaApp {
     addViewingToCalendar(houseId) {
         const house = this.favorites.find(h => String(h.id) === String(houseId)) || this.findHouseById(houseId);
         const viewingDate = document.getElementById('metaViewingDate')?.value || this.favoriteMeta[String(houseId)]?.viewingDate;
-        if (!viewingDate) { this.showToast('Vul eerst een bezichtigingsdatum in'); return; }
+        if (!viewingDate) { this.showToast(this.t('toast.viewing_date')); return; }
         const addr = cleanAddress(house?.address || '');
         const dateStr = viewingDate.replace(/-/g, '');
         const locationStr = this.buildHouseLocationText(house);
@@ -2837,7 +2837,7 @@ class FunDaApp {
                 <h3>${this.t('bid.title')}</h3>
                 <div class="bid-fields">
                     <div class="bid-field">
-                        <label class="bid-label">Status</label>
+                        <label class="bid-label">${this.t('filters.status')}</label>
                         <div class="bid-status-group">
                             ${statusOptions.map(s => `
                                 <button class="bid-status-btn${meta.status === s.key ? ' active' : ''}" data-status="${escapeHtml(s.key)}">${escapeHtml(s.label)}</button>
@@ -2846,28 +2846,28 @@ class FunDaApp {
                     </div>
                     <div class="bid-row">
                         <div class="bid-field">
-                            <label class="bid-label" for="metaViewingDate">Bezichtigingsdatum</label>
+                            <label class="bid-label" for="metaViewingDate">${this.t('bid.viewing_date')}</label>
                             <input type="date" class="bid-input" id="metaViewingDate" value="${escapeHtml(meta.viewingDate || '')}">
-                            <button class="btn-secondary detail-action-btn" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}">Agenda</button>
+                            <button class="btn-secondary detail-action-btn" data-action="addViewingToCalendar" data-id="${escapeHtml(String(houseId))}">${this.lang === 'en' ? 'Calendar' : 'Agenda'}</button>
                         </div>
                         <div class="bid-field">
-                            <label class="bid-label" for="metaBidDeadline">Bieddeadline makelaar</label>
+                            <label class="bid-label" for="metaBidDeadline">${this.t('bid.deadline')}</label>
                             <input type="datetime-local" class="bid-input" id="metaBidDeadline" value="${escapeHtml(meta.bidDeadline || '')}">
                         </div>
                     </div>
                     <div class="bid-field">
-                        <label class="bid-label" for="metaNotes">Notities</label>
-                        <textarea class="bid-input" id="metaNotes" rows="3" placeholder="Aantekeningen over dit huis...">${escapeHtml(meta.notes || '')}</textarea>
+                        <label class="bid-label" for="metaNotes">${this.t('bid.notes')}</label>
+                        <textarea class="bid-input" id="metaNotes" rows="3" placeholder="${this.t('bid.notes_placeholder')}">${escapeHtml(meta.notes || '')}</textarea>
                     </div>
                 </div>
-                <button class="btn-primary btn-full" id="saveBidMetaBtn">Notities opslaan</button>
+                <button class="btn-primary btn-full" id="saveBidMetaBtn">${this.t('bid.save')}</button>
             </div>
 
             ${brokerHtml}
             ${mapsLinkHtml}
 
             <button class="btn-danger btn-full" data-action="removeFavoriteAndClose" data-id="${escapeHtml(String(houseId))}">
-                Verwijderen uit favorieten
+                ${this.t('bid.remove_fav')}
             </button>
             </div>
             </div>
@@ -3200,15 +3200,18 @@ class FunDaApp {
         const query = h.latitude && h.longitude
             ? `${h.latitude},${h.longitude}`
             : encodeURIComponent([h.address || '', h.postalCode || '', h.city || ''].filter(Boolean).join(' ').trim());
-        const src = `https://maps.google.com/maps?q=${query}&output=embed&hl=nl`;
-        document.getElementById('mapFrame').src = src;
-        const title = h.address ? cleanAddress(h.address) : 'Locatie';
-        document.getElementById('mapModalTitle').textContent = title;
+        const src = `https://maps.google.com/maps?q=${query}&output=embed&hl=${this.lang}`;
+        const frameEl = document.getElementById('mapFrame');
+        if (frameEl) frameEl.src = src;
+        const title = h.address ? cleanAddress(h.address) : this.t('detail.maps');
+        const titleEl = document.getElementById('mapModalTitle');
+        if (titleEl) titleEl.textContent = title;
         this.openModal(this.mapModal);
     }
 
     closeMapModal() {
-        document.getElementById('mapFrame').src = '';
+        const frameEl = document.getElementById('mapFrame');
+        if (frameEl) frameEl.src = '';
         this.closeModal(this.mapModal);
     }
 
