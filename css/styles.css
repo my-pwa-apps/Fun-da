@@ -3284,6 +3284,7 @@ a.btn-secondary {
    ========================================== */
 
 .browse-tile {
+    position: relative;
     background: var(--white);
     border-radius: var(--radius);
     overflow: hidden;
@@ -3291,6 +3292,9 @@ a.btn-secondary {
     cursor: pointer;
     transition: box-shadow 0.2s, transform 0.2s var(--ease-out);
     border: 1px solid var(--gray-lighter);
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
 }
 
 .browse-tile:hover {
@@ -3301,6 +3305,41 @@ a.btn-secondary {
 .browse-tile:active {
     transform: translateY(0);
 }
+
+/* Browse tile swipe indicators */
+.bt-swipe-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s ease;
+}
+
+.bt-swipe-like {
+    right: 0.5rem;
+    background: rgba(72, 187, 120, 0.92);
+    color: #fff;
+    border: 2px solid #38a169;
+}
+
+.bt-swipe-nope {
+    left: 0.5rem;
+    background: rgba(229, 62, 62, 0.92);
+    color: #fff;
+    border: 2px solid #c53030;
+}
+
+/* In list layout, indicators position on the info side */
+.browse-layout-list .bt-swipe-like { right: 0.75rem; }
+.browse-layout-list .bt-swipe-nope { left: auto; right: auto; left: 0.5rem; }
 
 /* LIST layout: horizontal card */
 .browse-layout-list .browse-tile {

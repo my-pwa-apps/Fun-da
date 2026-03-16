@@ -713,6 +713,13 @@ class FunDaApp {
         } catch (e) {
             console.error('Error saving to storage:', e);
         }
+        // Debounced sync of favorites/swipedIds to Firebase
+        if (!this._debouncedFirebaseSync) {
+            this._debouncedFirebaseSync = this._debounce(() => {
+                this.saveSettingsToFirebase();
+            }, 5000);
+        }
+        this._debouncedFirebaseSync();
     }
 
     // ==========================================
@@ -1306,7 +1313,10 @@ class FunDaApp {
                 daysBack: this.daysBack,
                 searchArea: this.searchArea || '',
                 viewMode: this.currentView,
-                browseFilters: this.browseFilters
+                browseFilters: this.browseFilters,
+                favorites: this.favorites,
+                favoriteMeta: this.favoriteMeta,
+                swipedIds: [...this.swipedIds]
             });
         } catch (e) {
             console.error('Save settings error:', e);
@@ -1341,10 +1351,39 @@ class FunDaApp {
                 this.browseFilters = { ...this.browseFilters, ...data.browseFilters };
                 this.restoreBrowseFilterUI();
             }
+            // Restore favorites from Firebase (merge with any local ones)
+            if (Array.isArray(data.favorites)) {
+                const localIds = new Set(this.favorites.map(h => String(h.id)));
+                const newFavs = data.favorites.filter(h => !localIds.has(String(h.id)));
+                if (newFavs.length > 0) {
+                    this.favorites.push(...newFavs);
+                }
+                localStorage.setItem('funda-favorites', JSON.stringify(this.favorites));
+            }
+            // Restore favorite meta
+            if (data.favoriteMeta && typeof data.favoriteMeta === 'object') {
+                this.favoriteMeta = { ...data.favoriteMeta, ...this.favoriteMeta };
+                localStorage.setItem('funda-favorite-meta', JSON.stringify(this.favoriteMeta));
+            }
+            // Restore swiped house IDs (merge with local)
+            if (Array.isArray(data.swipedIds)) {
+                data.swipedIds.forEach(id => this.swipedIds.add(id));
+                localStorage.setItem('funda-swiped-ids', JSON.stringify([...this.swipedIds]));
+            }
             this.updateViewModeUi();
+            this.updateStats();
             if (!this.elements.app.classList.contains('hidden')) {
                 if (this.currentView === 'swipe') this.openSwipeView();
                 else this.openBrowseView();
+            }
+            // If area is configured but no houses loaded, trigger loading
+            if (this.hasConfiguredSearchArea() && this.houses.length === 0) {
+                this.autoLoadNewListings();
+            }
+            // Re-sync favorites to family after restore
+            if (this.familySync.isInFamily() && this.favorites.length > 0) {
+                const favIds = this.favorites.map(h => String(h.id));
+                this.familySync.syncAllFavorites(favIds).catch(handledAsyncError('Post-restore favorites sync failed'));
             }
         } catch (e) {
             console.error('Load settings error:', e);
@@ -4016,6 +4055,7 @@ class FunDaApp {
         empty.classList.add('hidden');
 
         grid.innerHTML = houses.map(house => this._browseTile(house)).join('');
+        this._setupBrowseSwipe();
     }
 
     /** Append new tiles without re-rendering existing ones (avoids image flash during background load) */
@@ -4119,6 +4159,8 @@ class FunDaApp {
 
         return `
         <div class="browse-tile" data-action="showBrowseDetail" data-id="${escapedId}">
+            <div class="bt-swipe-indicator bt-swipe-like">${this.t('swipe.like')}</div>
+            <div class="bt-swipe-indicator bt-swipe-nope">${this.t('swipe.nope')}</div>
             <div class="bt-photo">
                 <img class="bt-img" src="${safeImage}" alt="${safeAddr}" loading="lazy">
                 ${badges.length ? `<div class="bt-badges">${badges.join('')}</div>` : ''}
@@ -4160,6 +4202,146 @@ class FunDaApp {
         this.updateStats();
         this.saveToStorage();
         btn.blur();
+    }
+
+    // ==========================================
+    // BROWSE TILE SWIPE GESTURES
+    // ==========================================
+
+    _setupBrowseSwipe() {
+        const grid = document.getElementById('browseGrid');
+        if (!grid || grid._browseSwipeBound) return;
+        grid._browseSwipeBound = true;
+
+        let tile = null;
+        let startX = 0;
+        let startY = 0;
+        let deltaX = 0;
+        let scrollLocked = false; // true = horizontal swipe, false = still deciding
+        let didSwipe = false; // suppress click after swipe
+
+        const findTile = (e) => e.target.closest('.browse-tile');
+
+        const onStart = (e) => {
+            // Ignore if tapping fav button
+            if (e.target.closest('[data-action="browseAddFavorite"]')) return;
+            tile = findTile(e);
+            if (!tile) return;
+            const pt = e.touches ? e.touches[0] : e;
+            startX = pt.clientX;
+            startY = pt.clientY;
+            deltaX = 0;
+            scrollLocked = false;
+            tile.style.transition = 'none';
+        };
+
+        const onMove = (e) => {
+            if (!tile) return;
+            const pt = e.touches ? e.touches[0] : e;
+            deltaX = pt.clientX - startX;
+            const deltaY = pt.clientY - startY;
+
+            // Determine intent: if mostly vertical, bail out and let page scroll
+            if (!scrollLocked) {
+                if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+                    tile.style.transition = '';
+                    tile.style.transform = '';
+                    tile = null;
+                    return;
+                }
+                if (Math.abs(deltaX) > 10) scrollLocked = true;
+            }
+
+            if (scrollLocked && e.cancelable) e.preventDefault();
+
+            const rotate = deltaX * 0.05;
+            tile.style.transform = `translateX(${deltaX}px) rotate(${rotate}deg)`;
+
+            const likeEl = tile.querySelector('.bt-swipe-like');
+            const nopeEl = tile.querySelector('.bt-swipe-nope');
+            const threshold = 30;
+            if (deltaX > threshold) {
+                likeEl.style.opacity = Math.min((deltaX - threshold) / 60, 1);
+                nopeEl.style.opacity = 0;
+            } else if (deltaX < -threshold) {
+                nopeEl.style.opacity = Math.min((-deltaX - threshold) / 60, 1);
+                likeEl.style.opacity = 0;
+            } else {
+                likeEl.style.opacity = 0;
+                nopeEl.style.opacity = 0;
+            }
+        };
+
+        const onEnd = () => {
+            if (!tile) return;
+            const t = tile;
+            const id = t.dataset.id;
+            const swipeThreshold = 80;
+
+            if (deltaX > swipeThreshold) {
+                // Swipe right → favorite
+                didSwipe = true;
+                t.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                t.style.transform = `translateX(120%) rotate(15deg)`;
+                t.style.opacity = '0';
+                setTimeout(() => {
+                    const house = this.houses.find(h => String(h.id) === String(id));
+                    if (house && !this.favorites.some(f => String(f.id) === String(id))) {
+                        this.addToFavorites(house);
+                        this.saveToStorage();
+                        this.updateStats();
+                        this.showToast(this.t('toast.favorite_added'));
+                    }
+                    this.renderBrowseGrid();
+                }, 300);
+            } else if (deltaX < -swipeThreshold) {
+                // Swipe left → exclude/hide
+                didSwipe = true;
+                t.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                t.style.transform = `translateX(-120%) rotate(-15deg)`;
+                t.style.opacity = '0';
+                setTimeout(() => {
+                    const house = this.houses.find(h => String(h.id) === String(id));
+                    if (house) {
+                        this.discardedHouses.push({ house, discardedAt: Date.now() });
+                    }
+                    this.swipedIds.add(String(id));
+                    this.houses = this.houses.filter(h => String(h.id) !== String(id));
+                    this.saveToStorage();
+                    this.renderBrowseGrid();
+                    this.updateStats();
+                    this.showToast(this.t('toast.hidden'));
+                }, 300);
+            } else {
+                // Snap back
+                t.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+                t.style.transform = '';
+                t.style.opacity = '';
+                const likeEl = t.querySelector('.bt-swipe-like');
+                const nopeEl = t.querySelector('.bt-swipe-nope');
+                if (likeEl) likeEl.style.opacity = 0;
+                if (nopeEl) nopeEl.style.opacity = 0;
+            }
+
+            tile = null;
+            deltaX = 0;
+            scrollLocked = false;
+        };
+
+        grid.addEventListener('touchstart', onStart, { passive: true });
+        grid.addEventListener('touchmove', onMove, { passive: false });
+        grid.addEventListener('touchend', onEnd);
+        grid.addEventListener('mousedown', onStart);
+        grid.addEventListener('mousemove', onMove);
+        grid.addEventListener('mouseup', onEnd);
+        grid.addEventListener('mouseleave', onEnd);
+        // Suppress click navigation after a swipe gesture
+        grid.addEventListener('click', (e) => {
+            if (didSwipe) {
+                e.stopPropagation();
+                didSwipe = false;
+            }
+        }, true);
     }
 }
 
