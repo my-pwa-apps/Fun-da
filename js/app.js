@@ -1400,11 +1400,12 @@ class FunDaApp {
         setVal('bfMinSize',  f.minSize  || '');
         setVal('bfMaxSize',  f.maxSize  || '');
         setVal('bfMinYear',  f.minYear  || '');
-        // Restore days preset buttons
+        // Restore days preset buttons (presets are dynamic, read from DOM)
         if (f.minDaysOnMarket) {
-            const presets = [14, 30, 60, 90];
+            const presetBtns = document.querySelectorAll('#bfDaysOnMarketGroup .btn-option');
+            const presets = [...presetBtns].map(b => parseInt(b.dataset.value, 10));
             const isPreset = presets.includes(f.minDaysOnMarket);
-            document.querySelectorAll('#bfDaysOnMarketGroup .btn-option').forEach(b => {
+            presetBtns.forEach(b => {
                 b.classList.toggle('active', isPreset && parseInt(b.dataset.value, 10) === f.minDaysOnMarket);
             });
             setVal('bfMinDaysOnMarket', isPreset ? '' : f.minDaysOnMarket);
@@ -3566,6 +3567,34 @@ class FunDaApp {
             dropdown.appendChild(lbl);
         });
         this._updateExcludeNeighLabel();
+        this._updateDaysOnMarketPresets();
+    }
+
+    _updateDaysOnMarketPresets() {
+        const group = document.getElementById('bfDaysOnMarketGroup');
+        if (!group) return;
+
+        const maxDays = this.houses.reduce((m, h) => Math.max(m, h.daysOnMarket || 0), 0);
+        const candidates = [7, 14, 30, 60, 90, 120, 180, 365, 730];
+        let presets = candidates.filter(d => d <= maxDays);
+        // Keep at most 4, pick last 4 if more
+        if (presets.length > 4) presets = presets.slice(-4);
+        // If no houses or none have daysOnMarket, fall back to defaults
+        if (presets.length === 0) presets = [14, 30, 60, 90];
+
+        // Preserve current active value
+        const activeBtn = group.querySelector('.btn-option.active');
+        const activeVal = activeBtn ? parseInt(activeBtn.dataset.value, 10) : null;
+
+        group.innerHTML = presets.map(d =>
+            `<button class="btn-option${d === activeVal ? ' active' : ''}" data-value="${d}">${d}+</button>`
+        ).join('');
+
+        // Update max attribute on both inputs
+        const minInput = document.getElementById('bfMinDaysOnMarket');
+        const maxInput = document.getElementById('bfMaxDaysOnMarket');
+        if (minInput && maxDays > 0) minInput.max = maxDays;
+        if (maxInput && maxDays > 0) maxInput.max = maxDays;
     }
 
     _updateExcludeNeighLabel() {
@@ -3614,6 +3643,7 @@ class FunDaApp {
     }
 
     _matchesBrowseFilters(house) {
+        if (this.swipedIds.has(String(house.id))) return false;
         const f = this.browseFilters;
 
         if (this.searchStreet) {
